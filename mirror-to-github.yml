@@ -1,0 +1,30 @@
+# Pipeline that mirrors this repository to github.com/mgbpm/biofx-workflows on every commit
+
+trigger:
+  branches:
+    include:
+    - '*'
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- checkout: self
+  path: fullclone
+  persistCredentials: true
+
+- bash: |
+    cd fullclone
+    repourl="$(git config --get remote.origin.url)"
+    cd ../
+    mkdir bareclone
+    cd bareclone
+    git clone --bare -c http.extraheader="AUTHORIZATION: bearer ${SYSTEM_ACCESS_TOKEN}" "${repourl}"
+    cd $(ls)
+    git push --mirror https://${GITHUBUSER}:${GITHUBPAT}@github.com/mgbpm/biofx-workflows.git
+  displayName: 'Checkout bare repository and push to github'
+  workingDirectory: $(Pipeline.Workspace)
+  env:
+    GITHUBUSER: "$(GitHubUser)"
+    GITHUBPAT: "$(GitHubPat)"
+    SYSTEM_ACCESS_TOKEN: "$(System.AccessToken)"
