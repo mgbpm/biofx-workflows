@@ -19,7 +19,8 @@ workflows/                            - Contains one sub-directory for each MGBP
 
 # WDL Authoring Guidelines
 _ALL CONTENTS OF THIS REPOSITORY WILL BE PUBLISHED ON GITHUB_
-_CREDENTIALS OR OTHER CONFIDENTIAL INFORMATION AT STRICTLY FORBIDDEN IN THIS REPOSITORY_
+
+_CREDENTIALS OR OTHER CONFIDENTIAL INFORMATION ARE STRICTLY FORBIDDEN_
 
 The following guidelines should be followed for WDL development:
 * All tasks that execute MGBPM authored code must accept container image name as an input parameter that defaults to `gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest`
