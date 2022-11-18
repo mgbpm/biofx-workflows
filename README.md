@@ -1,20 +1,32 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# Mass General Brigham Personalized Medicine Bioinformatic Workflows
+This repository contains all of the WDL-based bioinformatic workflows and tasks created by 
+Mass General Brigham Personalized Medicine for processing genomic data.  It also contains 
+utility and orchestration tasks.  The reusable steps and workflows are organized into a 
+directory structure, outlined below by way of example:
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+```
+steps/                                - Contains all re-usable workflow steps, which may be WDL tasks and workflows
+  ...wdls                             - WDL files, with one workflow and/or many tasks per file
+  ...mds                              - Workflow and task documentation files, one for each WDL file
+workflows/                            - Contains one sub-directory for each MGBPM workflow
+  wgs_b38/                            - Contains all artifacts for the workflow
+    WGSSingleSampleBuild38.wdl        - The workflow definition
+    WGSSingleSampleBuild38.md         - Workflow documentation, especially inputs and outputs
+  prs_b38/
+    ...similar to wgs...
+.dockstore.yml                        - File that defines all the workflows to be imported by Dockstore
+```
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+# WDL Authoring Guidelines
+_ALL CONTENTS OF THIS REPOSITORY WILL BE PUBLISHED ON GITHUB_
+_CREDENTIALS OR OTHER CONFIDENTIAL INFORMATION AT STRICTLY FORBIDDEN IN THIS REPOSITORY_
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+The following guidelines should be followed for WDL development:
+* All tasks that execute MGBPM authored code must accept container image name as an input parameter that defaults to `gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest`
+* The WDLs should be designed to be consumed as black box functions; i.e. all input parameters and data are defined as inputs and all generated data of interest to consumers is defined as an output
+* Workflows should be reference build specific; reusable steps should be reference build agnostic
+* Workflows should always require reference data (other than the reference build), sample data and external system connection information to be passed as parameters
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+When workflow WDLs are ready for production use, the relevant commit will be tagged with workflow specific tags to avoid collisions.  For example, `WGSSingleSampleBuild38_2.5.0`.  Versioning for workflow WDLs should adhere to the principles of [semantic versioning](https://semver.org/).
+
+The master copy of this repository is hosted in Azure DevOps.  All new content is mirrored to GitHub and workflows subsequently published in Dockstore.
