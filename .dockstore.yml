@@ -3,5 +3,3 @@ workflows:
   - name: DepthOfCoverageWorkflow
     subclass: WDL
     primaryDescriptorPath: /steps/DepthOfCoverage.wdl
-    testParameterFiles:
-    - /DummyVariantCalling.inputs.json
