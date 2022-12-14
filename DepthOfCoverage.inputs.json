@@ -1,0 +1,16 @@
+{
+    "DepthOfCoverageWorkflow.bai": "File",
+    "DepthOfCoverageWorkflow.gene_names": "File? (optional)",
+    "DepthOfCoverageWorkflow.gatk_disk_size_gb": "Int (optional, default = 100)",
+    "DepthOfCoverageWorkflow.ref_fasta": "File",
+    "DepthOfCoverageWorkflow.roi_genes": "Array[WomCompositeType {\n roi_bed -> File\nref_gene -> File \n}?]",
+    "DepthOfCoverageWorkflow.run_wgs": "Boolean (optional, default = true)",
+    "DepthOfCoverageWorkflow.roi_all_bed": "File? (optional)",
+    "DepthOfCoverageWorkflow.gatk_num_cpu": "Int? (optional)",
+    "DepthOfCoverageWorkflow.gatk_max_heap_gb": "Int (optional, default = 31)",
+    "DepthOfCoverageWorkflow.ref_dict": "File",
+    "DepthOfCoverageWorkflow.bam": "File",
+    "DepthOfCoverageWorkflow.ref_fasta_index": "File",
+    "DepthOfCoverageWorkflow.sample_name": "String",
+    "DepthOfCoverageWorkflow.mgbpmbiofx_docker_image": "String (optional, default = \"gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest\")"
+  }
