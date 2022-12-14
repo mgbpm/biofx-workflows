@@ -134,7 +134,7 @@ task DepthOfCoverageWGSTask {
     >>>
 
     runtime {
-        docker: "broadinstitute/gatk3:3.7-0"
+        docker: "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gatk3:3.7-0"
         memory: "~{gatk_max_heap_gb + 4}GB"
         cpu: gatk_num_cpu
         disks: "local-disk ~{gatk_disk_size_gb} SSD"
@@ -176,7 +176,7 @@ task DepthOfCoverageROITask {
     >>>
 
     runtime {
-        docker: "broadinstitute/gatk3:3.7-0"
+        docker: "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gatk3:3.7-0"
         memory: "~{gatk_max_heap_gb + 4}GB"
         cpu: gatk_num_cpu
         disks: "local-disk ~{gatk_disk_size_gb} SSD"
@@ -227,7 +227,7 @@ task DepthOfCoverageGeneTask {
     >>>
 
     runtime {
-        docker: "broadinstitute/gatk3:3.7-0"
+        docker: "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gatk3:3.7-0"
         memory: "~{gatk_max_heap_gb + 4}GB"
         cpu: gatk_num_cpu
         disks: "local-disk ~{gatk_disk_size_gb} SSD"
