@@ -17,7 +17,8 @@ workflow DepthOfCoverageWorkflow {
         Int gatk_max_heap_gb = 31
         Int gatk_disk_size_gb = 100
         Int gatk_num_cpu = floor(gatk_max_heap_gb / 4)
-        String mgbpmbiofx_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest"
+        String mgbpmbiofx_docker_image
+        String gatk_docker_image = "broadinstitute/gatk3:3.7-0"
     }
 
     # Only run with no interval file if so specified
@@ -32,7 +33,8 @@ workflow DepthOfCoverageWorkflow {
                 bai = bai,
                 gatk_max_heap_gb = gatk_max_heap_gb,
                 gatk_disk_size_gb = gatk_disk_size_gb,
-                gatk_num_cpu = gatk_num_cpu
+                gatk_num_cpu = gatk_num_cpu,
+                gatk_docker_image = gatk_docker_image
         }
     }
 
@@ -49,7 +51,8 @@ workflow DepthOfCoverageWorkflow {
                 bed = select_first([roi_all_bed]),
                 gatk_max_heap_gb = gatk_max_heap_gb,
                 gatk_disk_size_gb = gatk_disk_size_gb,
-                gatk_num_cpu = gatk_num_cpu
+                gatk_num_cpu = gatk_num_cpu,
+                gatk_docker_image = gatk_docker_image
         }
     }
 
@@ -67,7 +70,8 @@ workflow DepthOfCoverageWorkflow {
                 ref_gene = roi_gene.ref_gene,
                 gatk_max_heap_gb = gatk_max_heap_gb,
                 gatk_disk_size_gb = gatk_disk_size_gb,
-                gatk_num_cpu = gatk_num_cpu
+                gatk_num_cpu = gatk_num_cpu,
+                gatk_docker_image = gatk_docker_image
         }
     }
 
@@ -117,6 +121,7 @@ task DepthOfCoverageWGSTask {
         Int gatk_max_heap_gb
         Int gatk_disk_size_gb
         Int gatk_num_cpu
+        String gatk_docker_image
     }
 
     command <<<
@@ -134,7 +139,7 @@ task DepthOfCoverageWGSTask {
     >>>
 
     runtime {
-        docker: "broadinstitute/gatk3:3.7-0"
+        docker: "~{gatk_docker_image}"
         memory: "~{gatk_max_heap_gb + 4}GB"
         cpu: gatk_num_cpu
         disks: "local-disk ~{gatk_disk_size_gb} SSD"
@@ -158,6 +163,7 @@ task DepthOfCoverageROITask {
         Int gatk_max_heap_gb
         Int gatk_disk_size_gb
         Int gatk_num_cpu
+        String gatk_docker_image
     }
 
     command <<<
@@ -176,7 +182,7 @@ task DepthOfCoverageROITask {
     >>>
 
     runtime {
-        docker: "broadinstitute/gatk3:3.7-0"
+        docker: "~{gatk_docker_image}"
         memory: "~{gatk_max_heap_gb + 4}GB"
         cpu: gatk_num_cpu
         disks: "local-disk ~{gatk_disk_size_gb} SSD"
@@ -206,6 +212,7 @@ task DepthOfCoverageGeneTask {
         Int gatk_max_heap_gb
         Int gatk_disk_size_gb
         Int gatk_num_cpu
+        String gatk_docker_image
     }
 
     String refg_idx = sub(basename(roi_bed), "[^0-9]", "")
@@ -227,7 +234,7 @@ task DepthOfCoverageGeneTask {
     >>>
 
     runtime {
-        docker: "broadinstitute/gatk3:3.7-0"
+        docker: "~{gatk_docker_image}"
         memory: "~{gatk_max_heap_gb + 4}GB"
         cpu: gatk_num_cpu
         disks: "local-disk ~{gatk_disk_size_gb} SSD"
@@ -253,7 +260,7 @@ task DepthOfCoverageSummaryTask {
         String gene_summary_unknown_file
         String gene_summary_entrez_file
         String mt_summary_file
-        String mgbpmbiofx_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest"
+        String mgbpmbiofx_docker_image
     }
 
     command <<<

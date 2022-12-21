@@ -12,5 +12,6 @@
     "DepthOfCoverageWorkflow.bam": "File",
     "DepthOfCoverageWorkflow.ref_fasta_index": "File",
     "DepthOfCoverageWorkflow.sample_name": "String",
-    "DepthOfCoverageWorkflow.mgbpmbiofx_docker_image": "String (optional, default = \"gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest\")"
+    "DepthOfCoverageWorkflow.mgbpmbiofx_docker_image": "String",
+    "DepthOfCoverageWorkflow.gatk_docker_image": "String (optional, default = \"broadinstitute/gatk3:3.7-0\")"
   }
