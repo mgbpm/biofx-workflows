@@ -3,3 +3,6 @@ workflows:
   - name: DepthOfCoverageWorkflow
     subclass: WDL
     primaryDescriptorPath: /steps/DepthOfCoverage.wdl
+  - name: CopySampleFilesWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
