@@ -16,3 +16,4 @@ task for more details.
 * Array[String] source_files - a list of files copied from source
 * Array[String] target_files - a list of files placed in target
 * Array[File] local_files - if the target location is a local path (e.g. "./"), a list of the files
+* String new_sample_data_location - the new location for sample data, normally equal to target_location (included to assist with orchestration)

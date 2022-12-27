@@ -30,5 +30,6 @@ workflow CopySampleFilesWorkflow {
         Array[String] source_files = CopyFilesTask.source_files
         Array[String] target_files = CopyFilesTask.target_files
         Array[File] local_files = CopyFilesTask.local_files
+        String new_sample_data_location = target_location
     }
 }
