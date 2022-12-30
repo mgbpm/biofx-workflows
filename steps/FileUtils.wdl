@@ -129,3 +129,44 @@ task FetchFilesTask {
         Array[File] all_files = read_lines("target-file-list.txt")
     }
 }
+
+task DownloadOutputsTask {
+    input {
+        String outputs_json
+        String config_json
+        String? default_target_location
+        String mgbpmbiofx_docker_image
+        String gcp_project_id
+        String workspace_name
+    }
+
+    command <<<
+        set -euxo pipefail
+        ROOTDIR="$(pwd)"
+        pushd $MGBPMBIOFXPATH/biofx-orchestration-utils
+
+        DEF_TARGET_ARG=""
+        [ ! -z "~{default_target_location}" ] && DEF_TARGET_ARG="--default-target-location ~{default_target_location}"
+
+        # run script to setup rclone remotes
+        REMOTES=$(./bin/get_outputs_remotes.py --outputs "~{write_lines([outputs_json])}" --config "~{write_lines([config_json])}" ${DEF_TARGET_ARG})
+        for remote in ${REMOTES}
+        do
+            ./bin/setup-rclone-remote.sh -p "~{gcp_project_id}" -w "~{workspace_name}" -n ${remote}
+        done
+
+        # execute script to copy files
+        ./bin/copy_outputs.py --outputs "~{write_lines([outputs_json])}" --config "~{write_lines([config_json])}" --verbose \
+            ${DEF_TARGET_ARG} --local-manifest-file "${ROOTDIR}/copy-manifest.json"
+        popd
+    >>>
+
+    runtime {
+        docker: "~{mgbpmbiofx_docker_image}"
+        memory: "4GB"
+    }
+
+    output {
+        File outputs_manifest = "copy-manifest.json"
+    }
+}
