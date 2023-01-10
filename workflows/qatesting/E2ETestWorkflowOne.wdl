@@ -38,10 +38,6 @@ workflow QATestingWorkflowOne {
     }
 
     output {
-        File bam = final_bam
-        File bai = final_bai
-        File cram = final_cram
-        File crai = final_crai
         File vcf = MockVariantCallingAndCoverageTask.vcf
         File vcf_index = MockVariantCallingAndCoverageTask.vcf_index
         File cov_summary = MockVariantCallingAndCoverageTask.cov_summary
