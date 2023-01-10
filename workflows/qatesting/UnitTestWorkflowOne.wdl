@@ -2,11 +2,11 @@ version 1.0
 
 workflow UnitTestWorkflowOne {
     input {
-        String input_1
-        String input_2
-        String input_3
-        String input_4
-        String input_5
+        String? input_1
+        String? input_2
+        String? input_3
+        String? input_4
+        String? input_5
     }
 
     call UnitTestWorkflowOneTask {
@@ -30,11 +30,11 @@ workflow UnitTestWorkflowOne {
 
 task UnitTestWorkflowOneTask {
     input {
-        String input_1
-        String input_2
-        String input_3
-        String input_4
-        String input_5
+        String? input_1
+        String? input_2
+        String? input_3
+        String? input_4
+        String? input_5
     }
 
     command <<<
@@ -53,11 +53,11 @@ task UnitTestWorkflowOneTask {
     }
 
     output {
-        String output_1 = "input_1=" + input_1
-        String output_2 = "input_2=" + input_2
-        String output_3 = "input_3=" + input_3
-        String output_4 = "input_4=" + input_4
-        String output_5 = "input_5=" + input_5
+        String output_1 = if defined(input_1) then "input_1=" + select_first([input_1]) else "input_1=Empty"
+        String output_2 = if defined(input_1) then "input_2=" + select_first([input_2]) else "input_2=Empty"
+        String output_3 = if defined(input_1) then "input_3=" + select_first([input_3]) else "input_3=Empty"
+        String output_4 = if defined(input_1) then "input_4=" + select_first([input_4]) else "input_4=Empty"
+        String output_5 = if defined(input_1) then "input_5=" + select_first([input_5]) else "input_5=Empty"
         File outputs_file = "outputs.txt"
     }
 }
