@@ -6,12 +6,24 @@ workflows:
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
-  - name: UnitTestWorkflowOne
+  - name: UnitTestWorkflowSingleParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
-  - name: UnitTestWorkflowTwo
+  - name: UnitTestWorkflowSingleSample
     subclass: WDL
-    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowTwo.wdl
+    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
+  - name: UnitTestWorkflowSingleAlternate
+    subclass: WDL
+    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
+  - name: UnitTestWorkflowMultiParticipant
+    subclass: WDL
+    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
+  - name: UnitTestWorkflowMultiSample
+    subclass: WDL
+    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
+  - name: UnitTestWorkflowMultiAlternate
+    subclass: WDL
+    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
   - name: E2ETestWorkflowOne
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowOne.wdl

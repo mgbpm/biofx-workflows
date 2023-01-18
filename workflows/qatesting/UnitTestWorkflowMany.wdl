@@ -1,6 +1,6 @@
 version 1.0
 
-workflow UnitTestWorkflowTwo {
+workflow UnitTestWorkflowMany {
     input {
         Array[String?] input_1
         Array[String?] input_2
@@ -9,7 +9,7 @@ workflow UnitTestWorkflowTwo {
         Array[String?] input_5
     }
 
-    call UnitTestWorkflowTwoTask {
+    call UnitTestWorkflowManyTask {
         input:
             input_1 = input_1,
             input_2 = input_2,
@@ -19,16 +19,16 @@ workflow UnitTestWorkflowTwo {
     }
 
     output {
-        Array[String] output_1 = UnitTestWorkflowTwoTask.output_1
-        Array[String] output_2 = UnitTestWorkflowTwoTask.output_2
-        Array[String] output_3 = UnitTestWorkflowTwoTask.output_3
-        Array[String] output_4 = UnitTestWorkflowTwoTask.output_4
-        Array[String] output_5 = UnitTestWorkflowTwoTask.output_5
-        File outputs_file = UnitTestWorkflowTwoTask.outputs_file
+        Array[String] output_1 = UnitTestWorkflowManyTask.output_1
+        Array[String] output_2 = UnitTestWorkflowManyTask.output_2
+        Array[String] output_3 = UnitTestWorkflowManyTask.output_3
+        Array[String] output_4 = UnitTestWorkflowManyTask.output_4
+        Array[String] output_5 = UnitTestWorkflowManyTask.output_5
+        File outputs_file = UnitTestWorkflowManyTask.outputs_file
     }
 }
 
-task UnitTestWorkflowTwoTask {
+task UnitTestWorkflowManyTask {
     input {
         Array[String?] input_1
         Array[String?] input_2
