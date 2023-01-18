@@ -9,6 +9,9 @@ workflows:
   - name: UnitTestWorkflowOne
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
+  - name: UnitTestWorkflowTwo
+    subclass: WDL
+    primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowTwo.wdl
   - name: E2ETestWorkflowOne
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowOne.wdl
