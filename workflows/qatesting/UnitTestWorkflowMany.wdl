@@ -2,11 +2,11 @@ version 1.0
 
 workflow UnitTestWorkflowMany {
     input {
-        Array[String?] input_1
-        Array[String?] input_2
-        Array[String?] input_3
-        Array[String?] input_4
-        Array[String?] input_5
+        Array[String]? input_1
+        Array[String]? input_2
+        Array[String]? input_3
+        Array[String]? input_4
+        Array[String]? input_5
     }
 
     call UnitTestWorkflowManyTask {
@@ -30,11 +30,11 @@ workflow UnitTestWorkflowMany {
 
 task UnitTestWorkflowManyTask {
     input {
-        Array[String?] input_1
-        Array[String?] input_2
-        Array[String?] input_3
-        Array[String?] input_4
-        Array[String?] input_5
+        Array[String]? input_1
+        Array[String]? input_2
+        Array[String]? input_3
+        Array[String]? input_4
+        Array[String]? input_5
     }
 
     command <<<
