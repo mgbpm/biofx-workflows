@@ -105,6 +105,7 @@ task FetchFilesTask {
         grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt > target-file-list-vcf.txt
         grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" > target-file-list-vcfidx.txt
 
+        ls -al
         cat target-file-list*
     >>>
 
