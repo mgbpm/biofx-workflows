@@ -6,6 +6,9 @@ workflows:
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
+  - name: DownloadOutputsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/orchestration/DownloadOutputsWorkflow.wdl
   - name: UnitTestWorkflowSingleParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
