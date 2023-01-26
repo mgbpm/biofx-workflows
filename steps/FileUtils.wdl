@@ -99,17 +99,11 @@ task FetchFilesTask {
         # extract specific file types from list for outputs
         set +e
         grep -i "[.]bam$" target-file-list.txt > target-file-list-bam.txt
-        [ $? -ne 0 ] && rm target-file-list-bam.txt
         grep -i "[.]bai$" target-file-list.txt > target-file-list-bai.txt
-        [ $? -ne 0 ] && rm target-file-list-bai.txt
         grep -i "[.]cram$" target-file-list.txt > target-file-list-cram.txt
-        [ $? -ne 0 ] && rm target-file-list-cram.txt
         grep -i "[.]crai$" target-file-list.txt > target-file-list-crai.txt
-        [ $? -ne 0 ] && rm target-file-list-crai.txt
         grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt > target-file-list-vcf.txt
-        [ $? -ne 0 ] && rm target-file-list-vcf.txt
         grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" > target-file-list-vcfidx.txt
-        [ $? -ne 0 ] && rm target-file-list-vcfidx.txt
 
         cat target-file-list*
     >>>
