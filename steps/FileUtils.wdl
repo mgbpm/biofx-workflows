@@ -100,12 +100,12 @@ task FetchFilesTask {
 
         # extract specific file types from list for outputs
         set +e
-        grep -i "[.]bam$" target-file-list.txt > target-file-list-bam.txt
-        grep -i "[.]bai$" target-file-list.txt > target-file-list-bai.txt
-        grep -i "[.]cram$" target-file-list.txt > target-file-list-cram.txt
-        grep -i "[.]crai$" target-file-list.txt > target-file-list-crai.txt
-        grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt > target-file-list-vcf.txt
-        grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" > target-file-list-vcfidx.txt
+        grep -i "[.]bam$" target-file-list.txt | xargs basename > target-file-list-bam.txt
+        grep -i "[.]bai$" target-file-list.txt | xargs basename > target-file-list-bai.txt
+        grep -i "[.]cram$" target-file-list.txt | xargs basename > target-file-list-cram.txt
+        grep -i "[.]crai$" target-file-list.txt | xargs basename > target-file-list-crai.txt
+        grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt | xargs basename > target-file-list-vcf.txt
+        grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" | xargs basename > target-file-list-vcfidx.txt
 
         # diagnostic output for debugging
         ls -al "${ROOTDIR}/fetched"
@@ -118,13 +118,14 @@ task FetchFilesTask {
     }
 
     output {
-        File? bam = if size("target-file-list-bam.txt") > 0 then read_string("target-file-list-bam.txt") else empty_output_placeholder
-        File? bai = if size("target-file-list-bai.txt") > 0 then read_string("target-file-list-bai.txt") else empty_output_placeholder
-        File? cram = if size("target-file-list-cram.txt") > 0 then read_string("target-file-list-cram.txt") else empty_output_placeholder
-        File? crai = if size("target-file-list-crai.txt") > 0 then read_string("target-file-list-crai.txt") else empty_output_placeholder
-        File? vcf = if size("target-file-list-vcf.txt") > 0 then read_string("target-file-list-vcf.txt") else empty_output_placeholder
-        File? vcf_index = if size("target-file-list-vcfidx.txt") > 0 then read_string("target-file-list-vcfidx.txt") else empty_output_placeholder
         Array[File] all_files = glob("fetched/*")
+        String glob_dir = sub(all_files[0], "[^/]*$", "")
+        File? bam = if size("target-file-list-bam.txt") > 0 then glob_dir + read_string("target-file-list-bam.txt") else empty_output_placeholder
+        File? bai = if size("target-file-list-bai.txt") > 0 then glob_dir + read_string("target-file-list-bai.txt") else empty_output_placeholder
+        File? cram = if size("target-file-list-cram.txt") > 0 then glob_dir + read_string("target-file-list-cram.txt") else empty_output_placeholder
+        File? crai = if size("target-file-list-crai.txt") > 0 then glob_dir + read_string("target-file-list-crai.txt") else empty_output_placeholder
+        File? vcf = if size("target-file-list-vcf.txt") > 0 then glob_dir + read_string("target-file-list-vcf.txt") else empty_output_placeholder
+        File? vcf_index = if size("target-file-list-vcfidx.txt") > 0 then glob_dir + read_string("target-file-list-vcfidx.txt") else empty_output_placeholder
     }
 }
 
