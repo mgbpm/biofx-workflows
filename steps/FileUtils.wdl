@@ -20,7 +20,7 @@ task CopyFilesTask {
 
         # if target loc not specified, use ROOTDIR
         FINAL_TARGET_LOC="~{target_location}"
-        [ -z "${FINAL_TARGET_LOC}" ] && FINAL_TARGET_LOC="${ROOTDIR}"
+        [ -z "${FINAL_TARGET_LOC}" ] && FINAL_TARGET_LOC="${ROOTDIR}/fetched"
 
         # run script to setup rclone remotes
         ./bin/setup-rclone-remote.sh -p "~{gcp_project_id}" -w "~{workspace_name}" -r "~{source_location}"
@@ -36,6 +36,7 @@ task CopyFilesTask {
         [ ! -z "${MATCH_KEY_LIST}" ] && MATCH_KEY_ARG="--filter-keys ${MATCH_KEY_LIST}"
 
         # execute script to copy files
+        mkdir "${ROOTDIR}/fetched"
         ./bin/copy_files.py ~{if flatten then "--flatten" else ""} ~{if recursive then "" else "--no-recursive"} --verbose \
             --source "~{source_location}" --target "${FINAL_TARGET_LOC}" ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt"
@@ -56,7 +57,7 @@ task CopyFilesTask {
     output {
         Array[String] source_files = read_lines("source-file-list.txt")
         Array[String] target_files = read_lines("target-file-list.txt")
-        Array[File] local_files = read_lines("local-file-list.txt")
+        Array[File] local_files = glob("fetched/*")
     }
 }
 
@@ -90,8 +91,9 @@ task FetchFilesTask {
         [ ! -z "${MATCH_KEY_LIST}" ] && MATCH_KEY_ARG="--filter-keys ${MATCH_KEY_LIST}"
 
         # execute script to copy files
+        mkdir "${ROOTDIR}/fetched"
         ./bin/copy_files.py \
-            --source "~{data_location}" --target "${ROOTDIR}" --flatten ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} --verbose \
+            --source "~{data_location}" --target "${ROOTDIR}/fetched" --flatten ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} --verbose \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt" \
             ~{if recursive then "" else "--no-recursive"}
         popd
@@ -105,7 +107,8 @@ task FetchFilesTask {
         grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt > target-file-list-vcf.txt
         grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" > target-file-list-vcfidx.txt
 
-        ls -al
+        # diagnostic output for debugging
+        ls -al "${ROOTDIR}/fetched"
         cat target-file-list*
     >>>
 
@@ -121,7 +124,7 @@ task FetchFilesTask {
         File? crai = if size("target-file-list-crai.txt") > 0 then read_string("target-file-list-crai.txt") else empty_output_placeholder
         File? vcf = if size("target-file-list-vcf.txt") > 0 then read_string("target-file-list-vcf.txt") else empty_output_placeholder
         File? vcf_index = if size("target-file-list-vcfidx.txt") > 0 then read_string("target-file-list-vcfidx.txt") else empty_output_placeholder
-        Array[File] all_files = read_lines("target-file-list.txt")
+        Array[File] all_files = glob("fetched/*")
     }
 }
 
