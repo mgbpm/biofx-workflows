@@ -2,7 +2,7 @@ version 1.0
 
 import "../../steps/FileUtils.wdl"
 
-workflow QATestingWorkflowOne {
+workflow E2ETestWorkflowOne {
     input {
         String subject_id
         String sample_id
