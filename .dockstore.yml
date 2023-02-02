@@ -33,6 +33,9 @@ workflows:
   - name: E2ETestWorkflowOne
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowOne.wdl
+  - name: E2ETestWorkflowSet
+    subclass: WDL
+    primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowSet.wdl
   - name: TestWorkflowFailure
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/TestWorkflowFailure.wdl
