@@ -28,7 +28,8 @@ Aggregate per gene summaries from the Gene Task and enrich with Entrez IDs.
 * Int gatk_max_heap_gb - optional - the maximum heap size parameter for GATK; defaults to `31`
 * Int gatk_disk_size_gb - optional - the size of the disk (gb) for GATK containers; should be large enough to accommodate all the input files; defaults to `100`
 * Int gatk_num_cpu - optional - the number of CPUs for GATK containers; defaults to `floor(gatk_max_heap_gb / 4)`
-* String mgbpmbiofx_docker_image - optional - the name:tag of the Docker image for the Summary Task; defaults to `"gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/base:latest"`
+* String mgbpmbiofx_docker_image - required - the name:tag of the Docker image for the Summary Task
+* String gatk_docker_image - optional - the name:tag of the Docker image for GATK tasks; defaults to `broadinstitute/gatk3:3.7-0`
 
 # Output Parameters
 * File wgs_sample_summary - sample summary output from the WGS Task
