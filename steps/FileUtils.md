@@ -8,7 +8,7 @@ Copies files from a source location to a target location.
 * String source_location - required - the source location to copy from
 * Array[String] file_types - optional - the list of file types to copy; if not specified, copy all
 * Array[String] file_match_keys - optional - the list of strings that must be present in the path and name of each copied file
-* String target_location - required - the target location to copy to
+* String target_location - optional - the target location to copy to; defaults to the local working directory
 * Boolean flatten - optional - if true, don't replicate the relative directory structure in source location
 * Boolean recursive - optional - if true, search recursively for files to copy
 * String mgbpmbiofx_docker_image - required - the name/tag of the mgbpmbiofx/orchutils Docker image
