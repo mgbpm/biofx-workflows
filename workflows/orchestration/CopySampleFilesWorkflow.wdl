@@ -21,7 +21,7 @@ workflow CopySampleFilesWorkflow {
             target_location = target_location,
             flatten = flatten,
             recursive = recursive,
-            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
+            docker_image = mgbpmbiofx_docker_image,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name
     }

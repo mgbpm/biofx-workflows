@@ -20,16 +20,17 @@ Aggregate per gene summaries from the Gene Task and enrich with Entrez IDs.
 * File ref_dict - required - reference genome dictionary file
 * File bam - required - sample BAM file
 * File bai - required - sample BAM index file
+* String output_basename - optional - the basename to use for output file names, defaults to the bam file with the extension removed
 * File? roi_all_bed - optional - BED file of all the regions of interest to analyze; if not specified, the ROI Task is skipped
 * Array[RoiAndRefGeneFilePair]? roi_genes - optional - list of ROI and ref gene file pairs; if not specified, the Gene Task is skipped; see biofx-depth-of-coverage/roitools/README.md for tools to generate the files
     * File roi_bed - required - BED file of regions in the gene cluster
     * File ref_gene - required - companion RefGene information file
+    * File? ref_gene_idx - optional - index file for the RefGene information file
 * File? gene_names - optional - tab-delimited file of gene information, with symbol as the second column and Entrez ID as the second to last column; if not specified, the Summary Task is skipped
 * Int gatk_max_heap_gb - optional - the maximum heap size parameter for GATK; defaults to `31`
-* Int gatk_disk_size_gb - optional - the size of the disk (gb) for GATK containers; should be large enough to accommodate all the input files; defaults to `100`
-* Int gatk_num_cpu - optional - the number of CPUs for GATK containers; defaults to `floor(gatk_max_heap_gb / 4)`
-* String mgbpmbiofx_docker_image - required - the name:tag of the Docker image for the Summary Task
-* String gatk_docker_image - optional - the name:tag of the Docker image for GATK tasks; defaults to `broadinstitute/gatk3:3.7-0`
+* Int gatk_disk_size - optional - the size of the disk (gb) for GATK containers; should be large enough to accommodate all the input files; defaults to `100`
+* String cov_docker_image - required - the name:tag of the Docker image for the Summary Task
+* String gatk_docker_image - optional - the name:tag of the Docker image for GATK3 tasks; defaults to `broadinstitute/gatk3:3.7-0`
 
 # Output Parameters
 * File wgs_sample_summary - sample summary output from the WGS Task
@@ -44,3 +45,9 @@ Aggregate per gene summaries from the Gene Task and enrich with Entrez IDs.
 * File gene_summary - sample gene summary aggregated from Gene Task outputs
 * File gene_summary_unknown - unknown entries from the aggregated sample gene summary
 * File gene_summary_entrez - aggregated sample gene summary enriched with Entrez Gene IDs
+
+# Docker Image Requirements
+* WGS, ROI and Genes Tasks - GATK3
+* Summary Task
+  * python3
+  * biofx-depth-of-coverage code repository

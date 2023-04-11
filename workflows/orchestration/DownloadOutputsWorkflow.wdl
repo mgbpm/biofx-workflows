@@ -17,7 +17,7 @@ workflow DownloadOutputsWorkflow {
             outputs_json = outputs_json,
             config_json_list = if defined(config_json) then [select_first([config_json])] else [],
             default_target_location = default_target_location,
-            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
+            docker_image = mgbpmbiofx_docker_image,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name
     }

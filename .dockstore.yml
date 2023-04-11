@@ -3,6 +3,12 @@ workflows:
   - name: DepthOfCoverageWorkflow
     subclass: WDL
     primaryDescriptorPath: /steps/DepthOfCoverage.wdl
+  - name: AlamutBatchWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /steps/AlamutBatch.wdl
+  - name: BgwgsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl

@@ -20,7 +20,7 @@ workflow E2ETestWorkflowSet {
             input:
                 data_location = subject_sample_dataloc_pair.right,
                 file_types = ['bam', 'cram'],
-                mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
+                docker_image = mgbpmbiofx_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name
         }

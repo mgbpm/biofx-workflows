@@ -11,7 +11,8 @@ Copies files from a source location to a target location.
 * String target_location - optional - the target location to copy to; defaults to the local working directory
 * Boolean flatten - optional - if true, don't replicate the relative directory structure in source location
 * Boolean recursive - optional - if true, search recursively for files to copy
-* String mgbpmbiofx_docker_image - required - the name/tag of the mgbpmbiofx/orchutils Docker image
+* String docker_image - required - the name/tag of the orchutils Docker image
+* Int disk_size - optional - size of disk to allocation in GB, defaults to 50
 * String gcp_project_id - required - the GCP project id to fetch location connection information from
 * String workspace_name - required - the current Terra workspace name, used to fetch location connection information
 
@@ -28,7 +29,8 @@ Retrieves files from a location and places them in the task directory.
 * Array[String] file_types - optional - the list of file types to copy; if not specified, copy all
 * Array[String] file_match_keys - optional - the list of strings that must be present in the path and name of each copied file
 * Boolean recursive - optional - if true, search recursively for files to copy
-* String mgbpmbiofx_docker_image - required - the name/tag of the mgbpmbiofx/orchutils Docker image
+* String docker_image - required - the name/tag of the orchutils Docker image
+* Int disk_size - optional - size of disk to allocation in GB, defaults to 50
 * String gcp_project_id - required - the GCP project id to fetch location connection information from
 * String workspace_name - required - the current Terra workspace name, used to fetch location connection information
 * File empty_output_placeholder - optional - should never be specified; included only to support optional output parameters without runtime errors
@@ -49,7 +51,8 @@ Downloads outputs from a workflow using the provided mapping
 * String outputs_json - the workflow outputs as a stringified JSON object where the keys are the output names
 * String config_json - the output copy mapping configuration, see `biofx-workflow-configurations` for more details
 * String? default_target_location - the default location to copy files to if there is not a more specific configuration
-* String mgbpmbiofx_docker_image - required - the name/tag of the mgbpmbiofx/orchutils Docker image
+* String docker_image - required - the name/tag of the orchutils Docker image
+* Int disk_size - optional - size of disk to allocation in GB, defaults to 50
 * String gcp_project_id - required - the GCP project id to fetch location connection information from
 * String workspace_name - required - the current Terra workspace name, used to fetch location connection information
 

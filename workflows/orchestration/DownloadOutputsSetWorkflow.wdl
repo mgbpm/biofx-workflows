@@ -17,7 +17,7 @@ workflow DownloadOutputsSetWorkflow {
             outputs_json = outputs_json,
             config_json_list = select_all(config_json_list),
             default_target_location = default_target_location,
-            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
+            docker_image = mgbpmbiofx_docker_image,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name
     }
