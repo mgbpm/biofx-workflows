@@ -10,10 +10,11 @@ workflow PGxWorkflow {
         String java_options = "-Xms12g -Xmx40g"
         String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
         File reference_fasta
+        File reference_fasta_fai
+        File reference_dict
         File roi_bed
         File dbsnp
         File workflow_fileset
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
         String gatk_path = "/gatk/gatk"
         String mgbpmbiofx_docker_image
     }
@@ -26,9 +27,11 @@ workflow PGxWorkflow {
             java_options = java_options,
             java_path = java_path,
             reference_fasta = reference_fasta,
+            reference_fasta_fai = reference_fasta_fai,
+            reference_dict = reference_dict,
             roi_bed = roi_bed,
             dbsnp = dbsnp,
-            gatk_docker = gatk_docker,
+            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
             gatk_path = gatk_path
     }
 
@@ -62,35 +65,40 @@ task GATKTask {
         String java_options
         String java_path
         File reference_fasta
+        File reference_fasta_fai
+        File reference_dict
         File roi_bed
         File dbsnp
-        String gatk_docker
+        String mgbpmbiofx_docker_image
         String gatk_path
     }
 
     command <<<
         set -euxo pipefail
-        
+
+        mkdir outputs
+
         python3 $MGBPMBIOFXPATH/biofx-pgx/src/genotype_variants.py \
-        -b ~{input_cram} \
-        -s ~{sample_id} \
-        -t ~{test_code} \
-        -R ~{reference_fasta} \
-        -roi ~{roi_bed} \
-        -db ~{dbsnp} \
-        -jp ~{java_path} \
-        -jo ~{java_options}\
-        -gp ~{gatk_path}
+        -b "~{input_cram}" \
+        -s "~{sample_id}" \
+        -t "~{test_code}" \
+        -o outputs \
+        -R "~{reference_fasta}" \
+        -roi "~{roi_bed}" \
+        -db "~{dbsnp}" \
+        -jp "~{java_path}" \
+        -jo "~{java_options}" \
+        -gp "~{gatk_path}"
     >>>
 
     runtime {
-        docker: ~{gatk_docker}
+        docker: "~{mgbpmbiofx_docker_image}"
         # Check log file to see memory requirements 
         # memory: "4GB"
     }
 
     output {
-        Array[File]+ supporting_files = glob("~{sample_id}/~{test_code}/supporting/*")
+        Array[File]+ supporting_files = glob("outputs/~{sample_id}/~{test_code}/supporting/*")
     }
 }
 
@@ -108,16 +116,17 @@ task PGxTask {
 
     command <<<
         set -euxo pipefail
-        LIB_DIR=$MGBPMBIOFXPATH/"~{test_code}"_lib
-        mkdir -p $LIB_DIR
+        LIB_DIR="~{test_code}"_lib
+        mkdir -p outputs/$LIB_DIR
 
         tar -xf "~{workflow_fileset}" -C $LIB_DIR
         
-        $MGBPMBIOFXPATH/biofx-pgx/src/pgx.py \
+        python3 $MGBPMBIOFXPATH/biofx-pgx/src/pgx.py \
             -b "~{input_cram}" \
             -s "~{sample_id}" \
             -a "~{accession_id}" \
             -t "~{test_code}" \
+            -o outputs \
             -roi "~{roi_bed}" \
             -l $LIB_DIR
     >>>
@@ -128,9 +137,8 @@ task PGxTask {
     }
 
     output {
-        File CPIC_report = "~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.CPIC_report.xlsx"
-        File FDA_report = "~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.FDA_report.xlsx"
-        File genotype_xlsx = "~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.genotype.xlsx"
-        Array[File]+ supporting_files = glob("~{sample_id}/~{test_code}/supporting/*")
+        File CPIC_report = "outputs/~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.CPIC_report.xlsx"
+        File FDA_report = "outputs/~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.FDA_report.xlsx"
+        File genotype_xlsx = "outputs/~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.genotype.xlsx"
     }
 }
