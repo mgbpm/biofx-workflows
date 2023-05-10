@@ -4,6 +4,7 @@ workflow PGxWorkflow {
 
     input {
         File input_cram
+        File input_crai
         String sample_id
         String accession_id
         String test_code
@@ -22,6 +23,7 @@ workflow PGxWorkflow {
     call GATKTask {
         input:
             input_cram = input_cram,
+            input_crai = input_crai,
             sample_id = sample_id,
             test_code = test_code,
             java_options = java_options,
@@ -37,7 +39,6 @@ workflow PGxWorkflow {
 
     call PGxTask {
         input:
-            input_cram = input_cram,
             sample_id = sample_id,
             accession_id =accession_id,
             test_code = test_code,
@@ -60,6 +61,7 @@ workflow PGxWorkflow {
 task GATKTask {
     input {
         File input_cram
+        File input_crai
         String sample_id
         String test_code
         String java_options
@@ -93,8 +95,7 @@ task GATKTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        # Check log file to see memory requirements 
-        # memory: "4GB"
+        disks: "local-disk 100 SSD"
     }
 
     output {
@@ -104,7 +105,6 @@ task GATKTask {
 
 task PGxTask {
     input {
-        File input_cram
         String sample_id
         String accession_id
         String test_code
@@ -117,23 +117,27 @@ task PGxTask {
     command <<<
         set -euxo pipefail
         LIB_DIR="~{test_code}"_lib
-        mkdir -p outputs/$LIB_DIR
+        mkdir -p outputs/"~{sample_id}"/"~{test_code}"/supporting/$LIB_DIR
 
-        tar -xf "~{workflow_fileset}" -C $LIB_DIR
+        tar -xf "~{workflow_fileset}" -C outputs/"~{sample_id}"/"~{test_code}"/supporting/$LIB_DIR
+        
+        for x in ~{sep=' ' supporting_files}
+        do
+            cp "${x}" outputs/"~{sample_id}"/"~{test_code}"/supporting/
+        done;
         
         python3 $MGBPMBIOFXPATH/biofx-pgx/src/pgx.py \
-            -b "~{input_cram}" \
             -s "~{sample_id}" \
             -a "~{accession_id}" \
             -t "~{test_code}" \
             -o outputs \
             -roi "~{roi_bed}" \
-            -l $LIB_DIR
+            -l outputs/"~{sample_id}"/"~{test_code}"/supporting/$LIB_DIR
     >>>
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        memory: "4GB"
+        disks: "local-disk 100 SSD"
     }
 
     output {
