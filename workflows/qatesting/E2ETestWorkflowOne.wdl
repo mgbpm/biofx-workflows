@@ -7,7 +7,7 @@ workflow E2ETestWorkflowOne {
         String subject_id
         String sample_id
         String sample_data_location
-        String mgbpmbiofx_docker_image
+        String orchutils_docker_image
         String gcp_project_id
         String workspace_name
     }
@@ -16,7 +16,7 @@ workflow E2ETestWorkflowOne {
         input:
             data_location = sample_data_location,
             file_types = ['bam', 'cram'],
-            docker_image = mgbpmbiofx_docker_image,
+            docker_image = orchutils_docker_image,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name
     }
