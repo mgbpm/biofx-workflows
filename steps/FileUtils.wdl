@@ -121,7 +121,7 @@ task FetchFilesTask {
 
     output {
         Array[File] all_files = glob("fetched/*")
-        String glob_dir = sub(all_files[0], "[^/]*$", "")
+        String glob_dir = sub(if length(all_files) > 0 then all_files[0] else "", "[^/]*$", "")
         File? bam = if size("target-file-list-bam.txt") > 0 then glob_dir + read_string("target-file-list-bam.txt") else empty_output_placeholder
         File? bai = if size("target-file-list-bai.txt") > 0 then glob_dir + read_string("target-file-list-bai.txt") else empty_output_placeholder
         File? cram = if size("target-file-list-cram.txt") > 0 then glob_dir + read_string("target-file-list-cram.txt") else empty_output_placeholder

@@ -69,7 +69,7 @@ task FASTDataLoadTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + "GB HDD"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
@@ -155,7 +155,7 @@ task FASTCreateAnnotatedSampleDataTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + "GB HDD"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {

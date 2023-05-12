@@ -144,7 +144,7 @@ task AlamutBatchTask {
     runtime {
         docker: "~{docker_image}"
         memory: "8GB"
-        disks: "local-disk " + disk_size + "GB SSD"
+        disks: "local-disk " + disk_size + " SSD"
     }
 
     output {

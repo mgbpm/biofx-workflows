@@ -14,7 +14,7 @@ task SortVCFTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + "GB HDD"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
@@ -37,7 +37,7 @@ task FilterVCFWithBEDTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + "GB HDD"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
@@ -67,7 +67,7 @@ task AnnotateVCFTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + "GB HDD"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
