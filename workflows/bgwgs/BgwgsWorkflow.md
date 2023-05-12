@@ -20,7 +20,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | ref_fasta | Yes | The genome reference fasta file | |
 | File | ref_fasta_index | Yes | The genome reference fasta index file | |
 | File | scattered_calling_intervals_list | No | File containing list of scattered calling interval files for Haplotype Caller | |
-| File | cov_roi_bed | No | The BED that defines the region of interest for coverage analysis | |
+| File | cov_roi_bed | No | The BED that defines the region of interest for coverage analysis; see DepthOfCoverage.md for details | |
 | Array[RoiAndRefGeneFilePair] | cov_roi_genes | No | List of ROI and ref gene file pairs; see DepthOfCoverage.md for details | |
 | File | cov_gene_names | No | Tab-delimited file of gene information; see DepthOfCoverage.md for details | |
 | String | cov_docker_image | Yes | The name of the coverage Docker image to run the coverage summary task | |
@@ -42,7 +42,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | String | qceval_docker_image | Yes | The name of the Docker image to run the QC evaluation task | |
 | File | gnomad_coverage_file | No | The gnomad coverage data file | |
 | File | gnomad_coverage_file_idx | No | The gnomad coverage data index file | |
-| Array[String] | gnomad_headers | No | List of VCF headers to add when annotating VCF with gnomad coverage data | |
+| Array[String] | gnomad_headers | No | List of VCF headers to add when annotating VCF with gnomad coverage data.  For example, ##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description="Read depth of GnomAD Genome"> | |
 | String | gnomad_column_list | No | The column list to pass to bcftools annotate for gnomad coverage annotation | "CHROM,POS,INFO/DP_gnomadG" |
 | String | sample_data_load_config_name | Yes | The FAST load configuration name for the sample data VCF | |
 | String | gnomad_data_load_config_name | Yes | The FAST load configuration name for the gnomad coverage VCF | |
