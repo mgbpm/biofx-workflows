@@ -40,7 +40,10 @@ workflow GATKWorflow {
             dbsnp = dbsnp,
             dbsnp_vcf_index = dbsnp_vcf_index,
             mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
-            gatk_path = gatk_path
+            gatk_path = gatk_path,
+            out_path = out_path,
+            gvcf = gvcf,
+            all_calls_vcf = all_calls_vcf
     }
 
     call GenotypeGVCFsTask {
@@ -61,7 +64,7 @@ workflow GATKWorflow {
     }
 
     output {
-        # Array[File]+ supporting_files = HaplotypeCallerTask.supporting_files
+        Array[File]+ supporting_files = HaplotypeCallerTask.supporting_files
     }
 }
 
@@ -81,6 +84,9 @@ task HaplotypeCallerTask {
         File dbsnp_vcf_index
         String mgbpmbiofx_docker_image
         String gatk_path
+        String out_path
+        String gvcf
+        String all_calls_vcf
     }
     
     command <<<
@@ -109,7 +115,7 @@ task HaplotypeCallerTask {
         -ERC BP_RESOLUTION
         
         ~{gatk_path} --java-options "-Xmx20G" \
-        GenotypeGVCFs
+        GenotypeGVCFs \
         --variant ~{gvcf} \
         --output ~{all_calls_vcf} \
         --reference ~{reference_fasta} \
@@ -133,7 +139,7 @@ task HaplotypeCallerTask {
     }
 
     output {
-        Array[File]+ supporting_files = glob("outputs/*")
+        Array[File]+ supporting_files = glob("outputs/" + sample_id + "/" + test_code + "/supporting/*")
     }
 }
 
