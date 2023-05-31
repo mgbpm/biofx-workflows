@@ -46,23 +46,6 @@ workflow GATKWorflow {
             all_calls_vcf = all_calls_vcf
     }
 
-    call GenotypeGVCFsTask {
-        input:
-            input_cram = input_cram,
-            input_crai = input_crai,
-            sample_id = sample_id,
-            test_code = test_code,
-            java_path = java_path,
-            reference_fasta = reference_fasta,
-            reference_fasta_fai = reference_fasta_fai,
-            reference_dict = reference_dict,
-            roi_bed = roi_bed,
-            dbsnp = dbsnp,
-            dbsnp_vcf_index = dbsnp_vcf_index,
-            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
-            gatk_path = gatk_path 
-    }
-
     output {
         Array[File]+ supporting_files = HaplotypeCallerTask.supporting_files
     }
@@ -141,24 +124,4 @@ task HaplotypeCallerTask {
     output {
         Array[File]+ supporting_files = glob("outputs/" + sample_id + "/" + test_code + "/supporting/*")
     }
-}
-
-task GenotypeGVCFsTask {
-    input {
-        File input_cram
-        File input_crai
-        String sample_id
-        String test_code
-        String java_path
-        File reference_fasta
-        File reference_fasta_fai
-        File reference_dict
-        File roi_bed
-        File dbsnp
-        File dbsnp_vcf_index
-        String mgbpmbiofx_docker_image
-        String gatk_path
-    }
-
-
 }
