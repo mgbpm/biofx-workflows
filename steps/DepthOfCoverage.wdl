@@ -18,6 +18,7 @@ workflow DepthOfCoverageWorkflow {
         Int gatk_disk_size = 100
         String cov_docker_image
         String gatk_docker_image = "broadinstitute/gatk3:3.7-0"
+        Int preemptible = 1
     }
 
     # Only run with no interval file if so specified
@@ -32,7 +33,8 @@ workflow DepthOfCoverageWorkflow {
                 bai = bai,
                 max_heap_gb = gatk_max_heap_gb,
                 disk_size = gatk_disk_size,
-                docker_image = gatk_docker_image
+                docker_image = gatk_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -49,7 +51,8 @@ workflow DepthOfCoverageWorkflow {
                 bed = select_first([roi_all_bed]),
                 max_heap_gb = gatk_max_heap_gb,
                 disk_size = gatk_disk_size,
-                docker_image = gatk_docker_image
+                docker_image = gatk_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -68,7 +71,8 @@ workflow DepthOfCoverageWorkflow {
                 ref_gene_idx = roi_gene.ref_gene_idx,
                 max_heap_gb = gatk_max_heap_gb,
                 disk_size = gatk_disk_size,
-                docker_image = gatk_docker_image
+                docker_image = gatk_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -82,7 +86,8 @@ workflow DepthOfCoverageWorkflow {
                 gene_summary_entrez_file = output_basename + ".merge.sample_gene_summary.entrez.txt",
                 mt_summary_file = output_basename + ".sample_mt_summary.txt",
                 gene_names = select_first([gene_names]),
-                docker_image = cov_docker_image
+                docker_image = cov_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -119,6 +124,7 @@ task DepthOfCoverageWGSTask {
         Int max_heap_gb
         Int disk_size
         String docker_image
+        Int preemptible = 1
     }
 
     command <<<
@@ -138,6 +144,7 @@ task DepthOfCoverageWGSTask {
         docker: "~{docker_image}"
         memory: (max_heap_gb + 4) + "GB"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
@@ -158,6 +165,7 @@ task DepthOfCoverageROITask {
         Int max_heap_gb
         Int disk_size
         String docker_image
+        Int preemptible = 1
     }
 
     command <<<
@@ -178,6 +186,7 @@ task DepthOfCoverageROITask {
         docker: "~{docker_image}"
         memory: (max_heap_gb + 4) + "GB"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
@@ -205,6 +214,7 @@ task DepthOfCoverageGeneTask {
         Int max_heap_gb
         Int disk_size
         String docker_image
+        Int preemptible = 1
     }
 
     String refg_idx = sub(basename(roi_bed), "[^0-9]", "")
@@ -236,6 +246,7 @@ task DepthOfCoverageGeneTask {
         docker: "~{docker_image}"
         memory: (max_heap_gb + 4) + "GB"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
@@ -259,6 +270,7 @@ task DepthOfCoverageSummaryTask {
         String gene_summary_entrez_file
         String mt_summary_file
         String docker_image
+        Int preemptible = 1
     }
 
     command <<<
@@ -285,6 +297,7 @@ task DepthOfCoverageSummaryTask {
     runtime {
         docker: "~{docker_image}"
         memory: "4GB"
+        preemptible: preemptible
     }
 
     output {

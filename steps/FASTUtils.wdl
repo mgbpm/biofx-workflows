@@ -240,3 +240,42 @@ task FASTRemoveAlreadyAnnotatedFromVCFTask {
         File output_vcf_gz = "~{output_basename}.vcf.gz"
     }
 }
+
+task FASTExportAnnotatedSampleDataTask {
+    input {
+        String annotated_sample_data_name
+        String format = "TXT"
+        String output_basename = annotated_sample_data_name + ".fastexport"
+        String gcp_project_id
+        String workspace_name
+        String docker_image
+        Int disk_size = 10
+        Int memory_size = 8
+    }
+
+    String file_type = if format == "TXT" then "txt" else "vcf"
+
+    command <<<
+        set -euxo pipefail
+
+        $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh \
+            -p ~{gcp_project_id} -w ~{workspace_name} -n fast > fast-client-config.json
+
+        $MGBPMBIOFXPATH/biofx-pyfast/bin/export_annotated_sample_data.py \
+            --client-config fast-client-config.json \
+            --name "~{annotated_sample_data_name}" \
+            --format "~{format}" \
+            --output-file "~{output_basename}.~{file_type}.gz"
+
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+        memory: memory_size + "G"
+    }
+
+    output {
+        File output_file = output_basename + "." + file_type + ".gz"
+    }
+}

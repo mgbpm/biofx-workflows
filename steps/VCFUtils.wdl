@@ -6,6 +6,7 @@ task SortVCFTask {
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".sorted"
         String docker_image
         Int disk_size = 20
+        Int preemptible = 1
     }
 
     command <<<
@@ -15,6 +16,7 @@ task SortVCFTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
@@ -29,6 +31,7 @@ task FilterVCFWithBEDTask {
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".filtered"
         String docker_image
         Int disk_size = 20
+        Int preemptible = 1
     }
 
     command <<<
@@ -38,6 +41,7 @@ task FilterVCFWithBEDTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
@@ -55,6 +59,7 @@ task AnnotateVCFTask {
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".annotated"
         String docker_image
         Int disk_size = 50
+        Int preemptible = 1
     }
 
     command <<<
@@ -68,6 +73,7 @@ task AnnotateVCFTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {

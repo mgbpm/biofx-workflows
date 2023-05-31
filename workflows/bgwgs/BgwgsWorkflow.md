@@ -50,6 +50,10 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | Array[String] | fast_annotated_sample_data_regions | No | The list of regions to include in the FAST annotated sample data; each element is a "name:applyMask" pair | |
 | Array[String] | fast_annotated_sample_data_scripts | No | The list of custom scripts to run on the FAST annotated sample data after creation | |
 | String | fast_annotated_sample_data_saved_filter_name | No | The saved filter to apply to the FAST annotated sample data | |
+| String | igvreport_docker_image | Yes | The name of the Docker image to run the IGV report task | |
+| String | fast_parser_image | Yes | The name of the Docker image to run the FAST output parser task | |
+| File | gil_transcript_exon_count | Yes | A tab delimited file of transcript id and exon count |
+| String | fast_parser_sample_type | Yes | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite |
 
 ## Output Parameters
 | Type | Name | When | Description |
@@ -71,3 +75,8 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | alamut_vcf_gz | Always | Target VCF file with Alamut annotations |
 | File | qceval_vcf_gz | Always | Target VCF file annotated with QC Evaluation |
 | File | gnomad_vcf_gz | If gnomad coverage data is specified | Target VCF annotated with gnomad coverage data |
+| File | fast_export_file | Always | Tab-delimited export of annotated sample data from FAST |
+| File | fast_summary_file | Always | Summary of FAST processing parameters |
+| File | igv_report | Always | HTML-based IGV report file |
+| File | fast_parsed_output | Always | Parsed FAST export |
+| File | nva_report | Always | NVA report Excel document |

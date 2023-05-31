@@ -7,6 +7,8 @@ import "../../steps/AlamutBatch.wdl"
 import "../../steps/VCFUtils.wdl"
 import "../../steps/FASTUtils.wdl"
 import "../../steps/QCEval.wdl"
+import "../../steps/IgvReport.wdl"
+import "../../steps/FASTOutputParser.wdl"
 import "../../steps/Utilities.wdl"
 
 workflow BgwgsWorkflow {
@@ -68,6 +70,11 @@ workflow BgwgsWorkflow {
         Array[String]? fast_annotated_sample_data_regions
         Array[String]? fast_annotated_sample_data_scripts
         String? fast_annotated_sample_data_saved_filter_name
+        # Reporting steps
+        String igvreport_docker_image
+        String fast_parser_image
+        File gil_transcript_exon_count
+        String fast_parser_sample_type
     }
 
     # Prefer a BAM file to avoid conversion
@@ -357,6 +364,48 @@ workflow BgwgsWorkflow {
                     error_message = "FAST annotated sample data creation did not succeed"
             }
         }
+
+        if (FASTWaitForAnnotatedSampleDataTask.wait_result.total == FASTWaitForAnnotatedSampleDataTask.wait_result.succeeded) {
+            call FASTUtils.FASTExportAnnotatedSampleDataTask {
+                input:
+                    annotated_sample_data_name = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
+                    format = "TXT",
+                    output_basename = subject_id + "_" + sample_id + ".fastexport",
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name,
+                    docker_image = orchutils_docker_image
+            }
+            call FASTOutputParser.FASTOutputParserTask {
+                input:
+                    fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
+                    sample_type = fast_parser_sample_type,
+                    reference_build = reference_build,
+                    oms_query = "Y",
+                    transcript_exonNum = gil_transcript_exon_count,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name,
+                    fast_parser_image = fast_parser_image
+            }
+            if (defined(FASTOutputParserTask.parsed_report)) {
+                call IgvReport.IgvReportFromParsedFASTOutputTask {
+                    input:
+                        bam_cram = sample_bam,
+                        bai_crai = sample_bai,
+                        parsed_fast_output = select_first([FASTOutputParserTask.parsed_report]),
+                        output_basename = subject_id + "_" + sample_id + ".igvreport",
+                        ref_fasta = ref_fasta,
+                        ref_fasta_index = ref_fasta_index,
+                        docker_image = igvreport_docker_image
+                }
+            }
+            call BgwgsFASTSummaryTask {
+                input:
+                    subject_id = subject_id,
+                    sample_id = sample_id,
+                    fast_annotated_sample_data_regions = fast_annotated_sample_data_regions,
+                    fast_annotated_sample_data_saved_filter_name = fast_annotated_sample_data_saved_filter_name
+            }
+        }
     }
 
     output {
@@ -381,5 +430,38 @@ workflow BgwgsWorkflow {
         File alamut_vcf_gz = AlamutBatchTask.output_vcf_gz
         File qceval_vcf_gz = QCEvalTask.output_vcf_gz
         File? gnomad_vcf_gz = AnnotateGnomadTask.output_vcf_gz
+        # FAST export file
+        File? fast_export_file = FASTExportAnnotatedSampleDataTask.output_file
+        # FAST summary file
+        File? fast_summary_file = BgwgsFASTSummaryTask.fast_summary_file
+        # IGV report
+        File? igv_report = IgvReportFromParsedFASTOutputTask.igv_report
+        # FAST Parsed output and NVA report
+        File? fast_parsed_output = FASTOutputParserTask.parsed_report
+        File? nva_report = FASTOutputParserTask.nva_report
+    }
+}
+
+task BgwgsFASTSummaryTask {
+    input {
+        String subject_id
+        String sample_id
+        Array[String]? fast_annotated_sample_data_regions
+        String? fast_annotated_sample_data_saved_filter_name
+    }
+
+    command <<<
+        summary_file="~{subject_id}_~{sample_id}_FAST_summary.txt"
+
+        printf "PM_number\tSaved_filter\tRegions\n" >> "${summary_file}"
+        printf "%s\t%s\t%s\n" "~{subject_id}" "~{fast_annotated_sample_data_saved_filter_name}" "~{sep=',' fast_annotated_sample_data_regions}" >> "${summary_file}"
+    >>>
+
+    runtime {
+        docker: "ubuntu:22.04"
+    }
+
+    output {
+        File fast_summary_file = subject_id + "_" + sample_id + "_FAST_summary.txt"
     }
 }

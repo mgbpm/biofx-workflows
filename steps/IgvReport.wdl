@@ -6,14 +6,16 @@ task IgvReportFromParsedFASTOutputTask {
         File bai_crai
         File parsed_fast_output
         String output_basename = sub(basename(parsed_fast_output), "\\.(txt)$", "") + ".igvreport"
-        String reference_build
+        File ref_fasta
+        File ref_fasta_index
         String docker_image
+        Int preemptible = 1
     }
 
     command <<<
         set -euxo pipefail
 
-        # The bam/cram index files have to be discoverable by igv-reports
+        # The bam/cram/ref_fasta index files have to be discoverable by igv-reports
         if [[ "~{bam_cram}" =~ \.bam$ ]]
         then
             [ ! -f "~{bam_cram}.bai" ] && ln -s "~{bai_crai}" "~{bam_cram}.bai"
@@ -21,11 +23,7 @@ task IgvReportFromParsedFASTOutputTask {
         then
             [ ! -f "~{bam_cram}.crai" ] && ln -s "~{bai_crai}" "~{bam_cram}.crai"
         fi
-
-        # IGV only recognizes hg reference build names
-        REFBUILD="~{reference_build}"
-        [ $REFBUILD == "GRCh37" ] && REFBUILD="hg19"
-        [ $REFBUILD == "GRCh38" ] && REFBUILD="hg38"
+        [ ! -f "~{ref_fasta}.fai" ] && ln -s "~{ref_fasta_index}" "~{ref_fasta}.fai"
 
         # Rewrite the parsed fast output into a tab-delimited file 
         #  with the "Benign/Likely benign" rows removed
@@ -45,7 +43,7 @@ task IgvReportFromParsedFASTOutputTask {
 
         if [ $num_sites -gt 0 ]
         then
-            create_report igv_sites.txt --genome $REFBUILD \
+            create_report igv_sites.txt "~{ref_fasta}" \
                 --sequence 1 --begin 2 --end 3 --flanking 50 \
                 --info-columns Sym Entrez_Gene Trans DNA AA Category \
                 --tracks "~{bam_cram}" \
@@ -56,6 +54,7 @@ task IgvReportFromParsedFASTOutputTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + (size(bam_cram) + 10) + " HDD"
+        preemptible: preemptible
     }
 
     output {

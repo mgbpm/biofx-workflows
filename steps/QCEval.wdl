@@ -7,6 +7,7 @@ task QCEvalTask {
         String project_type
         String docker_image
         Int disk_size = 30
+        Int preemptible = 1
     }
 
     command <<<
@@ -38,6 +39,7 @@ task QCEvalTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {

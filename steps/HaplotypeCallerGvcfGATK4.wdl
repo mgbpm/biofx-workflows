@@ -39,7 +39,7 @@ workflow HaplotypeCallerGvcf_GATK4 {
   
     Boolean make_gvcf = true
     Boolean make_bamout = false
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
     String gatk_path = "/gatk/gatk"
     String gitc_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
     String samtools_path = "samtools"
@@ -131,7 +131,7 @@ task CramToBamTask {
     Int? preemptible_attempts
     String samtools_path
   }
-    Float output_bam_size = size(input_cram, "GB") / 0.60
+    Float output_bam_size = size(input_cram, "GB") / 0.40
     Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB")
     Int disk_size = ceil(size(input_cram, "GB") + output_bam_size + ref_size) + 20
   
@@ -148,7 +148,7 @@ task CramToBamTask {
     docker: docker
     memory: select_first([machine_mem_gb, 15]) + " GB"
     disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
-    preemptible: select_first([preemptible_attempts, 3])
+    preemptible: select_first([preemptible_attempts, 2])
  }
   output {
     File output_bam = "~{sample_name}.bam"
@@ -206,7 +206,7 @@ task HaplotypeCaller {
       localization_optional: true
     }
   }
-  command {
+    command {
     set -e
   
     ~{gatk_path} --java-options "-Xmx~{command_mem_gb}G ~{java_opt}" \
@@ -218,6 +218,7 @@ task HaplotypeCaller {
       -contamination ~{default="0" contamination} \
       -G StandardAnnotation -G StandardHCAnnotation ~{true="-G AS_StandardAnnotation" false="" make_gvcf} \
       -GQB 10 -GQB 20 -GQB 30 -GQB 40 -GQB 50 -GQB 60 -GQB 70 -GQB 80 -GQB 90 \
+      --disable-spanning-event-genotyping true \
       ~{true="-ERC GVCF" false="" make_gvcf} \
       ~{if defined(gcs_project_for_requester_pays) then "--gcs-project-for-requester-pays ~{gcs_project_for_requester_pays}" else ""} \
       ~{bamout_arg}
@@ -229,7 +230,7 @@ task HaplotypeCaller {
     docker: docker
     memory: machine_mem_gb + " GB"
     disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
-    preemptible: select_first([preemptible_attempts, 3])
+    preemptible: select_first([preemptible_attempts, 2])
   }
   output {
     File output_vcf = "~{output_filename}"
@@ -269,7 +270,7 @@ task MergeGVCFs {
     docker: docker
     memory: machine_mem_gb + " GB"
     disks: "local-disk " + select_first([disk_space_gb, 100]) + if use_ssd then " SSD" else " HDD"
-    preemptible: select_first([preemptible_attempts, 3])
+    preemptible: select_first([preemptible_attempts, 2])
   }
   output {
     File output_vcf = "~{output_filename}"

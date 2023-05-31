@@ -7,7 +7,8 @@ that is not categorized as "Benign/Likely benign".
 * File bai_crai - required - the BAM or CRAM index file
 * File parsed_fast_output - required - the parsed FAST output, see expected format below 
 * String output_basename - optional - the basename that will be used to name the output file, defaults to the parsed FAST output basename with ".igvreport" appended
-* String reference_build - required - the reference build to use for IGV, either "hg" or "GRCh" names are supported
+* File ref_fasta - required - the reference build FASTA file to use for IGV
+* File ref_fasta_index - required - the reference build FASTA index file
 * String docker_image - required - the Docker image name and tag
 
 __Parsed FAST Output Format__
