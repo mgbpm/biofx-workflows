@@ -9,6 +9,7 @@ workflows:
   - name: BgwgsWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
+    readMePath: /workflows/bgwgs/BgwgsWorkflow.md
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
