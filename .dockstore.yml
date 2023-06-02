@@ -3,9 +3,11 @@ workflows:
   - name: DepthOfCoverageWorkflow
     subclass: WDL
     primaryDescriptorPath: /steps/DepthOfCoverage.wdl
+    readMePath: /steps/DepthOfCoverage.md
   - name: AlamutBatchWorkflow
     subclass: WDL
     primaryDescriptorPath: /steps/AlamutBatch.wdl
+    readMePath: /steps/AlamutBatch.md
   - name: BgwgsWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
@@ -13,36 +15,48 @@ workflows:
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
+    readMePath: /workflows/orchestration/CopySampleFilesWorkflow.md
   - name: DownloadOutputsWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/DownloadOutputsWorkflow.wdl
+    readMePath: /workflows/orchestration/DownloadOutputsWorkflow.md
   - name: DownloadOutputsSetWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/DownloadOutputsSetWorkflow.wdl
+    readMePath: /workflows/orchestration/DownloadOutputsSetWorkflow.md
   - name: UnitTestWorkflowSingleParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: UnitTestWorkflowSingleSample
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: UnitTestWorkflowSingleAlternate
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: UnitTestWorkflowMultiParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: UnitTestWorkflowMultiSample
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: UnitTestWorkflowMultiAlternate
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: E2ETestWorkflowOne
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowOne.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: E2ETestWorkflowSet
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowSet.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
   - name: TestWorkflowFailure
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/TestWorkflowFailure.wdl
+    readMePath: /workflows/qatesting/QATestingWorkflows.md
