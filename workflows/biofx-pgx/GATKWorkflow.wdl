@@ -51,7 +51,8 @@ workflow GATKWorflow {
             gvcf_idx_file = HaplotypeCallerTask.gvcf_idx_file,
             all_calls_vcf_file = HaplotypeCallerTask.all_calls_vcf_file,
             all_calls_vcf_idx_file = HaplotypeCallerTask.all_calls_vcf_idx_file,
-            ref_positions_vcf = ref_positions_vcf
+            ref_positions_vcf = ref_positions_vcf,
+            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
     }
 
     call SortVCFTask {
@@ -60,7 +61,8 @@ workflow GATKWorflow {
             java_path = java_path,
             ref_positions_vcf_file = CreateRefSitesVCFTask.ref_positions_vcf_file,
             all_calls_vcf_file = HaplotypeCallerTask.all_calls_vcf_file,
-            all_bases_vcf = all_bases_vcf 
+            all_bases_vcf = all_bases_vcf,
+            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
     }
 
     output {
@@ -158,6 +160,7 @@ task CreateRefSitesVCFTask {
         File all_calls_vcf_file
         File all_calls_vcf_idx_file
         String ref_positions_vcf
+        String mgbpmbiofx_docker_image
     }
 
     command <<<
@@ -186,6 +189,7 @@ task SortVCFTask {
         File ref_positions_vcf_file
         File all_calls_vcf_file 
         String all_bases_vcf
+        String mgbpmbiofx_docker_image
     }
 
     command <<<
