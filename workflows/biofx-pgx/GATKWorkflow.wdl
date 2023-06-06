@@ -15,11 +15,11 @@ workflow GATKWorflow {
         File roi_bed
         File dbsnp
         File dbsnp_vcf_index
-        String gatk_path = "/gatk"
+        String gatk_path = "/gatk/gatk"
         String mgbpmbiofx_docker_image
     }
 
-    String out_path = "outputs/" + sample_id + "/" + test_code + "/supporting/"
+    String out_path = "outputs/"
     String out_prefix = sample_id + "_" + test_code
     String gvcf = out_path + out_prefix + ".g.vcf"
     String all_calls_vcf = out_path + out_prefix + '.allcalls.vcf'
@@ -53,12 +53,14 @@ workflow GATKWorflow {
             all_calls_vcf_idx_file = HaplotypeCallerTask.all_calls_vcf_idx_file,
             ref_positions_vcf = ref_positions_vcf,
             mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
+            out_path = out_path
     }
 
     call SortVCFTask {
         input:
             gatk_path = gatk_path,
             java_path = java_path,
+            out_path = out_path,
             ref_positions_vcf_file = CreateRefSitesVCFTask.ref_positions_vcf_file,
             all_calls_vcf_file = HaplotypeCallerTask.all_calls_vcf_file,
             all_bases_vcf = all_bases_vcf,
@@ -101,7 +103,7 @@ task HaplotypeCallerTask {
 
         mkdir -p ~{out_path}
 
-        ~{gatk_path}/gatk --java-options "-Xmx20G" \
+        ~{gatk_path} --java-options "-Xmx20G" \
         HaplotypeCaller \
         --input ~{input_cram} \
         --output ~{gvcf} \
@@ -121,7 +123,7 @@ task HaplotypeCallerTask {
         --read-filter MappingQualityNotZeroReadFilter \
         -ERC BP_RESOLUTION
         
-        ~{gatk_path}/gatk --java-options "-Xmx20G" \
+        ~{gatk_path} --java-options "-Xmx20G" \
         GenotypeGVCFs \
         --variant ~{gvcf} \
         --output ~{all_calls_vcf} \
@@ -161,10 +163,13 @@ task CreateRefSitesVCFTask {
         File all_calls_vcf_idx_file
         String ref_positions_vcf
         String mgbpmbiofx_docker_image
+        String out_path
     }
 
     command <<<
         set -euxo pipefail
+
+        mkdir -p ~{out_path}
 
         python3 $MGBPMBIOFXPATH/biofx-pgx/src/create_ref_sites_vcf.py \
         -g "~{gvcf_file}" \
@@ -190,12 +195,15 @@ task SortVCFTask {
         File all_calls_vcf_file 
         String all_bases_vcf
         String mgbpmbiofx_docker_image
+        String out_path
     }
 
     command <<<
         set -euxo pipefail
 
-        ~{java_path} --java-options "-Xms12g -Xmx40g" \
+        mkdir -p ~{out_path} 
+        
+        ~{java_path} -Xms12g -Xmx40g \
         -jar ~{gatk_path}.jar SortVcf \
         -I ~{ref_positions_vcf_file} \
         -I ~{all_calls_vcf_file} \
