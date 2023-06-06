@@ -15,7 +15,7 @@ workflow GATKWorflow {
         File roi_bed
         File dbsnp
         File dbsnp_vcf_index
-        String gatk_path = "/gatk/gatk"
+        String gatk_path = "/gatk"
         String mgbpmbiofx_docker_image
     }
 
@@ -101,7 +101,7 @@ task HaplotypeCallerTask {
 
         mkdir -p ~{out_path}
 
-        ~{gatk_path} --java-options "-Xmx20G" \
+        ~{gatk_path}/gatk --java-options "-Xmx20G" \
         HaplotypeCaller \
         --input ~{input_cram} \
         --output ~{gvcf} \
@@ -121,7 +121,7 @@ task HaplotypeCallerTask {
         --read-filter MappingQualityNotZeroReadFilter \
         -ERC BP_RESOLUTION
         
-        ~{gatk_path} --java-options "-Xmx20G" \
+        ~{gatk_path}/gatk --java-options "-Xmx20G" \
         GenotypeGVCFs \
         --variant ~{gvcf} \
         --output ~{all_calls_vcf} \
