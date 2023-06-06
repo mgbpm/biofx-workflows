@@ -20,7 +20,7 @@ steps:
     cd ../
     mkdir bareclone
     cd bareclone
-    git -c http.extraheader="AUTHORIZATION: bearer ${SYSTEM_ACCESS_TOKEN}" clone --mirror "${repourl}"
+    git -c http.extraheader="AUTHORIZATION: bearer ${SYSTEM_ACCESS_TOKEN}" clone --bare "${repourl}"
     cd $(ls)
     git push --mirror https://${GITHUBUSER}:${GITHUBPAT}@github.com/mgbpm/biofx-workflows.git
   displayName: 'Checkout bare repository and push to github'
