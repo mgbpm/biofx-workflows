@@ -64,6 +64,7 @@ workflow BgwgsWorkflow {
         Array[String]? gnomad_headers
         String gnomad_column_list = "CHROM,POS,INFO/DP_gnomadG"
         # FAST loading inputs
+        Boolean has_haploid_sites
         String sample_data_load_config_name
         String gnomad_data_load_config_name
         String alamut_data_load_config_name
@@ -265,6 +266,7 @@ workflow BgwgsWorkflow {
         input:
             reference_build = reference_build,
             vcf_file = QCEvalTask.output_vcf_gz,
+            has_haploid_sites = has_haploid_sites,
             sample_data_name = subject_id + "_" + sample_id,
             lab_batch_name = sample_id,
             data_load_config_name = sample_data_load_config_name,
@@ -280,6 +282,7 @@ workflow BgwgsWorkflow {
         input:
             reference_build = reference_build,
             vcf_file = AlamutBatchTask.output_vcf_gz,
+            has_haploid_sites = has_haploid_sites,
             data_load_config_name = alamut_data_load_config_name,
             data_load_target = "ANNOTATION_DATA",
             merge_strategy = "MERGE",
@@ -295,6 +298,7 @@ workflow BgwgsWorkflow {
             input:
                 reference_build = reference_build,
                 vcf_file = select_first([AnnotateGnomadTask.output_vcf_gz]),
+                has_haploid_sites = has_haploid_sites,
                 data_load_config_name = gnomad_data_load_config_name,
                 data_load_target = "ANNOTATION_DATA",
                 merge_strategy = "MERGE",

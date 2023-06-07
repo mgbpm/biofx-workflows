@@ -5,6 +5,7 @@ Starts a sample or annotation data load using the specified parameters.
 
 ## Input Parameters
 * File vcf_file - required - the VCF file to load
+* Boolean has_haploid_sites - optional - if true, redefine Number=G fields as Number=. to work around lack of support in FAST; defaults to false
 * String? default_annotation_src - optional - the name of the default annotation source
 * String? reference_build - optional - the reference genome build
 * String data_load_target - required - either SAMPLE_DATA or ANNOTATION_DATA

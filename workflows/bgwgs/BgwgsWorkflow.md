@@ -44,6 +44,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | gnomad_coverage_file_idx | No | The gnomad coverage data index file | |
 | Array[String] | gnomad_headers | No | List of VCF headers to add when annotating VCF with gnomad coverage data.  For example, ##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description="Read depth of GnomAD Genome"> | |
 | String | gnomad_column_list | No | The column list to pass to bcftools annotate for gnomad coverage annotation | "CHROM,POS,INFO/DP_gnomadG" |
+| Boolean | has_haploid_sites | No | If true, modify the VCF file headers prior to FAST load to work around lack of support Number=G fields and haploid sites | false |
 | String | sample_data_load_config_name | Yes | The FAST load configuration name for the sample data VCF | |
 | String | gnomad_data_load_config_name | Yes | The FAST load configuration name for the gnomad coverage VCF | |
 | String | alamut_data_load_config_name | Yes | The FAST load configuration name for the Alamut annotated VCF | |

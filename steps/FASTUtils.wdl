@@ -3,6 +3,7 @@ version 1.0
 task FASTDataLoadTask {
     input {
         File vcf_file
+        Boolean has_haploid_sites = false
         String? default_annotation_src
         String? reference_build
         String data_load_target
@@ -60,6 +61,24 @@ task FASTDataLoadTask {
 
         OPTIONAL_PARAMS="$DEF_ANNO_SRC $REF_BUILD $SAMPLE_EXISTS_STRAT $MERGE_STRAT"
         OPTIONAL_PARAMS="$OPTIONAL_PARAMS $SAMPLE_DATA_COLL $SAMPLE_DATA_NAME $LAB_BATCH_NAME $CUSTOM_SCRIPT $ANNO_TS $EMAIL_TO"
+
+        # Convert Number=G to Number=. because
+        #  FAST does not support haploid sites with Number=G
+        if [ "~{true='TRUE' false='FALSE' has_haploid_sites}" == "TRUE" ]
+        then
+            if [[ "~{vcf_file}" =~ \.gz$ || "~{vcf_file}" =~ \.GZ$ ]]
+            then
+                gunzip -c "~{vcf_file}" | \
+                    sed 's_^\(##FORMAT=.*\)Number=G\(.*\)$_\1Number=.\2_i' | \
+                    sed 's_^\(##INFO=.*\)Number=G\(.*\)$_\1Number=.\2_i' | gzip -c > "~{vcf_file}.tmp"
+            else
+                cat "~{vcf_file}" | \
+                    sed 's_^\(##FORMAT=.*\)Number=G\(.*\)$_\1Number=.\2_i' | \
+                    sed 's_^\(##INFO=.*\)Number=G\(.*\)$_\1Number=.\2_i' > "~{vcf_file}.tmp"
+            fi
+
+            mv -f "~{vcf_file}.tmp" "~{vcf_file}"
+        fi
 
         $MGBPMBIOFXPATH/biofx-pyfast/bin/upload_data.py \
             --client-config fast-client-config.json \
