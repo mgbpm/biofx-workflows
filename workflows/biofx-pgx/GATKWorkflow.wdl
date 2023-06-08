@@ -6,7 +6,6 @@ workflow GATKWorflow {
         File input_cram
         File input_crai
         String sample_id
-        String accession_id
         String test_code
         String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
         File reference_fasta
@@ -30,8 +29,6 @@ workflow GATKWorflow {
         input:
             input_cram = input_cram,
             input_crai = input_crai,
-            sample_id = sample_id,
-            test_code = test_code,
             reference_fasta = reference_fasta,
             reference_fasta_fai = reference_fasta_fai,
             reference_dict = reference_dict,
@@ -83,8 +80,6 @@ task HaplotypeCallerTask {
     input {
         File input_cram
         File input_crai
-        String sample_id
-        String test_code
         File reference_fasta
         File reference_fasta_fai
         File reference_dict
