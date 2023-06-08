@@ -8,7 +8,6 @@ workflow PGxWorkflow {
         String sample_id
         String accession_id
         String test_code
-        String java_options = "-Xms12g -Xmx40g"
         String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
         File reference_fasta
         File reference_fasta_fai
@@ -21,19 +20,17 @@ workflow PGxWorkflow {
         String mgbpmbiofx_docker_image
     }
 
-    String out_path = "outputs/"
+    String out_path = "outputs"
     String out_prefix = sample_id + "_" + test_code
-    String gvcf = out_path + out_prefix + ".g.vcf"
-    String all_calls_vcf = out_path + out_prefix + '.allcalls.vcf'
-    String ref_positions_vcf = out_path + out_prefix + '.ref_positions.vcf'
-    String all_bases_vcf = out_path + out_prefix + '.allbases.vcf'
+    String gvcf = out_path + '/' + out_prefix + ".g.vcf"
+    String all_calls_vcf = out_path + '/' + out_prefix + '.allcalls.vcf'
+    String ref_positions_vcf = out_path + '/' + out_prefix + '.ref_positions.vcf'
+    String all_bases_vcf = out_path + '/' + out_prefix + '.allbases.vcf'
 
     call HaplotypeCallerTask {
         input:
             input_cram = input_cram,
             input_crai = input_crai,
-            sample_id = sample_id,
-            test_code = test_code,
             reference_fasta = reference_fasta,
             reference_fasta_fai = reference_fasta_fai,
             reference_dict = reference_dict,
@@ -98,6 +95,7 @@ workflow PGxWorkflow {
         File FDA_report = PGxTask.FDA_report
         File CPIC_report = PGxTask.CPIC_report
         File genotype_xlsx = PGxTask.genotype_xlsx
+        File genotype_txt = PGxTask.genotype_txt
     }
 }
 
@@ -105,8 +103,6 @@ task HaplotypeCallerTask {
     input {
         File input_cram
         File input_crai
-        String sample_id
-        String test_code
         File reference_fasta
         File reference_fasta_fai
         File reference_dict
@@ -292,8 +288,9 @@ task PGxTask {
     }
 
     output {
-        File CPIC_report = "outputs/~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.CPIC_report.xlsx"
-        File FDA_report = "outputs/~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.FDA_report.xlsx"
-        File genotype_xlsx = "outputs/~{sample_id}/~{test_code}/~{sample_id}_~{test_code}.genotype.xlsx"
+        File CPIC_report = "~{out_path}/~{sample_id}_~{test_code}.CPIC_report.xlsx"
+        File FDA_report = "~{out_path}/~{sample_id}_~{test_code}.FDA_report.xlsx"
+        File genotype_xlsx = "~{out_path}/~{sample_id}_~{test_code}.genotype.xlsx"
+        File genotype_txt = "~{out_path}/~{sample_id}_~{test_code}.genotype.txt"
     }
 }
