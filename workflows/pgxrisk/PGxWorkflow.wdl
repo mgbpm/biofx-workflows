@@ -56,13 +56,6 @@ workflow PGxWorkflow {
     }
 
     output {
-        File all_calls_vcf_file = GATKWorkflow.all_calls_vcf_file
-        File all_calls_vcf_idx_file = GATKWorkflow.all_calls_vcf_idx_file
-        File gvcf_file = GATKWorkflow.gvcf_file
-        File gvcf_idx_file = GATKWorkflow.gvcf_idx_file
-        File ref_positions_vcf_file = GATKWorkflow.ref_positions_vcf_file
-        File all_bases_vcf_file = GATKWorkflow.all_bases_vcf_file
-        File all_bases_vcf_idx_file = GATKWorkflow.all_bases_vcf_idx_file
         File FDA_report = PGxTask.FDA_report
         File CPIC_report = PGxTask.CPIC_report
         File genotype_xlsx = PGxTask.genotype_xlsx
