@@ -1,6 +1,6 @@
 version 1.0
 
-workflow GATKWorflow {
+workflow GATKWorkflow {
 
     input {
         File input_cram
