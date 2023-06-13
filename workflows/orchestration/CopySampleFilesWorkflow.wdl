@@ -9,7 +9,7 @@ workflow CopySampleFilesWorkflow {
         Boolean flatten = false
         Boolean recursive = true
         String target_location
-        String mgbpmbiofx_docker_image
+        String orchutils_docker_image
         String gcp_project_id
         String workspace_name
     }
@@ -21,7 +21,7 @@ workflow CopySampleFilesWorkflow {
             target_location = target_location,
             flatten = flatten,
             recursive = recursive,
-            mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
+            docker_image = orchutils_docker_image,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name
     }

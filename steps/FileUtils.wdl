@@ -8,7 +8,8 @@ task CopyFilesTask {
         String? target_location
         Boolean flatten = false
         Boolean recursive = true
-        String mgbpmbiofx_docker_image
+        String docker_image
+        Int disk_size = 50
         String gcp_project_id
         String workspace_name
     }
@@ -50,8 +51,8 @@ task CopyFilesTask {
     >>>
 
     runtime {
-        docker: "~{mgbpmbiofx_docker_image}"
-        memory: "4GB"
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
@@ -67,7 +68,8 @@ task FetchFilesTask {
         Boolean recursive = true
         Array[String] file_types = []
         Array[String] file_match_keys = []
-        String mgbpmbiofx_docker_image
+        String docker_image
+        Int disk_size = 50
         String gcp_project_id
         String workspace_name
         File? empty_output_placeholder
@@ -113,13 +115,13 @@ task FetchFilesTask {
     >>>
 
     runtime {
-        docker: "~{mgbpmbiofx_docker_image}"
-        memory: "4GB"
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
         Array[File] all_files = glob("fetched/*")
-        String glob_dir = sub(all_files[0], "[^/]*$", "")
+        String glob_dir = sub(if length(all_files) > 0 then all_files[0] else "", "[^/]*$", "")
         File? bam = if size("target-file-list-bam.txt") > 0 then glob_dir + read_string("target-file-list-bam.txt") else empty_output_placeholder
         File? bai = if size("target-file-list-bai.txt") > 0 then glob_dir + read_string("target-file-list-bai.txt") else empty_output_placeholder
         File? cram = if size("target-file-list-cram.txt") > 0 then glob_dir + read_string("target-file-list-cram.txt") else empty_output_placeholder
@@ -134,7 +136,8 @@ task DownloadOutputsTask {
         String outputs_json
         Array[String] config_json_list
         String? default_target_location
-        String mgbpmbiofx_docker_image
+        String docker_image
+        Int disk_size = 50
         String gcp_project_id
         String workspace_name
     }
@@ -161,8 +164,8 @@ task DownloadOutputsTask {
     >>>
 
     runtime {
-        docker: "~{mgbpmbiofx_docker_image}"
-        memory: "4GB"
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {

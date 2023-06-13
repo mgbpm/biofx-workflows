@@ -5,36 +5,36 @@ version 1.0
 workflow DepthOfCoverageWorkflow {
     input {
         Boolean run_wgs = true
-        String sample_name
         File ref_fasta
         File ref_fasta_index
         File ref_dict
         File bam
         File bai
+        String output_basename = sub(basename(bam), "\\.(bam|BAM|cram|CRAM)$", "") + ".cov"
         File? roi_all_bed
         Array[RoiAndRefGeneFilePair?] roi_genes
         File? gene_names
         Int gatk_max_heap_gb = 31
-        Int gatk_disk_size_gb = 100
-        Int gatk_num_cpu = floor(gatk_max_heap_gb / 4)
-        String mgbpmbiofx_docker_image
+        Int gatk_disk_size = 100
+        String cov_docker_image
         String gatk_docker_image = "broadinstitute/gatk3:3.7-0"
+        Int preemptible = 1
     }
 
     # Only run with no interval file if so specified
     if (run_wgs) {
         call DepthOfCoverageWGSTask {
             input:
-                sample_name = sample_name,
+                output_basename = output_basename,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
                 ref_dict = ref_dict,
                 bam = bam,
                 bai = bai,
-                gatk_max_heap_gb = gatk_max_heap_gb,
-                gatk_disk_size_gb = gatk_disk_size_gb,
-                gatk_num_cpu = gatk_num_cpu,
-                gatk_docker_image = gatk_docker_image
+                max_heap_gb = gatk_max_heap_gb,
+                disk_size = gatk_disk_size,
+                docker_image = gatk_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -42,17 +42,17 @@ workflow DepthOfCoverageWorkflow {
     if (defined(roi_all_bed)) {
         call DepthOfCoverageROITask {
             input:
-                sample_name = sample_name,
+                output_basename = output_basename,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
                 ref_dict = ref_dict,
                 bam = bam,
                 bai = bai,
                 bed = select_first([roi_all_bed]),
-                gatk_max_heap_gb = gatk_max_heap_gb,
-                gatk_disk_size_gb = gatk_disk_size_gb,
-                gatk_num_cpu = gatk_num_cpu,
-                gatk_docker_image = gatk_docker_image
+                max_heap_gb = gatk_max_heap_gb,
+                disk_size = gatk_disk_size,
+                docker_image = gatk_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -60,7 +60,7 @@ workflow DepthOfCoverageWorkflow {
     scatter (roi_gene in select_all(roi_genes)) {
         call DepthOfCoverageGeneTask {
             input:
-                sample_name = sample_name,
+                output_basename = output_basename,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
                 ref_dict = ref_dict,
@@ -68,10 +68,11 @@ workflow DepthOfCoverageWorkflow {
                 bai = bai,
                 roi_bed = roi_gene.roi_bed,
                 ref_gene = roi_gene.ref_gene,
-                gatk_max_heap_gb = gatk_max_heap_gb,
-                gatk_disk_size_gb = gatk_disk_size_gb,
-                gatk_num_cpu = gatk_num_cpu,
-                gatk_docker_image = gatk_docker_image
+                ref_gene_idx = roi_gene.ref_gene_idx,
+                max_heap_gb = gatk_max_heap_gb,
+                disk_size = gatk_disk_size,
+                docker_image = gatk_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -80,12 +81,13 @@ workflow DepthOfCoverageWorkflow {
             input:
                 sample_gene_summaries = DepthOfCoverageGeneTask.sample_gene_summary,
                 sample_interval_summary = select_first([DepthOfCoverageROITask.sample_interval_summary]),
-                gene_summary_file = sample_name + ".cov.merge.sample_gene_summary.txt",
-                gene_summary_unknown_file = sample_name + ".cov.merge.sample_gene_summary.unknown.txt",
-                gene_summary_entrez_file = sample_name + ".cov.merge.sample_gene_summary.entrez.txt",
-                mt_summary_file = sample_name + ".cov.sample_mt_summary.txt",
+                gene_summary_file = output_basename + ".merge.sample_gene_summary.txt",
+                gene_summary_unknown_file = output_basename + ".merge.sample_gene_summary.unknown.txt",
+                gene_summary_entrez_file = output_basename + ".merge.sample_gene_summary.entrez.txt",
+                mt_summary_file = output_basename + ".sample_mt_summary.txt",
                 gene_names = select_first([gene_names]),
-                mgbpmbiofx_docker_image = mgbpmbiofx_docker_image
+                docker_image = cov_docker_image,
+                preemptible = preemptible
         }
     }
 
@@ -108,100 +110,99 @@ workflow DepthOfCoverageWorkflow {
 struct RoiAndRefGeneFilePair {
     File roi_bed
     File ref_gene
+    File? ref_gene_idx
 }
 
 task DepthOfCoverageWGSTask {
     input {
-        String sample_name
+        String output_basename
         File ref_fasta
         File ref_fasta_index
         File ref_dict
         File bam
         File bai
-        Int gatk_max_heap_gb
-        Int gatk_disk_size_gb
-        Int gatk_num_cpu
-        String gatk_docker_image
+        Int max_heap_gb
+        Int disk_size
+        String docker_image
+        Int preemptible = 1
     }
 
     command <<<
         set -euxo pipefail
         mkdir cov_out
-        java -Xmx~{gatk_max_heap_gb}g -jar /usr/GenomeAnalysisTK.jar -T DepthOfCoverage \
+        java -Xmx~{max_heap_gb}g -jar /usr/GenomeAnalysisTK.jar -T DepthOfCoverage \
             -I "~{bam}" \
             -ct 8 -ct 15 -ct 30 \
             -R "~{ref_fasta}" \
             -dt BY_SAMPLE -dcov 1000 -l INFO --omitDepthOutputAtEachBase --omitLocusTable --minBaseQuality 10 --minMappingQuality 17 --countType COUNT_FRAGMENTS_REQUIRE_SAME_BASE \
-            -o "cov_out/~{sample_name}.cov.nobed" \
-            -omitIntervals \
-            -nt ~{gatk_num_cpu}
+            -o "cov_out/~{output_basename}.nobed" \
+            -omitIntervals
         ls -l cov_out
     >>>
 
     runtime {
-        docker: "~{gatk_docker_image}"
-        memory: "~{gatk_max_heap_gb + 4}GB"
-        cpu: gatk_num_cpu
-        disks: "local-disk ~{gatk_disk_size_gb} SSD"
+        docker: "~{docker_image}"
+        memory: (max_heap_gb + 4) + "GB"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
-        File sample_statistics = "cov_out/~{sample_name}.cov.nobed.sample_statistics"
-        File sample_summary = "cov_out/~{sample_name}.cov.nobed.sample_summary"
+        File sample_statistics = "cov_out/~{output_basename}.nobed.sample_statistics"
+        File sample_summary = "cov_out/~{output_basename}.nobed.sample_summary"
     }
 }
 
 task DepthOfCoverageROITask {
     input {
-        String sample_name
+        String output_basename
         File ref_fasta
         File ref_fasta_index
         File ref_dict
         File bam
         File bai
         File bed
-        Int gatk_max_heap_gb
-        Int gatk_disk_size_gb
-        Int gatk_num_cpu
-        String gatk_docker_image
+        Int max_heap_gb
+        Int disk_size
+        String docker_image
+        Int preemptible = 1
     }
 
     command <<<
         set -euxo pipefail
         mkdir cov_out
-        java -Xmx~{gatk_max_heap_gb}g -jar /usr/GenomeAnalysisTK.jar -T DepthOfCoverage \
+        java -Xmx~{max_heap_gb}g -jar /usr/GenomeAnalysisTK.jar -T DepthOfCoverage \
             -I "~{bam}" \
             -ct 8 -ct 15 \
             -R "~{ref_fasta}" \
             -dt BY_SAMPLE -dcov 1000 -l INFO --omitDepthOutputAtEachBase --minBaseQuality 10 --minMappingQuality 17 --countType COUNT_FRAGMENTS_REQUIRE_SAME_BASE \
             --printBaseCounts \
-            -o "cov_out/~{sample_name}.cov.roibed" \
-            -L "~{bed}" \
-            -nt ~{gatk_num_cpu}
+            -o "cov_out/~{output_basename}.roibed" \
+            -L "~{bed}"
         ls -l cov_out
     >>>
 
     runtime {
-        docker: "~{gatk_docker_image}"
-        memory: "~{gatk_max_heap_gb + 4}GB"
-        cpu: gatk_num_cpu
-        disks: "local-disk ~{gatk_disk_size_gb} SSD"
+        docker: "~{docker_image}"
+        memory: (max_heap_gb + 4) + "GB"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
-        File sample_interval_summary = "cov_out/~{sample_name}.cov.roibed.sample_interval_summary"
-        File sample_interval_statistics = "cov_out/~{sample_name}.cov.roibed.sample_interval_statistics"
-        File sample_statistics = "cov_out/~{sample_name}.cov.roibed.sample_statistics"
-        File sample_summary = "cov_out/~{sample_name}.cov.roibed.sample_summary"
-        File sample_cumulative_coverage_counts = "cov_out/~{sample_name}.cov.roibed.sample_cumulative_coverage_counts"
-        File sample_cumulative_coverage_proportions = "cov_out/~{sample_name}.cov.roibed.sample_cumulative_coverage_proportions"
+        File sample_interval_summary = "cov_out/~{output_basename}.roibed.sample_interval_summary"
+        File sample_interval_statistics = "cov_out/~{output_basename}.roibed.sample_interval_statistics"
+        File sample_statistics = "cov_out/~{output_basename}.roibed.sample_statistics"
+        File sample_summary = "cov_out/~{output_basename}.roibed.sample_summary"
+        File sample_cumulative_coverage_counts = "cov_out/~{output_basename}.roibed.sample_cumulative_coverage_counts"
+        File sample_cumulative_coverage_proportions = "cov_out/~{output_basename}.roibed.sample_cumulative_coverage_proportions"
     }
 }
 
 
 task DepthOfCoverageGeneTask {
     input {
-        String sample_name
+        String output_basename
         File ref_fasta
         File ref_fasta_index
         File ref_dict
@@ -209,45 +210,53 @@ task DepthOfCoverageGeneTask {
         File bai
         File roi_bed
         File ref_gene
-        Int gatk_max_heap_gb
-        Int gatk_disk_size_gb
-        Int gatk_num_cpu
-        String gatk_docker_image
+        File? ref_gene_idx
+        Int max_heap_gb
+        Int disk_size
+        String docker_image
+        Int preemptible = 1
     }
 
     String refg_idx = sub(basename(roi_bed), "[^0-9]", "")
 
     command <<<
         set -euxo pipefail
+
+        # ensure the refseq index file name matches the expected value
+        #  so that GATK does not take the time to write a new one
+        if [ ! -z "~{ref_gene_idx}" -a "~{ref_gene_idx}" != "~{ref_gene}.idx" ]
+        then
+            cp "~{ref_gene_idx}" "~{ref_gene}.idx"
+        fi
+        
         mkdir cov_out
-        java -Xmx~{gatk_max_heap_gb}g -jar /usr/GenomeAnalysisTK.jar -T DepthOfCoverage \
+        java -Xmx~{max_heap_gb}g -jar /usr/GenomeAnalysisTK.jar -T DepthOfCoverage \
             -I "~{bam}" \
             -ct 8 -ct 15 -ct 30 \
             -R "~{ref_fasta}" \
             -dt BY_SAMPLE -dcov 1000 -l INFO --omitDepthOutputAtEachBase --minBaseQuality 10 --minMappingQuality 17 --countType COUNT_FRAGMENTS_REQUIRE_SAME_BASE \
             --printBaseCounts \
-            -o "cov_out/~{sample_name}.cov.refg~{refg_idx}" \
+            -o "cov_out/~{output_basename}.refg~{refg_idx}" \
             -L "~{roi_bed}" \
-            --calculateCoverageOverGenes:REFSEQ "~{ref_gene}" \
-            -nt ~{gatk_num_cpu}
+            --calculateCoverageOverGenes:REFSEQ "~{ref_gene}"
         ls -l cov_out
     >>>
 
     runtime {
-        docker: "~{gatk_docker_image}"
-        memory: "~{gatk_max_heap_gb + 4}GB"
-        cpu: gatk_num_cpu
-        disks: "local-disk ~{gatk_disk_size_gb} SSD"
+        docker: "~{docker_image}"
+        memory: (max_heap_gb + 4) + "GB"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
     }
 
     output {
-        File sample_gene_summary = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_gene_summary"
-        File sample_interval_summary = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_interval_summary"
-        File sample_interval_statistics = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_interval_statistics"
-        File sample_statistics = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_statistics"
-        File sample_summary = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_summary"
-        File sample_cumulative_coverage_counts = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_cumulative_coverage_counts"
-        File sample_cumulative_coverage_proportions = "cov_out/~{sample_name}.cov.refg~{refg_idx}.sample_cumulative_coverage_proportions"
+        File sample_gene_summary = "cov_out/~{output_basename}.refg~{refg_idx}.sample_gene_summary"
+        File sample_interval_summary = "cov_out/~{output_basename}.refg~{refg_idx}.sample_interval_summary"
+        File sample_interval_statistics = "cov_out/~{output_basename}.refg~{refg_idx}.sample_interval_statistics"
+        File sample_statistics = "cov_out/~{output_basename}.refg~{refg_idx}.sample_statistics"
+        File sample_summary = "cov_out/~{output_basename}.refg~{refg_idx}.sample_summary"
+        File sample_cumulative_coverage_counts = "cov_out/~{output_basename}.refg~{refg_idx}.sample_cumulative_coverage_counts"
+        File sample_cumulative_coverage_proportions = "cov_out/~{output_basename}.refg~{refg_idx}.sample_cumulative_coverage_proportions"
     }
 }
 
@@ -260,7 +269,8 @@ task DepthOfCoverageSummaryTask {
         String gene_summary_unknown_file
         String gene_summary_entrez_file
         String mt_summary_file
-        String mgbpmbiofx_docker_image
+        String docker_image
+        Int preemptible = 1
     }
 
     command <<<
@@ -285,8 +295,9 @@ task DepthOfCoverageSummaryTask {
     >>>
 
     runtime {
-        docker: "~{mgbpmbiofx_docker_image}"
+        docker: "~{docker_image}"
         memory: "4GB"
+        preemptible: preemptible
     }
 
     output {
