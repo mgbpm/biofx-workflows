@@ -28,7 +28,6 @@ task FilterVCFWithBEDTask {
     input {
         File input_vcf
         File input_bed
-        Boolean use_targets = false
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".filtered"
         String docker_image
         Int disk_size = 20
@@ -36,7 +35,7 @@ task FilterVCFWithBEDTask {
     }
 
     command <<<
-        bcftools filter ~{true="--targets-file" false="--regions-file" use_targets} "~{input_bed}" --output-type z "~{input_vcf}" > "~{output_basename}.vcf.gz"
+        bcftools filter --targets-file "~{input_bed}" --output-type z "~{input_vcf}" > "~{output_basename}.vcf.gz"
     >>>
 
     runtime {
