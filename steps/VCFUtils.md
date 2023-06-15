@@ -20,6 +20,7 @@ Filters the VCF to a target region
 ## Input Parameters
 * File input_vcf - required - the input VCF file
 * File input_bed - required - the target region
+* Boolean use_targets - optional - if true, use the `--targets-file` option, otherwise use the `--regions-file` option; defaults to false
 * String output_basename - optional - the basename that will be used to name the output file, defaults to the input
   VCF name with file extensions removed and ".sorted" added
 * String docker_image - optional - Docker image to run; must have bcftools in the path; defaults to "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
