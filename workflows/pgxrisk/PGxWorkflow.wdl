@@ -44,11 +44,6 @@ workflow PGxWorkflow {
             test_code = test_code,
             roi_bed = roi_bed,
             workflow_fileset = workflow_fileset,
-            gvcf_file = GATKWorkflow.gvcf_file,
-            gvcf_idx_file = GATKWorkflow.gvcf_idx_file,
-            all_calls_vcf_file = GATKWorkflow.all_calls_vcf_file,
-            all_calls_vcf_idx_file = GATKWorkflow.all_calls_vcf_idx_file,
-            ref_positions_vcf_file = GATKWorkflow.ref_positions_vcf_file,
             all_bases_vcf_file = GATKWorkflow.all_bases_vcf_file,
             all_bases_vcf_idx_file = GATKWorkflow.all_bases_vcf_idx_file,
             out_path = out_path,
@@ -71,11 +66,6 @@ task PGxTask {
         String test_code
         File roi_bed
         File workflow_fileset
-        File gvcf_file
-        File gvcf_idx_file
-        File all_calls_vcf_file
-        File all_calls_vcf_idx_file
-        File ref_positions_vcf_file
         File all_bases_vcf_file
         File all_bases_vcf_idx_file
         String out_path
@@ -89,15 +79,10 @@ task PGxTask {
 
         tar -xf "~{workflow_fileset}" -C ~{out_path}/$LIB_DIR
         
-        ln -s ~{all_calls_vcf_file} ~{out_path}
-        ln -s ~{all_calls_vcf_idx_file} ~{out_path}
         ln -s ~{all_bases_vcf_file} ~{out_path}
         ln -s ~{all_bases_vcf_idx_file} ~{out_path}
-        ln -s ~{gvcf_file} ~{out_path}
-        ln -s ~{gvcf_idx_file} ~{out_path}
-        ln -s ~{ref_positions_vcf_file} ~{out_path}
-
-        python $MGBPMBIOFXPATH/biofx-pgx/src/pgx.py \
+        
+        $MGBPMBIOFXPATH/biofx-pgx/bin/run_pgx.py \
             -s "~{sample_id}" \
             -a "~{accession_id}" \
             -t "~{test_code}" \
