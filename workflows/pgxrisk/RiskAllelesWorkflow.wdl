@@ -22,7 +22,6 @@ workflow RiskAllelesWorkflow {
 
     String out_path = "outputs"
     
-
     call gatk.GATKWorkflow {
         input:
             input_cram = input_cram,
@@ -46,11 +45,6 @@ workflow RiskAllelesWorkflow {
             test_code = test_code,
             roi_bed = roi_bed,
             workflow_fileset = workflow_fileset,
-            gvcf_file = GATKWorkflow.gvcf_file,
-            gvcf_idx_file = GATKWorkflow.gvcf_idx_file,
-            all_calls_vcf_file = GATKWorkflow.all_calls_vcf_file,
-            all_calls_vcf_idx_file = GATKWorkflow.all_calls_vcf_idx_file,
-            ref_positions_vcf_file = GATKWorkflow.ref_positions_vcf_file,
             all_bases_vcf_file = GATKWorkflow.all_bases_vcf_file,
             all_bases_vcf_idx_file = GATKWorkflow.all_bases_vcf_idx_file,
             out_path = out_path,
@@ -58,14 +52,9 @@ workflow RiskAllelesWorkflow {
     }
 
     output {
-        File all_calls_vcf_file = GATKWorkflow.all_calls_vcf_file
-        File all_calls_vcf_idx_file = GATKWorkflow.all_calls_vcf_idx_file
-        File gvcf_file = GATKWorkflow.gvcf_file
-        File gvcf_idx_file = GATKWorkflow.gvcf_idx_file
-        File ref_positions_vcf_file = GATKWorkflow.ref_positions_vcf_file
-        File all_bases_vcf_file = GATKWorkflow.all_bases_vcf_file
-        File all_bases_vcf_idx_file = GATKWorkflow.all_bases_vcf_idx_file
-        File FDA_report = RiskTask.risk_report
+        File genotype_xlsx = RiskTask.genotype_xlsx
+        File genotype_txt = RiskTask.genotype_txt
+        File risk_report = RiskTask.risk_report
     }
 }
 
@@ -76,11 +65,6 @@ task RiskTask {
         String test_code
         File roi_bed
         File workflow_fileset
-        File gvcf_file
-        File gvcf_idx_file
-        File all_calls_vcf_file
-        File all_calls_vcf_idx_file
-        File ref_positions_vcf_file
         File all_bases_vcf_file
         File all_bases_vcf_idx_file
         String out_path
@@ -95,15 +79,10 @@ task RiskTask {
 
         tar -xf "~{workflow_fileset}" -C ~{out_path}/$LIB_DIR
         
-        ln -s ~{all_calls_vcf_file} ~{out_path}
-        ln -s ~{all_calls_vcf_idx_file} ~{out_path}
         ln -s ~{all_bases_vcf_file} ~{out_path}
         ln -s ~{all_bases_vcf_idx_file} ~{out_path}
-        ln -s ~{gvcf_file} ~{out_path}
-        ln -s ~{gvcf_idx_file} ~{out_path}
-        ln -s ~{ref_positions_vcf_file} ~{out_path}
 
-        python $MGBPMBIOFXPATH/biofx-risk-alleles/src/risk.py \
+        $MGBPMBIOFXPATH/biofx-risk-alleles/bin/run_risk.py \
             -s "~{sample_id}" \
             -a "~{accession_id}" \
             -t "~{test_code}" \
