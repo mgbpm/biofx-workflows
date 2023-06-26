@@ -45,9 +45,7 @@ workflow GATKWorkflow {
     call CreateRefSitesVCFTask {
         input:
             gvcf_file = HaplotypeCallerTask.gvcf_file,
-            gvcf_idx_file = HaplotypeCallerTask.gvcf_idx_file,
             all_calls_vcf_file = HaplotypeCallerTask.all_calls_vcf_file,
-            all_calls_vcf_idx_file = HaplotypeCallerTask.all_calls_vcf_idx_file,
             ref_positions_vcf = ref_positions_vcf,
             mgbpmbiofx_docker_image = mgbpmbiofx_docker_image,
             out_path = out_path
@@ -153,9 +151,7 @@ task HaplotypeCallerTask {
 task CreateRefSitesVCFTask {
     input{
         File gvcf_file
-        File gvcf_idx_file
         File all_calls_vcf_file
-        File all_calls_vcf_idx_file
         String ref_positions_vcf
         String mgbpmbiofx_docker_image
         String out_path
@@ -166,7 +162,7 @@ task CreateRefSitesVCFTask {
 
         mkdir -p ~{out_path}
 
-        python3 $MGBPMBIOFXPATH/biofx-pgx/src/create_ref_sites_vcf.py \
+        $MGBPMBIOFXPATH/biofx-pgx/bin/create_ref_sites_vcf.py \
         -g "~{gvcf_file}" \
         -c "~{all_calls_vcf_file}" \
         -o "~{ref_positions_vcf}"

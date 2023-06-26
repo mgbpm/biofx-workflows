@@ -53,7 +53,7 @@ task IgvReportFromParsedFASTOutputTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + (size(bam_cram) + 10) + " HDD"
+        disks: "local-disk " + (size(bam_cram, "GB") + 10) + " HDD"
         preemptible: preemptible
     }
 

@@ -60,6 +60,10 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/TestWorkflowFailure.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+  - name: GATKWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/pgxrisk/GATKWorkflow.wdl
+    readMePath: /workflows/pgxrisk/GATKWorkflow.md
   - name: PGxWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/PGxWorkflow.wdl

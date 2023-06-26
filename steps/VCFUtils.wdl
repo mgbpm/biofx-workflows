@@ -63,9 +63,9 @@ task AnnotateVCFTask {
     }
 
     command <<<
-        if "~{annotations_file}.idx" != "~{annotations_idx_file}" ]
+        if [ "~{annotations_file}.tbi" != "~{annotations_idx_file}" ]
         then
-            mv "~{annotations_idx_file}" "~{annotations_file}.tbi"
+            ln -s "~{annotations_idx_file}" "~{annotations_file}.tbi"
         fi
         bcftools annotate -a "~{annotations_file}" -h "~{headers_file}" -c "~{column_list}" --output-type z "~{input_vcf}" > "~{output_basename}.vcf.gz"
     >>>
