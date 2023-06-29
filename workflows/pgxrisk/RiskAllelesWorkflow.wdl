@@ -17,6 +17,8 @@ workflow RiskAllelesWorkflow {
         File dbsnp
         File dbsnp_vcf_index
         File workflow_fileset
+        String gcp_project_id
+        String workspace_name
         String mgbpmbiofx_docker_image
     }
 
@@ -48,6 +50,8 @@ workflow RiskAllelesWorkflow {
             all_bases_vcf_file = GATKWorkflow.all_bases_vcf_file,
             all_bases_vcf_idx_file = GATKWorkflow.all_bases_vcf_idx_file,
             out_path = out_path,
+            gcp_project_id = gcp_project_id,
+            workspace_name = workspace_name,
             mgbpmbiofx_docker_image = mgbpmbiofx_docker_image
     }
 
@@ -68,6 +72,8 @@ task RiskTask {
         File all_bases_vcf_file
         File all_bases_vcf_idx_file
         String out_path
+        String gcp_project_id
+        String workspace_name
         String mgbpmbiofx_docker_image
     }
 
@@ -82,13 +88,18 @@ task RiskTask {
         ln -s ~{all_bases_vcf_file} ~{out_path}
         ln -s ~{all_bases_vcf_idx_file} ~{out_path}
 
+        # Setup OMS client config
+        $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh \
+            -p ~{gcp_project_id} -w ~{workspace_name} -n oms > oms-client-config.json
+
         $MGBPMBIOFXPATH/biofx-risk-alleles/bin/run_risk.py \
             -s "~{sample_id}" \
             -a "~{accession_id}" \
             -t "~{test_code}" \
             -o "~{out_path}" \
             -roi "~{roi_bed}" \
-            -l "~{out_path}/$LIB_DIR"
+            -l "~{out_path}/$LIB_DIR" \
+            -oms oms-client-config.json
     >>>
 
     runtime {
