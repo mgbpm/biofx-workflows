@@ -162,7 +162,7 @@ task CreateRefSitesVCFTask {
 
         mkdir -p ~{out_path}
 
-        $MGBPMBIOFXPATH/biofx-pgx/bin/create_ref_sites_vcf.py \
+        $MGBPMBIOFXPATH/biofx-*/bin/create_ref_sites_vcf.py \
         -g "~{gvcf_file}" \
         -c "~{all_calls_vcf_file}" \
         -o "~{ref_positions_vcf}"
