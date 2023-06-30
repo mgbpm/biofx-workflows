@@ -75,6 +75,7 @@ task RiskTask {
         String gcp_project_id
         String workspace_name
         String mgbpmbiofx_docker_image
+        Int disk_size = ceil(size(all_bases_vcf_file, "GB") + size(roi_bed, "GB")) + 10
     }
 
     command <<<
@@ -104,7 +105,7 @@ task RiskTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        disks: "local-disk 100 SSD"
+        disks: "local-disk ~{disk_size} SSD"
     }
 
     output {

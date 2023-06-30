@@ -89,6 +89,7 @@ task HaplotypeCallerTask {
         String out_path
         String gvcf
         String all_calls_vcf
+        Int disk_size = ceil(size(input_cram, "GB") + size(roi_bed, "GB")) + 10
     }
     
     command <<<
@@ -137,7 +138,7 @@ task HaplotypeCallerTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        disks: "local-disk 100 SSD"
+        disks: "local-disk ~{disk_size} SSD"
     }
 
     output {
@@ -155,6 +156,7 @@ task CreateRefSitesVCFTask {
         String ref_positions_vcf
         String mgbpmbiofx_docker_image
         String out_path
+        Int disk_size = ceil(size(all_calls_vcf_file, "GB") + size(gvcf_file, "GB")) + 10
     }
 
     command <<<
@@ -171,6 +173,8 @@ task CreateRefSitesVCFTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
+        disks: "local-disk ~{disk_size} SSD"
+
     }
 
     output {
@@ -187,6 +191,7 @@ task SortVCFTask {
         String all_bases_vcf
         String mgbpmbiofx_docker_image
         String out_path
+        Int disk_size = ceil(size(all_calls_vcf_file, "GB") + size(ref_positions_vcf_file, "GB")) + 10
     }
 
     command <<<
@@ -204,8 +209,8 @@ task SortVCFTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        disks: "local-disk 100 SSD" 
-    }
+        disks: "local-disk ~{disk_size} SSD" 
+    }   
 
     output {
         File all_bases_vcf_file = "~{all_bases_vcf}"
