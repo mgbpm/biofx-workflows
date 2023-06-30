@@ -138,6 +138,7 @@ task HaplotypeCallerTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
+        memory: "24 GB"
         disks: "local-disk ~{disk_size} SSD"
         preemptible: 1
     }
@@ -210,6 +211,7 @@ task SortVCFTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
+        memory: "44 GB"
         disks: "local-disk ~{disk_size} SSD"
         preemptible: 1
     }   
