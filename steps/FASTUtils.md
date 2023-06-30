@@ -21,7 +21,7 @@ Starts a sample or annotation data load using the specified parameters.
 * String gcp_project_id - required - the GCP project to fetch secrets from
 * String workspace_name - required - the name of the current workspace (for secret retrieval)
 * String docker_image - required - the Docker image name:tag
-* Int disk_size - optional - the amount of disk space to request, defaults to 20
+* Int disk_size - optional - the amount of disk space to request, defaults to 2 times the VCF size plus 10
 
 ## Output Parameters
 * String data_load_id - the identifier for the data load created
@@ -55,7 +55,6 @@ Initiates the creation of an annotated sample data
 * String gcp_project_id - required - the GCP project to fetch secrets from
 * String workspace_name - required - the name of the current workspace (for secret retrieval)
 * String docker_image - required - the Docker image name:tag
-* Int disk_size - optional - disk size for the container in GB, defaults to 20
 
 ## Output Parameters
 * String annotated_sample_data_name_output - a copy of the input parameter, available to force task execution dependency
@@ -90,6 +89,7 @@ the specified criteria.  At least one annotation criterion must be specified.
 * String workspace_name - required - the name of the current workspace (for secret retrieval)
 * String docker_image - required - the Docker image name:tag
 * Int batch_size - optional - the number of rows to process in each pass (FAST query), defaults to 20
+* Int disk_size - optional - the amount of disk space to request, defaults to 2 times the VCF size plus 10
  
 ## Output Parameters
 * File output_vcf_gz - the output VCF file

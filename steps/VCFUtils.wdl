@@ -5,7 +5,7 @@ task SortVCFTask {
         File input_vcf
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".sorted"
         String docker_image
-        Int disk_size = 20
+        Int disk_size = ceil(size(input_vcf, "GB") * 2) + 10
         Int preemptible = 1
     }
 
@@ -30,7 +30,7 @@ task FilterVCFWithBEDTask {
         File input_bed
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".filtered"
         String docker_image
-        Int disk_size = 20
+        Int disk_size = ceil((size(input_vcf, "GB") * 2) + size(input_bed, "GB")) + 10
         Int preemptible = 1
     }
 
@@ -58,7 +58,7 @@ task AnnotateVCFTask {
         String column_list
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".annotated"
         String docker_image
-        Int disk_size = 50
+        Int disk_size = ceil((size(input_vcf, "GB") * 2.5) + size(annotations_file, "GB") + size(annotations_idx_file, "GB")) + 10
         Int preemptible = 1
     }
 

@@ -602,7 +602,7 @@ task RunBamsurgeonTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        memory: "local-disk " + ((size(bam_file, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + ceil((size(bam_file, "GB") * 2.5) + 20) + " HDD"
     }
 
     output {

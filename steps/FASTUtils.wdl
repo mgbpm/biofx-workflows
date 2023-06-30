@@ -19,7 +19,7 @@ task FASTDataLoadTask {
         String gcp_project_id
         String workspace_name
         String docker_image
-        Int disk_size = 20
+        Int disk_size = ceil(size(vcf_file, "GB") * 2) + 10
     }
 
     command <<<
@@ -146,7 +146,6 @@ task FASTCreateAnnotatedSampleDataTask {
         String gcp_project_id
         String workspace_name
         String docker_image
-        Int disk_size = 20
     }
 
     command <<<
@@ -174,7 +173,6 @@ task FASTCreateAnnotatedSampleDataTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {
@@ -228,6 +226,7 @@ task FASTRemoveAlreadyAnnotatedFromVCFTask {
         String workspace_name
         String docker_image
         Int batch_size = 20
+        Int disk_size = ceil(size(input_vcf, "GB") * 2) + 10
     }
 
     command <<<
@@ -253,6 +252,7 @@ task FASTRemoveAlreadyAnnotatedFromVCFTask {
 
     runtime {
         docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {

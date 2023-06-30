@@ -9,7 +9,7 @@ task CopyFilesTask {
         Boolean flatten = false
         Boolean recursive = true
         String docker_image
-        Int disk_size = 50
+        Int disk_size = 75
         String gcp_project_id
         String workspace_name
     }
@@ -69,7 +69,7 @@ task FetchFilesTask {
         Array[String] file_types = []
         Array[String] file_match_keys = []
         String docker_image
-        Int disk_size = 50
+        Int disk_size = 75
         String gcp_project_id
         String workspace_name
         File? empty_output_placeholder
@@ -137,7 +137,6 @@ task DownloadOutputsTask {
         Array[String] config_json_list
         String? default_target_location
         String docker_image
-        Int disk_size = 50
         String gcp_project_id
         String workspace_name
     }
@@ -165,7 +164,6 @@ task DownloadOutputsTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " HDD"
     }
 
     output {

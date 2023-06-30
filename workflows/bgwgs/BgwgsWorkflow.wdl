@@ -27,6 +27,7 @@ workflow BgwgsWorkflow {
         Boolean fetch_cram = true
         Boolean fetch_bam = true
         Boolean do_variant_calling = true
+        Int fetch_disk_size = 75
         # reference genome files
         String reference_build = "GRCh38"
         File ref_dict
@@ -88,7 +89,8 @@ workflow BgwgsWorkflow {
                 file_match_keys = [subject_id, sample_id],
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name
+                workspace_name = workspace_name,
+                disk_size = fetch_disk_size
         }
     }
 
@@ -102,7 +104,8 @@ workflow BgwgsWorkflow {
                 file_match_keys = [subject_id, sample_id],
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name
+                workspace_name = workspace_name,
+                disk_size = fetch_disk_size
         }
     }
 

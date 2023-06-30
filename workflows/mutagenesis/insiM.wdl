@@ -182,7 +182,7 @@ task MutateAmpliconAssayTask {
     runtime {
         docker: "~{docker_image}"
         memory: "14GB"
-        disks: "local-disk " + ((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
     }
 
     output {
@@ -228,7 +228,7 @@ task MutateCaptureAssayTask {
     runtime {
         docker: "~{docker_image}"
         memory: "14GB"
-        disks: "local-disk " + ((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
     }
 
     output {
@@ -264,7 +264,7 @@ task ConvertToSamTask {
     runtime {
         docker: "biocontainers/bwa:v0.7.17_cv1"
         memory: "14GB"
-        disks: "local-disk " + ((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
     }
 
     output {
@@ -297,7 +297,7 @@ task ConvertToBamTask{
     runtime {
         docker: "biocontainers/picard:v1.139_cv3"
         memory: "14GB"
-        disks: "local-disk " + ((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
     }
 
     output {
@@ -324,7 +324,7 @@ task IndexBamTask {
 
     runtime {
         docker: "biocontainers/samtools:v1.9-4-deb_cv1"
-        disks: "local-disk " + ((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
     }
 
     output {

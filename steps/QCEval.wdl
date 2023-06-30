@@ -6,7 +6,7 @@ task QCEvalTask {
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".qceval"
         String project_type
         String docker_image
-        Int disk_size = 30
+        Int disk_size = ceil(size(input_vcf, "GB") * 12) + 10
         Int preemptible = 1
     }
 
