@@ -139,6 +139,7 @@ task HaplotypeCallerTask {
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
         disks: "local-disk ~{disk_size} SSD"
+        preemptible: 1
     }
 
     output {
@@ -174,7 +175,7 @@ task CreateRefSitesVCFTask {
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
         disks: "local-disk ~{disk_size} SSD"
-
+        preemptible: 1
     }
 
     output {
@@ -209,7 +210,8 @@ task SortVCFTask {
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
-        disks: "local-disk ~{disk_size} SSD" 
+        disks: "local-disk ~{disk_size} SSD"
+        preemptible: 1
     }   
 
     output {
