@@ -68,3 +68,7 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/PGxWorkflow.wdl
     readMePath: /workflows/pgxrisk/PGxWorkflow.md
+  - name: RiskAllelesWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/pgxrisk/RiskAllelesWorkflow.wdl
+    readMePath: /workflows/pgxrisk/RiskAllelesWorkflow.md
