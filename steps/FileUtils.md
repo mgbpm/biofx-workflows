@@ -53,7 +53,9 @@ Downloads outputs from a workflow using the provided mapping
 * String? default_target_location - the default location to copy files to if there is not a more specific configuration
 * String docker_image - required - the name/tag of the orchutils Docker image
 * String gcp_project_id - required - the GCP project id to fetch location connection information from
-* String workspace_name - required - the current Terra workspace name, used to fetch location connection information
+* String workspace_namespace - optional - the current Terra workspace namespace, used to fetch submission metadata
+* String workspace_name - required - the current Terra workspace name, used to fetch location connection information and submission metadata
+* String submission_id - optional - the submission id to fetch metadata and logs for
 
 ### Output Parameters
 * File outputs_manifest - the manifest of outputs and where they were copied to

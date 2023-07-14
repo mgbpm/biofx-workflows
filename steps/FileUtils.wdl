@@ -138,7 +138,9 @@ task DownloadOutputsTask {
         String? default_target_location
         String docker_image
         String gcp_project_id
+        String? workspace_namespace
         String workspace_name
+        String? submission_id
     }
 
     command <<<
@@ -149,6 +151,12 @@ task DownloadOutputsTask {
         DEF_TARGET_ARG=""
         [ ! -z "~{default_target_location}" ] && DEF_TARGET_ARG="--default-target-location ~{default_target_location}"
 
+        WSNS_ARG=""
+        [ ! -z "~{workspace_namespace}" ] && WSNS_ARG="--workspace-namespace ~{workspace_namespace}"
+
+        SUBID_ARG=""
+        [ ! -z "~{submission_id}" ] && SUBID_ARG="--submission-id ~{submission_id}"
+
         # run script to setup rclone remotes
         REMOTES=$(./bin/get_outputs_remotes.py --outputs "~{write_lines([outputs_json])}" --config "~{write_lines(config_json_list)}" ${DEF_TARGET_ARG})
         for remote in ${REMOTES}
@@ -158,7 +166,7 @@ task DownloadOutputsTask {
 
         # execute script to copy files
         ./bin/copy_outputs.py --outputs "~{write_lines([outputs_json])}" --config "~{write_lines(config_json_list)}" --verbose \
-            ${DEF_TARGET_ARG} --local-manifest-file "${ROOTDIR}/copy-manifest.json"
+            ${DEF_TARGET_ARG} ${WSNS_ARG} --workspace-name "~{workspace_name}" ${SUBID_ARG} --local-manifest-file "${ROOTDIR}/copy-manifest.json"
         popd
     >>>
 
