@@ -136,6 +136,35 @@ task FASTWaitForDataLoadsTask {
     }
 }
 
+task FASTWaitForADITask {
+    input {
+        Int check_interval_secs = 60
+        Int max_checks = 24 * 60
+        String gcp_project_id
+        String workspace_name
+        String docker_image
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh \
+            -p ~{gcp_project_id} -w ~{workspace_name} -n fast > fast-client-config.json
+
+        $MGBPMBIOFXPATH/biofx-pyfast/bin/wait_for_adi.py \
+            --client-config fast-client-config.json \
+            --check-interval-secs ~{check_interval_secs} --max-checks ~{max_checks} | tee num-pending.txt
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+    }
+
+    output {
+        Int num_pending = read_int("num-pending.txt")
+    }
+}
+
 task FASTCreateAnnotatedSampleDataTask {
     input {
         String annotated_sample_data_name

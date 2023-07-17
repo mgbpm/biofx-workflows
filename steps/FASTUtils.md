@@ -40,6 +40,19 @@ Waits up to a certain amount of time for a data load to complete.
 ## Output Parameters
 * FASTWaitResult wait_result - counts of the number of data loads: total, completed, succeeded, failed, canceled
 
+# FASTWaitForADITask
+Waits up to a certain amount of time for the number of annotation variants pending initialization to reach zero.
+
+## Input Parameters
+* Int check_interval_secs - optional - how frequently (in seconds) to check, defaults to 60
+* Int max_checks - optional - how many times to check status before giving up, defaults to 24 * 60
+* String gcp_project_id - required - the GCP project to fetch secrets from
+* String workspace_name - required - the name of the current workspace (for secret retrieval)
+* String docker_image - required - the Docker image name:tag
+
+## Output Parameters
+* Int num_pending - the number of annotation data variants pending initialization
+
 # FASTCreateAnnotatedSampleDataTask
 Initiates the creation of an annotated sample data
 
