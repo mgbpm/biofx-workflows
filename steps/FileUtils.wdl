@@ -1,10 +1,17 @@
 version 1.0
 
+struct FileMatcher {
+    String file_type
+    Array[String]? path_matches
+    Boolean? required
+}
+
 task CopyFilesTask {
     input {
         String source_location
         Array[String] file_types = []
         Array[String] file_match_keys = []
+        Array[FileMatcher] file_matchers = []
         String? target_location
         Boolean flatten = false
         Boolean recursive = true
@@ -13,6 +20,8 @@ task CopyFilesTask {
         String gcp_project_id
         String workspace_name
     }
+
+    Boolean has_file_matchers = defined(file_matchers) && length(file_matchers) > 0
 
     command <<<
         set -euxo pipefail
@@ -31,15 +40,18 @@ task CopyFilesTask {
         FILE_TYPE_ARG=""
         MATCH_KEY_ARG=""
         FILE_TYPE_LIST="~{sep="," file_types}"
-        [ -z "${FILE_TYPE_LIST}" ] && FILE_TYPE_ARG="--optional-file-types-all"
+        [ -z "${FILE_TYPE_LIST}" -a "~{has_file_matchers}" == "false" ] && FILE_TYPE_ARG="--optional-file-types-all"
         [ ! -z "${FILE_TYPE_LIST}" ] && FILE_TYPE_ARG="--optional-file-types ${FILE_TYPE_LIST}"
         MATCH_KEY_LIST="~{sep="," file_match_keys}"
         [ ! -z "${MATCH_KEY_LIST}" ] && MATCH_KEY_ARG="--filter-keys ${MATCH_KEY_LIST}"
 
+        FILE_MATCHERS_ARG=""
+        [ "~{has_file_matchers}" == "true" ] && FILE_MATCHERS_ARG="--file-matchers ~{write_json(file_matchers)}"
+
         # execute script to copy files
         mkdir "${ROOTDIR}/fetched"
         ./bin/copy_files.py ~{if flatten then "--flatten" else ""} ~{if recursive then "" else "--no-recursive"} --verbose \
-            --source "~{source_location}" --target "${FINAL_TARGET_LOC}" ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} \
+            --source "~{source_location}" --target "${FINAL_TARGET_LOC}" ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} ${FILE_MATCHERS_ARG} \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt"
 
         # test if target files are local
@@ -68,12 +80,15 @@ task FetchFilesTask {
         Boolean recursive = true
         Array[String] file_types = []
         Array[String] file_match_keys = []
+        Array[FileMatcher] file_matchers = []
         String docker_image
         Int disk_size = 75
         String gcp_project_id
         String workspace_name
         File? empty_output_placeholder
     }
+
+    Boolean has_file_matchers = defined(file_matchers) && length(file_matchers) > 0
 
     command <<<
         set -euxo pipefail
@@ -87,15 +102,18 @@ task FetchFilesTask {
         FILE_TYPE_ARG=""
         MATCH_KEY_ARG=""
         FILE_TYPE_LIST="~{sep="," file_types}"
-        [ -z "${FILE_TYPE_LIST}" ] && FILE_TYPE_ARG="--optional-file-types-all"
+        [ -z "${FILE_TYPE_LIST}" -a "~{has_file_matchers}" == "false" ] && FILE_TYPE_ARG="--optional-file-types-all"
         [ ! -z "${FILE_TYPE_LIST}" ] && FILE_TYPE_ARG="--optional-file-types ${FILE_TYPE_LIST}"
         MATCH_KEY_LIST="~{sep="," file_match_keys}"
         [ ! -z "${MATCH_KEY_LIST}" ] && MATCH_KEY_ARG="--filter-keys ${MATCH_KEY_LIST}"
 
+        FILE_MATCHERS_ARG=""
+        [ "~{has_file_matchers}" == "true" ] && FILE_MATCHERS_ARG="--file-matchers ~{write_json(file_matchers)}"
+
         # execute script to copy files
         mkdir "${ROOTDIR}/fetched"
         ./bin/copy_files.py \
-            --source "~{data_location}" --target "${ROOTDIR}/fetched" --flatten ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} --verbose \
+            --source "~{data_location}" --target "${ROOTDIR}/fetched" --flatten ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} ${FILE_MATCHERS_ARG} --verbose \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt" \
             ~{if recursive then "" else "--no-recursive"}
         popd
