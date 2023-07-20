@@ -89,7 +89,7 @@ task HaplotypeCallerTask {
         String out_path
         String gvcf
         String all_calls_vcf
-        Int disk_size = ceil(size(input_cram, "GB") + size(roi_bed, "GB")) + 10
+        Int disk_size = ceil(size(input_cram, "GB") + size(dbsnp, "GB")) + 10
     }
     
     command <<<
