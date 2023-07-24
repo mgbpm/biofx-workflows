@@ -8,8 +8,8 @@ workflow DownloadOutputsWorkflow {
         String? config_json
         String? default_target_location
         Boolean verbose = false
-        String orchutils_docker_image
-        String gcp_project_id
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230719"
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String? workspace_namespace
         String workspace_name
         String? submission_id
