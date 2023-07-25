@@ -62,6 +62,25 @@ workflow BiobankScrubWorkflow {
     }
   }
 
+  # -------------------------------------------------------------------
+
+  call CollectShards {
+    input:
+      staging_area    = staging_area,
+      non_compliant   = non_compliant,
+      scrub_results   = flatten(ScrubBatch.results),
+      docker_image    = docker_image
+  }
+
+  scatter (shards in CollectShards.shards) {
+    call ConcatenateShards {
+      input:
+        staging_area = staging_area,
+        shards       = shards,
+        docker_image = docker_image
+    }
+  }
+
   call VerifyRelease {
     input:
       sequencing_dummy = ScrubBatch.sequencing_dummy,
@@ -71,8 +90,8 @@ workflow BiobankScrubWorkflow {
   }
 
   output {
-    File  scrub_report        = write_json(flatten(ScrubBatch.report))
-    File  verification_report = write_json(VerifyRelease.report)
+    File   scrub_results       = write_json(flatten(ScrubBatch.results))
+    File   verification_report = write_json(VerifyRelease.report)
   }
 }
 
@@ -83,8 +102,8 @@ task  FetchWithdrawnList {
     String  docker_image
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
   set -o errexit
@@ -98,7 +117,7 @@ task  FetchWithdrawnList {
   >>>
 
   output {
-    File  withdrawn_list = STDOUT
+    File   withdrawn_list = STDOUT
   }
 
   runtime {
@@ -113,8 +132,8 @@ task  GetDatasetIds {
     String  docker_image
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
   set -o errexit
@@ -141,7 +160,7 @@ task  GetDatasetIds {
   >>>
 
   output {
-    Array[String] dataset_ids = read_lines(STDOUT)
+    Array[String]   dataset_ids = read_lines(STDOUT)
   }
 
   runtime {
@@ -159,8 +178,8 @@ task  FindNonCompliant {
     String  docker_image
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
   set -o errexit
@@ -179,7 +198,7 @@ task  FindNonCompliant {
   >>>
 
   output {
-    Array[Object]  non_compliant = read_json(STDOUT)
+    Array[Object]   non_compliant = read_json(STDOUT)
   }
 
   runtime {
@@ -189,15 +208,15 @@ task  FindNonCompliant {
 
 task  MakeBatches {
   input {
-    Array[Object]  non_compliant  # each object in this array has
-                                  # members path and type
-    Int            nbatches       # desired number of batches
-    String         staging_area   # url to a directory for staging
-    String         docker_image
+    Array[Object]   non_compliant   # each object in this array has
+                                    # members path and type
+    Int             nbatches        # desired number of batches
+    String          staging_area    # url to a directory for staging
+    String          docker_image
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
   set -o errexit
@@ -218,7 +237,7 @@ task  MakeBatches {
   >>>
 
   output {
-    Array[Array[Object]]  batches = read_json(STDOUT)
+    Array[Array[Object]]   batches = read_json(STDOUT)
   }
 
   runtime {
@@ -228,16 +247,16 @@ task  MakeBatches {
 
 task  ScrubBatch {
   input {
-    File           withdrawn_list
-    String         initial_datadir
-    String         staging_area
-    Array[Object]  batch
-    String         docker_image
+    File            withdrawn_list
+    String          initial_datadir
+    String          staging_area
+    Array[Object]   batch
+    String          docker_image
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String STDOUT    = OUTPUTDIR + "/STDOUT"
-  String DUMMY     = OUTPUTDIR + "/DUMMY"
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   DUMMY     = OUTPUTDIR + "/DUMMY"
 
   command <<<
   set -o errexit
@@ -259,8 +278,51 @@ task  ScrubBatch {
   >>>
 
   output {
-    String sequencing_dummy = read_lines(DUMMY)
-    Array[Object] report    = read_json(STDOUT)
+    String          sequencing_dummy = read_lines(DUMMY)
+    Array[Object]   results          = read_json(STDOUT)
+  }
+
+  runtime {
+    docker: docker_image
+    memory: "100GB"
+    cpus:   8
+    disks:  "local-disk 750 HDD" ### FIXME: find smallest viable disk size
+  }
+}
+
+task CollectShards {
+  input {
+    String          staging_area
+    Array[Object]   non_compliant
+    Array[Object]   scrub_results
+    String          docker_image
+  }
+
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   DUMMY     = OUTPUTDIR + "/DUMMY"
+
+  command <<<
+  set -o errexit
+  # set -o pipefail
+  # set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  ( hostname --long ; date ) > '~{DUMMY}'
+
+  collect_shards.py                  \
+      '~{staging_area}'              \
+      '~{write_json(non_compliant)}' \
+      '~{write_json(scrub_results)}' \
+    > '~{STDOUT}'
+
+  date >> '~{DUMMY}'
+  >>>
+
+  output {
+    String                 sequencing_dummy = read_lines(DUMMY)
+    Array[Array[Object]]   shards           = read_json(STDOUT)
   }
 
   runtime {
@@ -273,15 +335,15 @@ task  ScrubBatch {
 
 task  VerifyRelease {
   input {
-    Array[String]  sequencing_dummy  # ignored; needed only to ensure proper
-                                     # sequencing of tasks
-    String         release_dir       # url to a release's root
-    Array[Object]  non_compliant     # array of non-compliant items
-    String         docker_image
+    Array[String]   sequencing_dummy   # ignored; needed only to ensure proper
+                                       # sequencing of tasks
+    String          release_dir        # url to a release's root
+    Array[Object]   non_compliant      # array of non-compliant items
+    String          docker_image
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
   set -o errexit
@@ -295,7 +357,7 @@ task  VerifyRelease {
   >>>
 
   output {
-    File report = STDOUT
+    File   report = STDOUT
   }
 
   runtime {
