@@ -278,7 +278,7 @@ task MergeGVCFs {
   }
 }
 
-task VariantCallingGenomePanelsTask {
+task GenomePanelsVariantCallingTask {
   input {
         # Command parameters
         File input_bam
@@ -290,7 +290,6 @@ task VariantCallingGenomePanelsTask {
         File dbsnp
         File dbsnp_vcf_index
         String gatk_path = "/gatk/gatk"
-        String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
 
         # Runtime parameters
         String docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
@@ -309,9 +308,6 @@ task VariantCallingGenomePanelsTask {
     String sample_basename = if is_cram then  basename(input_bam, ".cram") else basename(input_bam, ".bam")
     String gvcf = sample_basename + ".g.vcf"
     String all_calls_vcf = sample_basename + ".allcalls.vcf"
-    String ref_positions_vcf = sample_basename + ".ref_positions.vcf"
-    String all_bases_vcf = sample_basename + ".allbases.vcf"
-    String all_bases_noChr_vcf = sample_basename + ".allbases.noChr.vcf"
 
     command <<<
       set -euxo pipefail
@@ -356,19 +352,6 @@ task VariantCallingGenomePanelsTask {
       --read-filter MappingQualityNotZeroReadFilter \ 
       -ip '15'
 
-      $MGBPMBIOFXPATH/biofx-genome-panels/bin/create_ref_sites_vcf.py \
-      -g "~{gvcf}" \
-      -c "~{all_calls_vcf}" \
-      -o "~{ref_positions_vcf}"
-
-      ~{java_path} -Xms12g -Xmx40g \
-      -jar ~{gatk_path}.jar SortVcf \
-      -I ~{ref_positions_vcf} \
-      -I ~{all_calls_vcf} \
-      -O ~{all_bases_vcf}
-
-      #make a copy of three files for lmm_variant_detection_report.py
-      sed 's/chr//' ~{all_bases_vcf} >  ~{all_bases_noChr_vcf}
     >>>
 
     runtime {
@@ -383,9 +366,59 @@ task VariantCallingGenomePanelsTask {
       File all_calls_vcf_idx_file = "~{all_calls_vcf}.idx"
       File gvcf_file = "~{gvcf}"
       File gvcf_idx_file = "~{gvcf}.idx"
+    }
+}
+
+task GenomePanelsRefSitesSortTask {
+  input {
+        # Command parameters
+        File gvcf_file
+        File all_calls_vcf_file
+        String gatk_path = "/gatk/gatk"
+        String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
+
+        # Runtime parameters
+        String docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_gb = select_first([mem_gb, 24])
+
+    Int disk_size = ceil(size(gvcf_file, "GB") + size(all_calls_vcf_file, "GB")) + 10
+
+    String sample_basename = basename(gvcf_file, ".g.vcf")
+    String ref_positions_vcf = sample_basename + ".ref_positions.vcf"
+    String all_bases_vcf = sample_basename + ".allbases.vcf"
+
+    command <<<
+      set -euxo pipefail
+
+      $MGBPMBIOFXPATH/biofx-genome-panels/bin/create_ref_sites_vcf.py \
+      -g "~{gvcf_file}" \
+      -c "~{all_calls_vcf_file}" \
+      -o "~{ref_positions_vcf}"
+
+      ~{java_path} -Xms12g -Xmx40g \
+      -jar ~{gatk_path}.jar SortVcf \
+      -I ~{ref_positions_vcf} \
+      -I ~{all_calls_vcf_file} \
+      -O ~{all_bases_vcf}
+
+    >>>
+
+    runtime {
+      docker: docker
+      memory: machine_mem_gb + " GB"
+      disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
+      preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
       File ref_positions_vcf_file = "~{ref_positions_vcf}"
       File all_bases_vcf_file = "~{all_bases_vcf}"
       File all_bases_vcf_idx_file = "~{all_bases_vcf}.idx"
-      File all_bases_noChr_vcf_file = "~{all_bases_noChr_vcf}"
     }
 }
