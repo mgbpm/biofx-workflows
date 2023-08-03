@@ -2,6 +2,7 @@ version 1.0
 
 import "../../steps/FileUtils.wdl"
 import "../../steps/HaplotypeCallerGvcfGATK4.wdl"
+import "../../steps/Utilities.wdl"
 
 workflow BgwgsPanelWorkflow {
 
@@ -19,6 +20,8 @@ workflow BgwgsPanelWorkflow {
         String sample_barcode
         String batch_id
         String sample_data_location
+        Boolean fetch_cram = true
+        Boolean fetch_bam = true
         String test_code
         Int fetch_disk_size = 75
         # reference genome files
@@ -34,7 +37,24 @@ workflow BgwgsPanelWorkflow {
         File dbsnp_vcf_index
     }
 
-    call FileUtils.FetchFilesTask as FetchCram {
+    # Prefer a BAM file to avoid conversion
+    if (fetch_bam) {
+        call FileUtils.FetchFilesTask as FetchBam {
+            input:
+                data_location = sample_data_location,
+                file_types = ["bam"],
+                recursive = false,
+                file_match_keys = [subject_id, sample_id],
+                docker_image = orchutils_docker_image,
+                gcp_project_id = gcp_project_id,
+                workspace_name = workspace_name,
+                disk_size = fetch_disk_size
+        }
+    }
+
+    # no BAM, fallback to CRAM
+    if (fetch_cram && (!defined(FetchBam.bam) || !defined(FetchBam.bai))) {
+        call FileUtils.FetchFilesTask as FetchCram {
             input:
                 data_location = sample_data_location,
                 file_types = ["cram"],
@@ -44,9 +64,32 @@ workflow BgwgsPanelWorkflow {
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
                 disk_size = fetch_disk_size
+        }
     }
 
-    call HaplotypeCallerGvcfGATK4.CramToBamTask {
+    # Validate that we got workable files from the data location
+    if (!defined(FetchBam.bam) && !defined(FetchCram.cram)) {
+        call Utilities.FailTask as MissingBamOrCramFailure {
+            input:
+                error_message = "BAM or CRAM file not found in ~{sample_data_location}"
+        }
+    }
+    if (defined(FetchCram.cram) && !defined(FetchCram.crai)) {
+        call Utilities.FailTask as MissingCraiFailure {
+            input:
+                error_message = "Index file for CRAM " + basename(select_first([FetchCram.cram])) + " not found"
+        }
+    }
+    if (!defined(FetchCram.cram) && defined(FetchBam.bam) && !defined(FetchBam.bai)) {
+        call Utilities.FailTask as MissingBaiFailure {
+            input:
+                error_message = "Index file for BAM " + basename(select_first([FetchCram.bam])) + " not found"
+        }
+    }
+    
+    # Convert CRAM to BAM
+    if (defined(FetchCram.cram) && defined(FetchCram.crai)) {
+        call HaplotypeCallerGvcfGATK4.CramToBamTask {
             input:
                 input_cram = select_first([FetchCram.cram]),
                 sample_name = basename(select_first([FetchCram.cram]), ".cram"),
@@ -55,18 +98,30 @@ workflow BgwgsPanelWorkflow {
                 ref_fasta_index = ref_fasta_index,
                 docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710",
                 samtools_path = "samtools"
+        }
     }
 
-    call HaplotypeCallerGvcfGATK4.VariantCallingGenomePanelsTask {
+    # final inputs - either CRAM or BAM
+    File sample_bam = select_first([FetchBam.bam, CramToBamTask.output_bam])
+    File sample_bai = select_first([FetchBam.bai, CramToBamTask.output_bai])
+
+    # Run haplotype caller
+    call HaplotypeCallerGvcfGATK4.GenomePanelsVariantCallingTask {
         input:
-            input_bam = CramToBamTask.output_bam,
-            input_bam_index = CramToBamTask.output_bai,
+            input_bam = sample_bam,
+            input_bam_index = sample_bai,
             interval_list = target_intervals,
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
             ref_dict = ref_dict,
             dbsnp = dbsnp,
             dbsnp_vcf_index = dbsnp_vcf_index
+    }
+
+    call HaplotypeCallerGvcfGATK4.GenomePanelsRefSitesSortTask {
+        input:
+            gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
+            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file
     }
 
     call LMMVariantReportTask {
@@ -81,13 +136,26 @@ workflow BgwgsPanelWorkflow {
             extra_amplicons_file = extra_amplicons_file,
             duplicate_amplicons_file = duplicate_amplicons_file,
             test_code = test_code,
-            all_calls_vcf_file = VariantCallingGenomePanelsTask.all_calls_vcf_file,
-            all_bases_noChr_vcf_file = VariantCallingGenomePanelsTask.all_bases_noChr_vcf_file,
+            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
+            all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file,
             mgbpmbiofx_docker_image = orchutils_docker_image
     }
 
     output {
+        # Variant calling outputs
+        File all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file 
+        File all_calls_vcf_idx_file = GenomePanelsVariantCallingTask.all_calls_vcf_idx_file
+        File gvcf_file = GenomePanelsVariantCallingTask.gvcf_file 
+        File gvcf_idx_file = GenomePanelsVariantCallingTask.gvcf_idx_file
+        File ref_positions_vcf_file = GenomePanelsRefSitesSortTask.ref_positions_vcf_file
+        File all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file
+        File all_bases_vcf_idx_file = GenomePanelsRefSitesSortTask.all_bases_vcf_idx_file
 
+        # LMM variant detection outputs
+        File all_bases_noChr_vcf_file = LMMVariantReportTask.all_bases_noChr_vcf_file
+        File? snps_out_file = LMMVariantReportTask.snps_out_file
+        File xls_report_out_file = LMMVariantReportTask.xls_report_out_file
+        File xml_report_out_file = LMMVariantReportTask.xml_report_out_file
     }
 }
 
@@ -104,12 +172,14 @@ task LMMVariantReportTask {
         File bait_file
         File extra_amplicons_file
         File duplicate_amplicons_file
-        File all_bases_noChr_vcf_file
+        File all_bases_vcf_file
         File all_calls_vcf_file
         String mgbpmbiofx_docker_image
         Int disk_size = 10
     }
 
+    String sample_basename = basename(all_bases_vcf_file, ".allbases.vcf")
+    String all_bases_noChr_vcf = sample_basename + ".allbases.noChr.vcf"
     String lmm_vc_prefix = sample_run_id + '__' + sample_lmm_id + '__' + sample_id + '__' + sample_barcode + '__' + batch_id
     String xls_report_out = lmm_vc_prefix + '.variantReport.xls'
     String snps_out = lmm_vc_prefix + '.cleaned.common_ysnps.txt'
@@ -117,18 +187,19 @@ task LMMVariantReportTask {
 
     command <<<
         set -euxo pipefail
+
+        #make a copy of three files for lmm_variant_detection_report.py
+        sed 's/chr//' ~{all_bases_vcf_file} >  ~{all_bases_noChr_vcf}
+
         $MGBPMBIOFXPATH/genome-panels/bin/lmm_variant_detection_report.py \
         ~{target_intervals} \
-        ~{all_bases_noChr_vcf_file} \
+        ~{all_bases_noChr_vcf} \
         ~{all_calls_vcf_file} \
         --genome-build 'GRCh38' \
         --test-code ~{test_code} \
         --bait-set ~{bait_file} \
         --filter-on-test-code \
         --filter-on-gi-reference \
-        '--webservice-url ' + config['ws_url'] \
-        '--webservice-login ' + config['ws_login'] \
-        '--webservice-pass ' + config['ws_pass'] \
         --run-id ~{sample_run_id} \
         --container-id ~{sample_lmm_id} \
         --batch-id ~{batch_id} \
@@ -140,16 +211,23 @@ task LMMVariantReportTask {
         --snp ~{snps_out} \
         --xml ~{xml_report_out}
         
+        # '--webservice-url ' + config['ws_url'] \
+        # '--webservice-login ' + config['ws_login'] \
+        # '--webservice-pass ' + config['ws_pass'] \
     >>>
 
     runtime {
         docker: "~{mgbpmbiofx_docker_image}"
+        # memory: machine_mem_gb + " GB"
         disks: "local-disk ~{disk_size} SSD"
-        
+        preemptible: 2
     }
 
     output {
-
+        File all_bases_noChr_vcf_file = "~{all_bases_noChr_vcf}"
+        File? snps_out_file = "~{snps_out}"
+        File xls_report_out_file = "~{xls_report_out}"
+        File xml_report_out_file = "~{xml_report_out}"
     }
 
 
