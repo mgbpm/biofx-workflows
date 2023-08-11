@@ -12,6 +12,9 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
     readMePath: /workflows/bgwgs/BgwgsWorkflow.md
+    filters:
+      tags:
+        - BGWGS_*
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
