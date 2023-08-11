@@ -13,6 +13,9 @@ workflows:
     primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
     readMePath: /workflows/bgwgs/BgwgsWorkflow.md
     filters:
+      branches:
+        - master
+        - /.*bgwgs.*/
       tags:
         - BGWGS_*
   - name: CopySampleFilesWorkflow
