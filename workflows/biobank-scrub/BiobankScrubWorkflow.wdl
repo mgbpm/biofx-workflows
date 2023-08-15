@@ -1,36 +1,82 @@
 version 1.0
 
+struct RundirInitialized {
+  Boolean       found_saved_withdrawn_list
+  Array[String] withdrawn_list
+  String        staging_area
+}
 
 workflow BiobankScrubWorkflow {
   input {
-    String         docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank_scrubbing:1.0.0"
-
+    String         rundir               ### FIXME: devise a global mechanism for resolving standard locations
     Int            nbatches             = 500
     String         initial_datadir      = "gs://url/to/default/initial/datadir"
     String         current_datadir
-    String         staging_area
+    String         database             = "gs://url/to/biobank/database"
+    # String         staging_area
     File?          maybe_withdrawn_list
+
+    String         docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank_scrubbing:1.0.0"
   }
 
-  if (!defined(maybe_withdrawn_list)) {
-    call FetchWithdrawnList {
+  Object inputs = object {
+    rundir               : rundir,
+    nbatches             : nbatches,
+    initial_datadir      : initial_datadir,
+    current_datadir      : current_datadir,
+    database             : database,
+    maybe_withdrawn_list : maybe_withdrawn_list,
+    docker_image         : docker_image
+  }
+
+  call MaybeInitializeRundir {
+    input:
+      inputs = inputs
+  }
+
+  File? maybe_saved_withdrawn_list =
+    if MaybeInitializeRundir.info.found_saved_withdrawn_list
+    then write_lines(MaybeInitializeRundir.info.withdrawn_list)
+    else read_json(write_json('null'))
+
+  if (!(   defined(maybe_saved_withdrawn_list)
+        || defined(maybe_withdrawn_list))) {
+    call ListWithdrawnSubjects {
       input:
+        rundir       = rundir,
+        database     = database,
         docker_image = docker_image
     }
   }
 
   File withdrawn_list = select_first([
+    maybe_saved_withdrawn_list,
     maybe_withdrawn_list,
-    FetchWithdrawnList.withdrawn_list
+    ListWithdrawnSubjects.withdrawn_list
   ])
 
-  call GetDatasetIds {
+
+  # if (!defined(maybe_withdrawn_list)) {
+  #   call ListWithdrawnSubjects {
+  #     input:
+  #       rundir   = rundir,
+  #       database     = database,
+  #       docker_image = docker_image
+  #   }
+  # }
+
+  # File withdrawn_list = select_first([
+  #   maybe_withdrawn_list,
+  #   ListWithdrawnSubjects.withdrawn_list
+  # ])
+
+  call ListDatasetIds {
     input:
       base_datadir = current_datadir,
       docker_image = docker_image
   }
 
-  scatter (dataset_id in GetDatasetIds.dataset_ids) {
+  scatter (dataset_id in ListDatasetIds.dataset_ids) {
     call FindNonCompliant {
       input:
         dataset_id      = dataset_id,
@@ -42,6 +88,7 @@ workflow BiobankScrubWorkflow {
   }
 
   Array[Object] non_compliant = flatten(FindNonCompliant.non_compliant)
+  String        staging_area  = MaybeInitializeRundir.info.staging_area
 
   call MakeBatches {
     input:
@@ -66,39 +113,72 @@ workflow BiobankScrubWorkflow {
 
   call CollectShards {
     input:
-      staging_area    = staging_area,
-      non_compliant   = non_compliant,
-      scrub_results   = flatten(ScrubBatch.results),
-      docker_image    = docker_image
+      staging_area        = staging_area,
+      non_compliant       = non_compliant,
+      sequencing_sentinel = ScrubBatch.results,  # ignored
+      docker_image        = docker_image
   }
 
-  scatter (shards in CollectShards.shards) {
+  scatter (storage_and_batch in CollectShards.storage_and_batch_array) {
     call ConcatenateShards {
       input:
         staging_area = staging_area,
-        shards       = shards,
+        batch        = storage_and_batch.batch,
+        storage      = storage_and_batch.storage,
         docker_image = docker_image
     }
   }
 
-  call VerifyRelease {
-    input:
-      sequencing_dummy = ScrubBatch.sequencing_dummy,
-      release_dir      = staging_area,
-      non_compliant    = non_compliant,
-      docker_image     = docker_image
-  }
+  # call VerifyRelease {
+  #   input:
+  #     sequencing_dummy = ScrubBatch.sequencing_dummy,
+  #     release_dir      = staging_area,
+  #     non_compliant    = non_compliant,
+  #     docker_image     = docker_image
+  # }
 
   output {
-    File   scrub_results       = write_json(flatten(ScrubBatch.results))
-    File   verification_report = write_json(VerifyRelease.report)
+    File   scrub_results         = write_json(ScrubBatch.results)
+    File   concatenation_results = write_json(ConcatenateShards.results)
+    # File   verification_report   = write_json(VerifyRelease.report)
   }
 }
 
 # -----------------------------------------------------------------------------
 
-task  FetchWithdrawnList {
+task MaybeInitializeRundir {
   input {
+    Object inputs
+  }
+
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  # set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  mkdir --parents '~OUTPUTDIR'
+  maybe_initialize_rundir.py '~{write_json(inputs)}' > '~STDOUT'
+  >>>
+
+  output {
+    RundirInitialized info = read_object(STDOUT)
+  }
+
+  runtime {
+    docker: inputs.docker_image
+  }
+}
+
+
+task  ListWithdrawnSubjects {
+  input {
+    String  rundir
+    String  database
     String  docker_image
   }
 
@@ -113,7 +193,7 @@ task  FetchWithdrawnList {
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
   mkdir --parents '~OUTPUTDIR'
-  list_withdrawn_subjects.py > '~STDOUT'
+  list_withdrawn_subjects.py '~{rundir}' '~{database}' | sort > '~STDOUT'
   >>>
 
   output {
@@ -126,7 +206,7 @@ task  FetchWithdrawnList {
 }
 
 
-task  GetDatasetIds {
+task  ListDatasetIds {
   input {
     String  base_datadir
     String  docker_image
@@ -278,8 +358,8 @@ task  ScrubBatch {
   >>>
 
   output {
-    String          sequencing_dummy = read_lines(DUMMY)
-    Array[Object]   results          = read_json(STDOUT)
+    # String   sequencing_dummy = read_lines(DUMMY)
+    Object   results          = read_object(STDOUT)
   }
 
   runtime {
@@ -292,9 +372,11 @@ task  ScrubBatch {
 
 task CollectShards {
   input {
-    String          staging_area
-    Array[Object]   non_compliant
-    Array[Object]   scrub_results
+    String          staging_area        # url to a directory for staging
+    Array[Object]   non_compliant       # each object in this array has
+                                        # members path and type
+    Array[Object]   sequencing_sentinel # ensures proper sequencing of
+                                        # tasks; it is otherwise ignored
     String          docker_image
   }
 
@@ -312,9 +394,8 @@ task CollectShards {
   ( hostname --long ; date ) > '~{DUMMY}'
 
   collect_shards.py                  \
-      '~{staging_area}'              \
       '~{write_json(non_compliant)}' \
-      '~{write_json(scrub_results)}' \
+      '~{staging_area}'              \
     > '~{STDOUT}'
 
   date >> '~{DUMMY}'
@@ -322,14 +403,54 @@ task CollectShards {
 
   output {
     String                 sequencing_dummy = read_lines(DUMMY)
-    Array[Array[Object]]   shards           = read_json(STDOUT)
+    Array[Object]   storage_and_batch_array = read_json(STDOUT)
   }
 
   runtime {
     docker: docker_image
-    memory: "100GB"
-    cpus:   8
-    disks:  "local-disk 750 HDD" ### FIXME: find smallest viable disk size
+  }
+}
+
+task ConcatenateShards {
+  # ...
+  input {
+    Int             storage        # required disk size (in GB)
+    String          staging_area   # url to a directory for staging
+    Array[Object]   batch          # each object in this array has
+                                   # members nshards, source, and
+                                   # endpoint
+    String          docker_image
+  }
+
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
+  String   DUMMY     = OUTPUTDIR + "/DUMMY"
+
+  command <<<
+  set -o errexit
+  # set -o pipefail
+  # set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  ( hostname --long ; date ) > '~{DUMMY}'
+
+  concatenate_shards.py      \
+      '~{staging_area}'      \
+      '~{write_json(batch)}' \
+    > '~{STDOUT}'
+
+  date >> '~{DUMMY}'
+  >>>
+
+  output {
+    # String   sequencing_dummy = read_lines(DUMMY)
+    Object   results          = read_object(STDOUT)
+  }
+
+  runtime {
+    docker: docker_image
+    disks:  "local-disk ~{storage} HDD"
   }
 }
 
