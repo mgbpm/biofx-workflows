@@ -28,6 +28,7 @@ task FilterVCFWithBEDTask {
     input {
         File input_vcf
         File input_bed
+        String target_overlap = "record"
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".filtered"
         String docker_image
         Int disk_size = ceil((size(input_vcf, "GB") * 2) + size(input_bed, "GB")) + 10
@@ -35,7 +36,7 @@ task FilterVCFWithBEDTask {
     }
 
     command <<<
-        bcftools filter --targets-file "~{input_bed}" --output-type z "~{input_vcf}" > "~{output_basename}.vcf.gz"
+        bcftools filter --targets-file "~{input_bed}" --targets-overlap ~{target_overlap} --output-type z "~{input_vcf}" > "~{output_basename}.vcf.gz"
     >>>
 
     runtime {
