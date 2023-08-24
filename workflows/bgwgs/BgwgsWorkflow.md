@@ -46,7 +46,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | String | risk_alleles_docker_image | No | The name of the Docker image to generate the risk alleles report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20230724" |
 | File | risk_alleles_workflow_fileset | No | Tar file containing the risk alleles reference data to generate the report | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar" |
 | File | risk_alleles_roi_bed | No | BED file that defines the genomic regions to include in the risk alleles analysis | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed" |
-| File | target_roi_bed | No | The BED that defines the target region of interest for annotation and filtration | "gs://lmm-reference-data/roi/targetROI_hg38_2021_11_15_withCHR.bed" |
+| File | target_roi_bed | No | The BED that defines the target region of interest for annotation and filtration | "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed" |
 | File | alamut_db | No | The database file for Alamut batch | "gs://lmm-reference-data/annotation/alamut/alamut_db-1.5-2022.01.12.db" |
 | File | alamut_fields_tsv | No | The file that defines how the Alamut output is transformed back to a VCF | |
 | String | alamut_db_name | No | The database name for the Alamut batch ini file | "alamut_db" |

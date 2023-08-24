@@ -238,7 +238,7 @@ workflow BgwgsWorkflow {
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
         # vcf filter inputs
-        File target_roi_bed = "gs://lmm-reference-data/roi/targetROI_hg38_2021_11_15_withCHR.bed"
+        File target_roi_bed = "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed"
         # alamut inputs
         File alamut_db = "gs://lmm-reference-data/annotation/alamut/alamut_db-1.5-2022.01.12.db"
         File? alamut_fields_tsv
