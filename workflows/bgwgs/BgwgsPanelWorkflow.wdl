@@ -2,6 +2,7 @@ version 1.0
 
 import "../../steps/FileUtils.wdl"
 import "../../steps/HaplotypeCallerGvcfGATK4.wdl"
+import "../../steps/IgvReport.wdl"
 import "../../steps/Utilities.wdl"
 
 workflow BgwgsPanelWorkflow {
@@ -10,8 +11,9 @@ workflow BgwgsPanelWorkflow {
         # GCP project and Terra workspace for secret retrieval
         String gcp_project_id
         String workspace_name
-        # Orchestration utils docker
+        # Docker images
         String orchutils_docker_image
+        String genome_panels_docker_image
         # subject, sample id and data location
         String subject_id
         String sample_id
@@ -35,6 +37,8 @@ workflow BgwgsPanelWorkflow {
         File target_intervals
         File dbsnp
         File dbsnp_vcf_index
+        # Reporting steps
+        String igvreport_docker_image
     }
 
     # Prefer a BAM file to avoid conversion
@@ -138,7 +142,25 @@ workflow BgwgsPanelWorkflow {
             test_code = test_code,
             all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
             all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file,
-            mgbpmbiofx_docker_image = orchutils_docker_image
+            docker_image = genome_panels_docker_image
+    }
+
+    call CreateBedRegionsFromXLSTask {
+        input:
+            lmm_xls_report_file = LMMVariantReportTask.xls_report_out_file,
+            docker_image = genome_panels_docker_image
+    }
+
+
+    call IgvReport.IgvReportFromGenomePanelsBedTask {
+        input:
+            bed_file = CreateBedRegionsFromXLSTask.output_bed_file,
+            sample_bam = sample_bam,
+            sample_bai = sample_bai,
+            output_basename = sample_run_id + '__' + sample_lmm_id + '__' + sample_id + '__' + sample_barcode + '__' + batch_id + ".igvreport",
+            ref_fasta = ref_fasta,
+            ref_fasta_index = ref_fasta_index,
+            docker_image = igvreport_docker_image
     }
 
     output {
@@ -156,6 +178,10 @@ workflow BgwgsPanelWorkflow {
         File? snps_out_file = LMMVariantReportTask.snps_out_file
         File xls_report_out_file = LMMVariantReportTask.xls_report_out_file
         File xml_report_out_file = LMMVariantReportTask.xml_report_out_file
+
+        # LMM IGV reports
+        File follow_up_regions_file = CreateBedRegionsFromXLSTask.output_bed_file
+        File lmm_igv_report = IgvReportFromGenomePanelsBedTask.igv_report
     }
 }
 
@@ -174,7 +200,7 @@ task LMMVariantReportTask {
         File duplicate_amplicons_file
         File all_bases_vcf_file
         File all_calls_vcf_file
-        String mgbpmbiofx_docker_image
+        String docker_image
         Int disk_size = 10
     }
 
@@ -217,7 +243,7 @@ task LMMVariantReportTask {
     >>>
 
     runtime {
-        docker: "~{mgbpmbiofx_docker_image}"
+        docker: "~{docker_image}"
         # memory: machine_mem_gb + " GB"
         disks: "local-disk ~{disk_size} SSD"
         preemptible: 2
@@ -229,6 +255,32 @@ task LMMVariantReportTask {
         File xls_report_out_file = "~{xls_report_out}"
         File xml_report_out_file = "~{xml_report_out}"
     }
+}
 
+task CreateBedRegionsFromXLSTask {
+    input {
+        File lmm_xls_report_file
+        String output_bed = "follow_up_regions.bed"
+        String docker_image
+        Int disk_size = 10
+    }
 
+    command <<<
+        set -euxo pipefail
+
+        $MGBPMBIOFXPATH/genome-panels/bin/igv_lmm_wrapper.py \
+        ~{lmm_xls_report_file} \
+        ~{output_bed}
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        # memory: machine_mem_gb + " GB"
+        disks: "local-disk ~{disk_size} SSD"
+        preemptible: 2
+    }
+
+    output {
+        File output_bed_file = "~{output_bed}"
+    }
 }
