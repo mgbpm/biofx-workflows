@@ -1,43 +1,59 @@
 version 1.0
 
+# -----------------------------------------------------------------------------
+
 struct RundirInitialized {
-  Boolean       found_saved_withdrawn_list
-  Array[String] withdrawn_list
-  String        staging_area
+  String          staging_area
+  Boolean         found_saved_withdrawn_list
+  Array[String]   withdrawn_list
+  File?           nullvalue                   # a pathetic hack to get around
+                                              # the WDL's limitations
 }
+
+# -----------------------------------------------------------------------------
 
 workflow BiobankScrubWorkflow {
   input {
-    String         rundir               ### FIXME: devise a global mechanism for resolving standard locations
-    Int            nbatches             = 500
-    String         initial_datadir      = "gs://url/to/default/initial/datadir"
-    String         current_datadir
-    String         database             = "gs://url/to/biobank/database"
-    # String         staging_area
-    File?          maybe_withdrawn_list
+    String   runid
+    File?    maybe_withdrawn_list
+    Int      nbatches             = 500
+    String   scrubsdir            = "gs://url/to/default/scrubsdir"
+    String   initial_datadir      = "gs://url/to/default/initial/datadir"
+    String   current_datadir      = "gs://url/to/default/initial/datadir"
+    String   database             = "gs://url/to/biobank/database"
+    Boolean  force                = false
+    String   docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank_scrubbing:1.0.0"
+  }
 
-    String         docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank_scrubbing:1.0.0"
+  call ShowEnvironment {
+    input:
+      docker_image = docker_image
   }
 
   Object inputs = object {
-    rundir               : rundir,
+    runid                : runid,
+    maybe_withdrawn_list : maybe_withdrawn_list,
     nbatches             : nbatches,
+    scrubsdir            : scrubsdir,
     initial_datadir      : initial_datadir,
     current_datadir      : current_datadir,
     database             : database,
-    maybe_withdrawn_list : maybe_withdrawn_list,
+    force                : force,
     docker_image         : docker_image
   }
 
+  String rundir = scrubsdir + '/' + runid
+
   call MaybeInitializeRundir {
     input:
+      rundir = rundir,
       inputs = inputs
   }
 
   File? maybe_saved_withdrawn_list =
     if MaybeInitializeRundir.info.found_saved_withdrawn_list
     then write_lines(MaybeInitializeRundir.info.withdrawn_list)
-    else read_json(write_json('null'))
+    else MaybeInitializeRundir.info.nullvalue
 
   if (!(   defined(maybe_saved_withdrawn_list)
         || defined(maybe_withdrawn_list))) {
@@ -49,8 +65,8 @@ workflow BiobankScrubWorkflow {
     }
   }
 
-  # FIXME: handle conditions arising from multiple versions of the
-  # withdrawn subjects list
+  # FIXME: handle conditions arising from multiple, inconsistent
+  # versions of the withdrawn subjects list
   File withdrawn_list = select_first([
     maybe_saved_withdrawn_list,
     maybe_withdrawn_list,
@@ -125,6 +141,7 @@ workflow BiobankScrubWorkflow {
   # }
 
   output {
+    File   environment           = ShowEnvironment.environment
     File   scrub_results         = write_json(ScrubBatch.results)
     File   concatenation_results = write_json(ConcatenateShards.results)
     # File   verification_report   = write_json(VerifyRelease.report)
@@ -133,9 +150,10 @@ workflow BiobankScrubWorkflow {
 
 # -----------------------------------------------------------------------------
 
-task MaybeInitializeRundir {
+
+task ShowEnvironment {
   input {
-    Object inputs
+    String  docker_image
   }
 
   String   OUTPUTDIR = "OUTPUT"
@@ -144,16 +162,91 @@ task MaybeInitializeRundir {
   command <<<
   set -o errexit
   set -o pipefail
-  set -o nounset
-  # set -o xtrace
+  # set -o nounset
+  set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  mkdir --parents '~OUTPUTDIR'
-  maybe_initialize_rundir.py '~{write_json(inputs)}' > '~STDOUT'
+  show_environment() {
+      typeset -p
+      rclone version
+  }
+
+  export RCLONE_LOG_LEVEL=DEBUG
+  export RCLONE_STATS_LOG_LEVEL=DEBUG
+
+  ### FIXME: DELETE THE FOLLOWING LINE!!!
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r gs://fc-secure-209c8de0-8bee-473e-bda5-2b0e8f1691b1
+
+  mkdir --parents '~{OUTPUTDIR}'
+
+  exec >&2
+  show_environment | tee '~{STDOUT}'
+
   >>>
 
   output {
-    RundirInitialized info = read_object(STDOUT)
+    File environment = STDOUT
+  }
+
+  runtime {
+    docker: docker_image
+  }
+}
+
+
+task  MaybeInitializeRundir {
+  input {
+    String rundir
+    Object inputs
+  }
+
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
+
+  command <<<
+
+  # (
+  #     showdir() {
+  #         local somedir="${1}"
+  #         printf -- '\n%s\n' "${somedir}"
+  #         ls -Altr "${somedir}"
+  #     }
+
+  #     exec >&2
+  #     tr : '\n' <<<"${PATH}"
+
+  #     showdir /
+  #     showdir "${INSTALLROOT}"
+  #     showdir /extra
+  #     showdir /BACKDOOR
+  #     # showdir /SHARD-BACKDOOR
+  #     showdir /backdoor
+  # )
+
+  # sleep 1
+  # exit 100
+
+  # --------------------------------------------------------------------------
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  export RCLONE_LOG_LEVEL=DEBUG
+  export RCLONE_STATS_LOG_LEVEL=DEBUG
+
+  typeset -p >&2
+  rclone version >&2
+
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{rundir}'
+
+  mkdir --parents '~{OUTPUTDIR}'
+  maybe_initialize_rundir.py '~{rundir}' '~{write_json(inputs)}' > '~{STDOUT}'
+  >>>
+
+  output {
+    RundirInitialized info = read_json(STDOUT)
   }
 
   runtime {
@@ -179,8 +272,10 @@ task  ListWithdrawnSubjects {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  mkdir --parents '~OUTPUTDIR'
-  list_withdrawn_subjects.py '~{rundir}' '~{database}' | sort > '~STDOUT'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{rundir}'
+
+  mkdir --parents '~{OUTPUTDIR}'
+  list_withdrawn_subjects.py '~{rundir}' '~{database}' | sort > '~{STDOUT}'
   >>>
 
   output {
@@ -219,11 +314,13 @@ task  ListDatasetIds {
   #     fi
   # }
   #
-  # mkdir --parents '~OUTPUTDIR'
-  # list '~{base_datadir}' | grep -P '/\d{4}/$' | sort > '~STDOUT'
+  # mkdir --parents '~{OUTPUTDIR}'
+  # list '~{base_datadir}' | grep -P '/\d{4}/$' | sort > '~{STDOUT}'
 
-  mkdir --parents '~OUTPUTDIR'
-  list_dataset_ids.py '~{base_datadir}' > '~STDOUT'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{base_datadir}'
+
+  mkdir --parents '~{OUTPUTDIR}'
+  list_dataset_ids.py '~{base_datadir}' > '~{STDOUT}'
   >>>
 
   output {
@@ -234,6 +331,7 @@ task  ListDatasetIds {
     docker: docker_image
   }
 }
+
 
 task  FindNonCompliant {
   input {
@@ -255,7 +353,21 @@ task  FindNonCompliant {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  mkdir --parents '~OUTPUTDIR'
+  export RCLONE_LOG_LEVEL=DEBUG
+  export RCLONE_STATS_LOG_LEVEL=DEBUG
+
+  typeset -p >&2
+  rclone version >&2
+
+  # LOCATIONS=( '~{withdrawn_list}' '~{current_datadir}' '~{initial_datadir}' )
+  LOCATIONS=( '~{initial_datadir}' )
+  export PATH="${PACKAGESDIR}/biofx-orchestration-utils/bin:${PATH}"
+  for LOCATION in "${LOCATIONS[@]}"
+  do
+      /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r "${LOCATION}"
+  done
+
+  mkdir --parents '~{OUTPUTDIR}'
   find_non_compliant.py    \
       '~{withdrawn_list}'  \
       '~{current_datadir}' \
@@ -272,6 +384,7 @@ task  FindNonCompliant {
     docker: docker_image
   }
 }
+
 
 task  MakeBatches {
   input {
@@ -292,7 +405,9 @@ task  MakeBatches {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  mkdir --parents '~OUTPUTDIR'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{staging_area}'
+
+  mkdir --parents '~{OUTPUTDIR}'
   make_batches.py                    \
       '~{write_json(non_compliant)}' \
       ~{nbatches}                    \
@@ -311,6 +426,7 @@ task  MakeBatches {
     docker: docker_image
   }
 }
+
 
 task  ScrubBatch {
   input {
@@ -332,9 +448,26 @@ task  ScrubBatch {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
+  export RCLONE_LOG_LEVEL=DEBUG
+  export RCLONE_STATS_LOG_LEVEL=DEBUG
+
+  (
+      exec >&2
+      typeset -p
+      rclone version
+      which scrub_batch.py
+      BINDIR="$( dirname "$( which scrub_batch.py )" )"
+      ls -Altrd "${BINDIR}"
+      ls -Altr  "${BINDIR}"
+  )
+
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{staging_area}'
+
+  mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
 
   scrub_batch.py             \
+      --logging-level=DEBUG  \
       '~{withdrawn_list}'    \
       '~{initial_datadir}'   \
       '~{staging_area}'      \
@@ -345,8 +478,8 @@ task  ScrubBatch {
   >>>
 
   output {
-    # String   sequencing_dummy = read_lines(DUMMY)
-    Object   results          = read_object(STDOUT)
+    # String   sequencing_dummy = read_string(DUMMY)
+    Object   results          = read_json(STDOUT)
   }
 
   runtime {
@@ -357,7 +490,8 @@ task  ScrubBatch {
   }
 }
 
-task CollectShards {
+
+task  CollectShards {
   input {
     String          staging_area        # url to a directory for staging
     Array[Object]   non_compliant       # each object in this array has
@@ -378,7 +512,10 @@ task CollectShards {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
+  mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
+
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{staging_area}'
 
   collect_shards.py                  \
       '~{write_json(non_compliant)}' \
@@ -389,7 +526,7 @@ task CollectShards {
   >>>
 
   output {
-    String                 sequencing_dummy = read_lines(DUMMY)
+    String                 sequencing_dummy = read_string(DUMMY)
     Array[Object]   storage_and_batch_array = read_json(STDOUT)
   }
 
@@ -398,7 +535,8 @@ task CollectShards {
   }
 }
 
-task ConcatenateShards {
+
+task  ConcatenateShards {
   # ...
   input {
     Int             storage        # required disk size (in GB)
@@ -420,6 +558,9 @@ task ConcatenateShards {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w vcf-merge-workflow-test -r '~{staging_area}'
+
+  mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
 
   concatenate_shards.py      \
@@ -431,8 +572,8 @@ task ConcatenateShards {
   >>>
 
   output {
-    # String   sequencing_dummy = read_lines(DUMMY)
-    Object   results          = read_object(STDOUT)
+    # String   sequencing_dummy = read_string(DUMMY)
+    Object   results          = read_json(STDOUT)
   }
 
   runtime {
@@ -440,6 +581,7 @@ task ConcatenateShards {
     disks:  "local-disk ~{storage} HDD"
   }
 }
+
 
 task  VerifyRelease {
   input {
@@ -460,7 +602,7 @@ task  VerifyRelease {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  mkdir --parents '~OUTPUTDIR'
+  mkdir --parents '~{OUTPUTDIR}'
   verify_release.py '~{release_dir}' '~{write_json(non_compliant)}' > '~{STDOUT}'
   >>>
 
@@ -472,3 +614,5 @@ task  VerifyRelease {
     docker: docker_image
   }
 }
+
+# -----------------------------------------------------------------------------
