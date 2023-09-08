@@ -72,7 +72,3 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/RiskAllelesWorkflow.wdl
     readMePath: /workflows/pgxrisk/RiskAllelesWorkflow.md
-  - name: BgwgsPanelWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/bgwgs/BgwgsPanelWorkflow.wdl
-    readMePath: /workflows/bgwgs/BgwgsPanelWorkflow.md
