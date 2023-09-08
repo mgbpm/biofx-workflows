@@ -142,6 +142,8 @@ workflow BgwgsPanelWorkflow {
             test_code = test_code,
             all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
             all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file,
+            gcp_project_id = gcp_project_id,
+            workspace_name = workspace_name,
             docker_image = genome_panels_docker_image
     }
 
@@ -200,6 +202,8 @@ task LMMVariantReportTask {
         File duplicate_amplicons_file
         File all_bases_vcf_file
         File all_calls_vcf_file
+        String gcp_project_id
+        String workspace_name
         String docker_image
         Int disk_size = 10
     }
@@ -217,7 +221,10 @@ task LMMVariantReportTask {
         #make a copy of three files for lmm_variant_detection_report.py
         sed 's/chr//' ~{all_bases_vcf_file} >  ~{all_bases_noChr_vcf}
 
-        $MGBPMBIOFXPATH/genome-panels/bin/lmm_variant_detection_report.py \
+        "$MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh" \
+            -p ~{gcp_project_id} -w ~{workspace_name} -n gil > gil-client-config.json
+
+        "$MGBPMBIOFXPATH/genome-panels/bin/lmm_variant_detection_report.py" \
         ~{target_intervals} \
         ~{all_bases_noChr_vcf} \
         ~{all_calls_vcf_file} \
@@ -235,11 +242,9 @@ task LMMVariantReportTask {
         --duplicate_amplicons_file ~{duplicate_amplicons_file} \
         --out ~{xls_report_out} \
         --snp ~{snps_out} \
-        --xml ~{xml_report_out}
+        --xml ~{xml_report_out}\
+        --webservice-config gil-client-config.json 
         
-        # '--webservice-url ' + config['ws_url'] \
-        # '--webservice-login ' + config['ws_login'] \
-        # '--webservice-pass ' + config['ws_pass'] \
     >>>
 
     runtime {
@@ -268,7 +273,7 @@ task CreateBedRegionsFromXLSTask {
     command <<<
         set -euxo pipefail
 
-        $MGBPMBIOFXPATH/genome-panels/bin/igv_lmm_wrapper.py \
+        "$MGBPMBIOFXPATH/genome-panels/bin/igv_lmm_wrapper.py" \
         ~{lmm_xls_report_file} \
         ~{output_bed}
     >>>
