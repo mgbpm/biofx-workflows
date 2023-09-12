@@ -396,7 +396,7 @@ task GenomePanelsRefSitesSortTask {
     command <<<
       set -euxo pipefail
 
-      $MGBPMBIOFXPATH/biofx-genome-panels/bin/create_ref_sites_vcf.py \
+      "$MGBPMBIOFXPATH/biofx-genome-panels/bin/create_ref_sites_vcf.py" \
       -g "~{gvcf_file}" \
       -c "~{all_calls_vcf_file}" \
       -o "~{ref_positions_vcf}"
