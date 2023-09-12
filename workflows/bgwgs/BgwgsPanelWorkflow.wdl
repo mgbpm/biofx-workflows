@@ -122,10 +122,18 @@ workflow BgwgsPanelWorkflow {
             dbsnp_vcf_index = dbsnp_vcf_index
     }
 
+    call CreateRefSitesTask {
+        input:
+            gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
+            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
+            docker = genome_panels_docker_image 
+    }
+
     call HaplotypeCallerGvcfGATK4.GenomePanelsRefSitesSortTask {
         input:
             gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
-            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file
+            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
+            ref_positions_vcf_file = CreateRefSitesTask.ref_positions_vcf_file
     }
 
     call LMMVariantReportTask {
@@ -171,7 +179,7 @@ workflow BgwgsPanelWorkflow {
         File all_calls_vcf_idx_file = GenomePanelsVariantCallingTask.all_calls_vcf_idx_file
         File gvcf_file = GenomePanelsVariantCallingTask.gvcf_file 
         File gvcf_idx_file = GenomePanelsVariantCallingTask.gvcf_idx_file
-        File ref_positions_vcf_file = GenomePanelsRefSitesSortTask.ref_positions_vcf_file
+        File ref_positions_vcf_file = CreateRefSitesTask.ref_positions_vcf_file
         File all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file
         File all_bases_vcf_idx_file = GenomePanelsRefSitesSortTask.all_bases_vcf_idx_file
 
@@ -184,6 +192,47 @@ workflow BgwgsPanelWorkflow {
         # LMM IGV reports
         File follow_up_regions_file = CreateBedRegionsFromXLSTask.output_bed_file
         File lmm_igv_report = IgvReportFromGenomePanelsBedTask.igv_report
+    }
+}
+
+
+task CreateRefSitesTask {
+  input {
+        # Command parameters
+        File gvcf_file
+        File all_calls_vcf_file
+        String docker
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_gb = select_first([mem_gb, 24])
+
+    Int disk_size = ceil(size(gvcf_file, "GB") + size(all_calls_vcf_file, "GB")) + 10
+
+    String sample_basename = basename(gvcf_file, ".g.vcf")
+    String ref_positions_vcf = sample_basename + ".ref_positions.vcf"
+
+    command <<<
+      set -euxo pipefail
+
+      "$MGBPMBIOFXPATH/biofx-genome-panels/bin/create_ref_sites_vcf.py" \
+      -g "~{gvcf_file}" \
+      -c "~{all_calls_vcf_file}" \
+      -o "~{ref_positions_vcf}"
+    >>>
+
+    runtime {
+      docker: docker
+      memory: machine_mem_gb + " GB"
+      disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
+      preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+      File ref_positions_vcf_file = "~{ref_positions_vcf}"
     }
 }
 

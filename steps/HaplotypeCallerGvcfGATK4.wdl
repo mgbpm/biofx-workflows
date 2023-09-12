@@ -374,6 +374,7 @@ task GenomePanelsRefSitesSortTask {
         # Command parameters
         File gvcf_file
         File all_calls_vcf_file
+        File ref_positions_vcf_file
         String gatk_path = "/gatk/gatk"
         String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
 
@@ -390,20 +391,14 @@ task GenomePanelsRefSitesSortTask {
     Int disk_size = ceil(size(gvcf_file, "GB") + size(all_calls_vcf_file, "GB")) + 10
 
     String sample_basename = basename(gvcf_file, ".g.vcf")
-    String ref_positions_vcf = sample_basename + ".ref_positions.vcf"
     String all_bases_vcf = sample_basename + ".allbases.vcf"
 
     command <<<
       set -euxo pipefail
 
-      "$MGBPMBIOFXPATH/biofx-genome-panels/bin/create_ref_sites_vcf.py" \
-      -g "~{gvcf_file}" \
-      -c "~{all_calls_vcf_file}" \
-      -o "~{ref_positions_vcf}"
-
       ~{java_path} -Xms12g -Xmx40g \
       -jar ~{gatk_path}.jar SortVcf \
-      -I ~{ref_positions_vcf} \
+      -I ~{ref_positions_vcf_file} \
       -I ~{all_calls_vcf_file} \
       -O ~{all_bases_vcf}
 
@@ -417,7 +412,6 @@ task GenomePanelsRefSitesSortTask {
     }
 
     output {
-      File ref_positions_vcf_file = "~{ref_positions_vcf}"
       File all_bases_vcf_file = "~{all_bases_vcf}"
       File all_bases_vcf_idx_file = "~{all_bases_vcf}.idx"
     }
