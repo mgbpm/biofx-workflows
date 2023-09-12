@@ -349,8 +349,8 @@ task GenomePanelsVariantCallingTask {
       -A DepthPerAlleleBySample \
       --read-filter MappingQualityReadFilter \
       --minimum-mapping-quality '17' \
-      --read-filter MappingQualityNotZeroReadFilter \ 
-      -ip '15'
+      -ip '15' \
+      --read-filter MappingQualityNotZeroReadFilter 
 
     >>>
 
