@@ -273,7 +273,7 @@ task LMMVariantReportTask {
         "$MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh" \
             -p ~{gcp_project_id} -w ~{workspace_name} -n gil > gil-client-config.json
 
-        "$MGBPMBIOFXPATH/genome-panels/bin/lmm_variant_detection_report.py" \
+        "$MGBPMBIOFXPATH/biofx-genome-panels/bin/lmm_variant_detection_report.py" \
         ~{target_intervals} \
         ~{all_bases_noChr_vcf} \
         ~{all_calls_vcf_file} \
@@ -322,7 +322,7 @@ task CreateBedRegionsFromXLSTask {
     command <<<
         set -euxo pipefail
 
-        "$MGBPMBIOFXPATH/genome-panels/bin/igv_lmm_wrapper.py" \
+        "$MGBPMBIOFXPATH/biofx-genome-panels/bin/igv_lmm_wrapper.py" \
         ~{lmm_xls_report_file} \
         ~{output_bed}
     >>>
