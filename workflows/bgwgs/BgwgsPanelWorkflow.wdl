@@ -291,7 +291,7 @@ task LMMVariantReportTask {
         --duplicate_amplicons_file ~{duplicate_amplicons_file} \
         --out ~{xls_report_out} \
         --snp ~{snps_out} \
-        --xml ~{xml_report_out}\
+        --xml ~{xml_report_out} \
         --webservice-config gil-client-config.json 
         
     >>>
