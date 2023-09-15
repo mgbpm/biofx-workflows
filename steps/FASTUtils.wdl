@@ -80,6 +80,19 @@ task FASTDataLoadTask {
             mv -f "~{vcf_file}.tmp" "~{vcf_file}"
         fi
 
+        # Convert chrM to chrMT
+        if [[ "~{vcf_file}" =~ \.gz$ || "~{vcf_file}" =~ \.GZ$ ]]
+        then
+            gunzip -c "~{vcf_file}" | \
+                sed 's/^chrM\t/chrMT\t/' | \
+                sed 's/ID=chrM,/ID=chrMT,/' | gzip -c > "~{vcf_file}.tmp"
+        else
+            cat "~{vcf_file}" | \
+                sed 's/^chrM\t/chrMT\t/' | \
+                sed 's/ID=chrM,/ID=chrMT,/' > "~{vcf_file}.tmp"
+        fi
+        mv -f "~{vcf_file}.tmp" "~{vcf_file}"
+
         $MGBPMBIOFXPATH/biofx-pyfast/bin/upload_data.py \
             --client-config fast-client-config.json \
             --vcf-file "~{vcf_file}" --target ~{data_load_target} \
