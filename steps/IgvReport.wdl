@@ -37,9 +37,12 @@ task IgvReportFromParsedFASTOutputTask {
             }
         ' "~{parsed_fast_output}" > igv_sites.txt
 
+        # Convert chrMT to chrM
+        sed -i -e 's/^MT\t/M\t/' igv_sites.txt
+
         # Check to make certain there are one or more variants in the file
         #   before building the IGV output
-        num_sites=$(cat igv_sites.txt | grep -vi ^chr | wc -l)
+        num_sites=$(grep -vic ^chr igv_sites.txt)
 
         if [ $num_sites -gt 0 ]
         then
