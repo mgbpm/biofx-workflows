@@ -9,7 +9,7 @@ workflow CopySampleFilesWorkflow {
         Boolean flatten = false
         Boolean recursive = true
         String target_location
-        String orchutils_docker_image
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
         String gcp_project_id
         String workspace_name
     }
