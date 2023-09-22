@@ -81,3 +81,15 @@ workflows:
   - name: BgwgsPanelWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsPanelWorkflow.wdl
+  - name: BiobankRoRAlamutWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRAlamutWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRAlamutWorkflow.md
+  - name: BiobankRoRSamplePrepWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSamplePrepWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRSamplePrepWorkflow.md
+  - name: BiobankRoRSampleLoadingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.md
