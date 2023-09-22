@@ -37,9 +37,15 @@ workflow BiobankShardingWorkflow {
     }
   }
 
+  call ConsolidateBatchedResults {
+    input:
+      batched_results_array = ShardVcfs.results,
+      docker_image          = docker_image
+  }
+
   output {
     # File   environment      = ShowEnvironment.environment
-    File   sharding_results = write_json(ShardVcfs.results)
+    File   sharding_results = ConsolidateBatchedResults.results
   }
 }
 
@@ -188,5 +194,39 @@ task  ShardVcfs {
   }
 }
 
+
+task  ConsolidateBatchedResults {
+  # ...
+  input {
+    Array[Object]   batched_results_array
+    String          docker_image
+  }
+
+  String   OUTPUTDIR = "OUTPUT"
+  String   STDOUT    = OUTPUTDIR + "/STDOUT"
+
+  command <<<
+  set -o errexit
+  # set -o pipefail
+  # set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  mkdir --parents '~{OUTPUTDIR}'
+
+  consolidate_batched_results.py             \
+      '~{write_json(batched_results_array)}' \
+    > '~{STDOUT}'
+
+  >>>
+
+  output {
+    File   results = STDOUT
+  }
+
+  runtime {
+    docker: docker_image
+  }
+}
 
 # -----------------------------------------------------------------------------
