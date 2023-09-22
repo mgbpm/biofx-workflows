@@ -172,6 +172,14 @@ task  ShardVcfs {
   export RCLONE_LOG_LEVEL=DEBUG
   export RCLONE_STATS_LOG_LEVEL=DEBUG
 
+  (
+    exec >&2
+    typeset -p
+    pwd
+    ps -e --format=pid,ppid,%cpu,%mem,vsz,rss,tt,stat,start,etime,time,cmd
+    pstree --arguments --compact-not --long --thread-names --show-parents --show-pids --numeric-sort --ascii
+  )
+
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{base_directory}'
 
   mkdir --parents '~{OUTPUTDIR}'
