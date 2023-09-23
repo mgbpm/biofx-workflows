@@ -9,7 +9,7 @@ workflow BiobankShardingWorkflow {
     # File     areas_tsv
     String   areas_tsv
     String   base_directory
-    String   docker_image   = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank_scrubbing:1.0.0"
+    String   docker_image   = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.0"
   }
 
   # call ShowEnvironment {
