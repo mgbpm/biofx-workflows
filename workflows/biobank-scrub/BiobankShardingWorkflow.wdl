@@ -185,6 +185,7 @@ task  ShardVcfs {
   mkdir --parents '~{OUTPUTDIR}'
 
   shard_vcfs.py              \
+      --logging-level=DEBUG  \
       '~{base_directory}'    \
       '~{write_json(batch)}' \
     > '~{STDOUT}'
