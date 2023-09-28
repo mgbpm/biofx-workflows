@@ -90,9 +90,9 @@ task IgvReportFromGenomePanelsBedTask {
 
         # Check to make certain there are one or more variants in the file
         #   before building the IGV output
-        num_sites=$(wc -l "~{bed_file}")
+        num_sites=$(cat "~{bed_file}" | wc -l)
 
-        if [ $num_sites -gt 0 ]
+        if [ "$num_sites" -gt 0 ]
         then
             create_report "~{bed_file}" "~{ref_fasta}" \
                 --sequence 1 --begin 2 --end 3 --flanking 50 \
