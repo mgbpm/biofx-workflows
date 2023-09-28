@@ -300,6 +300,7 @@ task GenomePanelsVariantCallingTask {
     }
 
     Int machine_mem_gb = select_first([mem_gb, 24])
+    Int command_mem_gb = machine_mem_gb - 1
 
     Float ref_size = size(ref_fasta, "GB") + size(ref_dict, "GB") + size(dbsnp, "GB")
     Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
@@ -312,7 +313,7 @@ task GenomePanelsVariantCallingTask {
     command <<<
       set -euxo pipefail
 
-      ~{gatk_path} --java-options "-Xms12g -Xmx40g" \
+      ~{gatk_path} --java-options "-Xms12g -Xmx~{command_mem_gb}G" \
       HaplotypeCaller \
       --input ~{input_bam} \
       --output ~{gvcf} \
@@ -334,7 +335,7 @@ task GenomePanelsVariantCallingTask {
       --do-not-run-physical-phasing 'true' \
       -ERC BP_RESOLUTION
       
-      ~{gatk_path} --java-options "-Xms12g -Xmx40g" \
+      ~{gatk_path} --java-options "-Xms12g -Xmx~{command_mem_gb}G" \
       GenotypeGVCFs \
       --variant ~{gvcf} \
       --output ~{all_calls_vcf} \
@@ -387,6 +388,7 @@ task GenomePanelsRefSitesSortTask {
     }
 
     Int machine_mem_gb = select_first([mem_gb, 24])
+    Int command_mem_gb = machine_mem_gb - 1
 
     Int disk_size = ceil(size(gvcf_file, "GB") + size(all_calls_vcf_file, "GB")) + 10
 
@@ -396,7 +398,7 @@ task GenomePanelsRefSitesSortTask {
     command <<<
       set -euxo pipefail
 
-      ~{java_path} -Xms12g -Xmx40g \
+      ~{java_path} -Xms12g "-Xmx~{command_mem_gb}G" \
       -jar ~{gatk_path}.jar SortVcf \
       -I ~{ref_positions_vcf_file} \
       -I ~{all_calls_vcf_file} \
