@@ -14,8 +14,7 @@ workflow BgwgsPanelWorkflow {
         # Docker images
         String orchutils_docker_image
         String genome_panels_docker_image
-        # subject, sample id and data location
-        String subject_id
+        # Run, sample id and data location
         String sample_id
         String sample_run_id
         String sample_lmm_id
@@ -48,7 +47,7 @@ workflow BgwgsPanelWorkflow {
                 data_location = sample_data_location,
                 file_types = ["bam"],
                 recursive = false,
-                file_match_keys = [subject_id, sample_id],
+                file_match_keys = [sample_lmm_id, sample_id],
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
@@ -63,7 +62,7 @@ workflow BgwgsPanelWorkflow {
                 data_location = sample_data_location,
                 file_types = ["cram"],
                 recursive = false,
-                file_match_keys = [subject_id, sample_id],
+                file_match_keys = [sample_lmm_id, sample_id],
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
