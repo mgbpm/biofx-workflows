@@ -313,7 +313,7 @@ task GenomePanelsVariantCallingTask {
     command <<<
       set -euxo pipefail
 
-      ~{gatk_path} --java-options "-Xms12g -Xmx~{command_mem_gb}G" \
+      ~{gatk_path} --java-options "-Xmx~{command_mem_gb}G" \
       HaplotypeCaller \
       --input ~{input_bam} \
       --output ~{gvcf} \
@@ -335,7 +335,7 @@ task GenomePanelsVariantCallingTask {
       --do-not-run-physical-phasing 'true' \
       -ERC BP_RESOLUTION
       
-      ~{gatk_path} --java-options "-Xms12g -Xmx~{command_mem_gb}G" \
+      ~{gatk_path} --java-options "-Xmx~{command_mem_gb}G" \
       GenotypeGVCFs \
       --variant ~{gvcf} \
       --output ~{all_calls_vcf} \
