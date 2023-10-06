@@ -15,8 +15,8 @@ workflow BgwgsPanelWorkflow {
         String orchutils_docker_image
         String genome_panels_docker_image
         # Run, sample id and data location
+        String subject_id
         String sample_id
-        String sample_run_id
         String sample_lmm_id
         String sample_barcode
         String batch_id
@@ -47,7 +47,7 @@ workflow BgwgsPanelWorkflow {
                 data_location = sample_data_location,
                 file_types = ["bam"],
                 recursive = false,
-                file_match_keys = [sample_lmm_id, sample_id],
+                file_match_keys = [sample_lmm_id, subject_id],
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
@@ -62,7 +62,7 @@ workflow BgwgsPanelWorkflow {
                 data_location = sample_data_location,
                 file_types = ["cram"],
                 recursive = false,
-                file_match_keys = [sample_lmm_id, sample_id],
+                file_match_keys = [sample_lmm_id, subject_id],
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
@@ -137,8 +137,8 @@ workflow BgwgsPanelWorkflow {
 
     call LMMVariantReportTask {
         input:
+            subject_id = subject_id,
             sample_id = sample_id,
-            sample_run_id = sample_run_id,
             sample_lmm_id = sample_lmm_id,
             sample_barcode = sample_barcode,
             batch_id = batch_id,
@@ -166,7 +166,7 @@ workflow BgwgsPanelWorkflow {
             bed_file = CreateBedRegionsFromXLSTask.output_bed_file,
             sample_bam = sample_bam,
             sample_bai = sample_bai,
-            output_basename = sample_run_id + '__' + sample_lmm_id + '__' + sample_id + '__' + sample_barcode + '__' + batch_id + ".igvreport",
+            output_basename = sample_id + '__' + sample_lmm_id + '__' + subject_id + '__' + sample_barcode + '__' + batch_id + ".igvreport",
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
             docker_image = igvreport_docker_image
@@ -238,8 +238,8 @@ task CreateRefSitesTask {
 
 task LMMVariantReportTask {
     input {
+        String subject_id
         String sample_id
-        String sample_run_id
         String sample_lmm_id
         String sample_barcode
         String batch_id
@@ -258,7 +258,7 @@ task LMMVariantReportTask {
 
     String sample_basename = basename(all_bases_vcf_file, ".allbases.vcf")
     String all_bases_noChr_vcf = sample_basename + ".allbases.noChr.vcf"
-    String lmm_vc_prefix = sample_run_id + '__' + sample_lmm_id + '__' + sample_id + '__' + sample_barcode + '__' + batch_id
+    String lmm_vc_prefix = sample_id + '__' + sample_lmm_id + '__' + subject_id + '__' + sample_barcode + '__' + batch_id
     String xls_report_out = lmm_vc_prefix + '.variantReport.xls'
     String snps_out = lmm_vc_prefix + '.cleaned.common_ysnps.txt'
     String xml_report_out = lmm_vc_prefix + '.variantReport.xml'
@@ -281,10 +281,10 @@ task LMMVariantReportTask {
         --bait-set ~{bait_file} \
         --filter-on-test-code \
         --filter-on-gi-reference \
-        --run-id ~{sample_run_id} \
+        --run-id ~{sample_id} \
         --container-id ~{sample_lmm_id} \
         --batch-id ~{batch_id} \
-        --accession-id ~{sample_id} \
+        --accession-id ~{subject_id} \
         --index-barcode ~{sample_barcode} \
         --extra_amplicons_file ~{extra_amplicons_file} \
         --duplicate_amplicons_file ~{duplicate_amplicons_file} \
