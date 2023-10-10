@@ -9,11 +9,11 @@ workflow BgwgsPanelWorkflow {
 
     input {
         # GCP project and Terra workspace for secret retrieval
-        String gcp_project_id
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Docker images
-        String orchutils_docker_image
-        String genome_panels_docker_image
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
+        String genome_panels_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genome-panels:0.0.1"
         # Run, sample id and data location
         String subject_id
         String sample_id
@@ -37,7 +37,7 @@ workflow BgwgsPanelWorkflow {
         File dbsnp
         File dbsnp_vcf_index
         # Reporting steps
-        String igvreport_docker_image
+        String igvreport_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
     }
 
     # Prefer a BAM file to avoid conversion

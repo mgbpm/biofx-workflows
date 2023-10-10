@@ -4,12 +4,12 @@ The BGWGS (bigwigs) Genome Panels Workflow starts with a single CRAM or BAM file
 ## Input Parameters
  Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| String | gcp_project_id | Yes | The GCP project to fetch secrets from | |
+| String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
-| String | orchutils_docker_image | Yes | The name of the orchestration utils Docker image for FAST and file movement tasks | |
-| String | genome_panels_docker_image | Yes | The name of the bcftools Docker image for VCF annotation | |
-| String | sample_id | Yes | The sample id associated with the data (PM-ID) | |
-| String | sample_run_id | Yes | The sample Run id associated with the data (SM-ID) | |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230719" |
+| String | genome_panels_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genome-panels:0.0.1" |
+| String | subject_id | Yes | The sample id associated with the data (PM-ID) | |
+| String | sample_id | Yes | The sample Run id associated with the data (SM-ID) | |
 | String | sample_lmm_id | Yes | The sample LMM id associated with the data (LMM-ID) | |
 | String | sample_barcode | Yes | The sample barcode associated with the data | |
 | String | batch_id | Yes | The batch id associated with the data | |
@@ -20,13 +20,13 @@ The BGWGS (bigwigs) Genome Panels Workflow starts with a single CRAM or BAM file
 | File | ref_dict | Yes | The genome reference dict file | |
 | File | ref_fasta | Yes | The genome reference fasta file | |
 | File | ref_fasta_index | Yes | The genome reference fasta index file | |
-| File | bait_file | No | File containing list of bait intervals | |
-| File | extra_amplicons_file | No | File containing list of extra amplicons | |
-| File | duplicate_amplicons_file | No | File containing list of duplicate amplicons | |
-| File | target_intervals | No | File containing list of interval files for Haplotype Caller | |
-| File | dbsnp | No | HG38 DBSNP vcf file | |
-| File | dbsnp_vcf_index | No | HG38 DBSNP vcf index file | |
-| String | igvreport_docker_image | Yes | The name of the IGV Docker image for the IGV report generation task | |
+| File | bait_file | Yes | File containing list of bait intervals | |
+| File | extra_amplicons_file | Yes | File containing list of extra amplicons | |
+| File | duplicate_amplicons_file | Yes | File containing list of duplicate amplicons | |
+| File | target_intervals | Yes | File containing list of interval files for Haplotype Caller | |
+| File | dbsnp | Yes | HG38 DBSNP vcf file | |
+| File | dbsnp_vcf_index | Yes | HG38 DBSNP vcf index file | |
+| String | igvreport_docker_image | No | The name of the IGV Docker image for the IGV report generation task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
 
 
 ## Output Parameters
