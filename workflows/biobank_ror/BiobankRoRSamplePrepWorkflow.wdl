@@ -13,7 +13,8 @@ workflow IndividualSamplePrepWorkflow {
         File? target_roi_bed
         Boolean is_sharded
         # bcftools docker image
-        String bcftools_docker_image
+        String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
+        String ubuntu_docker_image = "ubuntu:latest"
     }
 
     ## Test inputs and fail if not correct or compatible
@@ -112,17 +113,24 @@ workflow IndividualSamplePrepWorkflow {
                 input:
                     input_vcfs = select_first([FilterVCFs.output_vcf_gz, dataset_vcfs]),
                     sorted = true,
-                    output_basename = dataset + "_" + ".concat",
+                    output_basename = dataset + ".concat",
                     preemptible = 0,
                     docker_image = bcftools_docker_image
             }
         }
-        call MakeIndividualVCFsTask as MakeIndividualVCFs {
+        call BatchSamplesTask as MakeBatches {
             input:
-                input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, select_first([FilterVCFs.output_vcf_gz, dataset_vcfs])[0]]),
                 sample_ids_list = sample_ids_list,
-                output_basename = dataset,
-                docker_image = bcftools_docker_image
+                docker_image = ubuntu_docker_image
+        }
+        scatter (samples_batch in MakeBatches.sample_batches){
+            call MakeIndividualVCFsTask as MakeIndividualVCFs {
+                input:
+                    input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, select_first([FilterVCFs.output_vcf_gz, dataset_vcfs])[0]]),
+                    sample_ids_list = samples_batch,
+                    output_basename = dataset,
+                    docker_image = bcftools_docker_image
+            }
         }
     }
     # If data structure is individual VCFs, concat them for Alamut annotation and loading
@@ -142,13 +150,33 @@ workflow IndividualSamplePrepWorkflow {
     }
 
     ## Write a table containing individual VCFs info to upload to the Terra workspace
-    Array[File] samples_to_load = select_first([MakeIndividualVCFs.output_vcf_gz, FilterVCFs.output_vcf_gz, dataset_vcfs])
-    call WriteTsvTask as WriteTsv {
-        input:
-            input_files = samples_to_load,
-            dataset = dataset,
-            output_basename = dataset,
-            docker_image = bcftools_docker_image
+    if (defined(MakeIndividualVCFs.output_vcf_gz)) {
+        scatter (vcf_batch in MakeIndividualVCFs.output_vcf_gz) {
+            call WriteTSVTask as WriteIndividualVCFsTSV {
+                input:
+                    input_files = vcf_batch,
+                    final_tsv = false,
+                    dataset = dataset,
+                    output_basename = dataset,
+                    docker_image = bcftools_docker_image
+            }
+        }
+        call MergeTSVsTask as MergeIndividualVCFsTSVs {
+            input:
+                input_tsvs = WriteIndividualVCFsTSV.output_tsv,
+                output_basename = dataset,
+                docker_image = ubuntu_docker_image
+        }
+    }
+    if (!defined(MakeIndividualVCFs.output_vcf_gz)) {
+            call WriteTSVTask as WriteOtherTSV {
+                input:
+                    input_files = select_first([FilterVCFs.output_vcf_gz, dataset_vcfs]),
+                    final_tsv = true,
+                    dataset = dataset,
+                    output_basename = dataset,
+                    docker_image = bcftools_docker_image
+            }
     }
 
     output {
@@ -157,11 +185,39 @@ workflow IndividualSamplePrepWorkflow {
         # Concat VCF
         File concat_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz])
         # Individual VCFs
-        Array[File]? individual_vcfs = MakeIndividualVCFs.output_vcf_gz
+        Array[File] individual_vcfs = flatten(select_first([MakeIndividualVCFs.output_vcf_gz]))
         # File to use for batch annotation
         File batch_annotation_input_file = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz, select_first([FilterVCFs.output_vcf_gz, dataset_vcfs])[0]])
         # List of paths for individual VCFs (Table to upload to Terra)
-        File dataset_sample_table = WriteTsv.output_tsv
+        File dataset_sample_table = select_first([MergeIndividualVCFsTSVs.output_tsv, WriteOtherTSV.output_tsv])
+    }
+}
+
+task BatchSamplesTask {
+    input {
+        File sample_ids_list
+        Int batch_size = 5000
+        String docker_image
+        Int disk_size = 10 + ceil(size(sample_ids_list, "GB"))
+        Int preemptible = 1
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        mkdir batches
+        # Split the sample IDs list into batches of 5000 samples
+        split "~{sample_ids_list}" "batches/batch_" -l "~{batch_size}" -d
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
+    }
+
+    output {
+        Array[File] sample_batches = glob("batches/*")
     }
 }
 
@@ -172,6 +228,7 @@ task MakeIndividualVCFsTask {
         String docker_image
         String output_basename
         Int disk_size = 10 + ceil(size(input_vcf, "GB") * 2)
+        Int mem_size = 4
         Int preemptible = 1
     }
 
@@ -194,6 +251,7 @@ task MakeIndividualVCFsTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
         preemptible: preemptible
     }
 
@@ -202,23 +260,30 @@ task MakeIndividualVCFsTask {
     }
 }
 
-task WriteTsvTask {
+task WriteTSVTask {
     input {
         Array[File] input_files
+        Boolean final_tsv
         String dataset
-        String output_basename
         String docker_image
-        Int disk_size = 10 + ceil(size(input_files[0], "GB") * 2.2)
+        String output_basename
+        Int disk_size = 10 + ceil(size(input_files, "GB"))
         Int preemptible = 1
     }
 
     command <<<
-        # Write the tsv header:
+        set -euxo pipefail
+
+        # If the tsv is the final output tsv, then write the header first
+            # Otherwise this will be written during the merging of all tsvs
+        if [ "~{final_tsv}" ]
+        then
             # dataset_sample_id: dataset and sample ID, e.g. Biobank 1004 subject 10000054 = “1004-10000054”
             # vcf_file: path to the individual VCF file for the sample
             # dataset_id: dataset number, e.g. Biobank 1004 = "1004"
             # sample_id: sample ID
-        printf "entity:dataset_sample_id\tvcf_file\tdataset_id\tsample_id\n" > "~{output_basename}_dataset_sample_table.tsv"
+            printf "entity:dataset_sample_id\tvcf_file\tdataset_id\tsample_id\n" > "~{output_basename}_dataset_sample_table.tsv"
+        fi
 
         # Write info for each individual sample VCF to the dataset_sample_table.tsv
         for c in '~{sep="' '" input_files}'
@@ -231,6 +296,43 @@ task WriteTsvTask {
             dataset_sample_id="~{dataset}-${sample_id}"
             # Write the info
             printf "${dataset_sample_id}\t${vcf_path}\t~{dataset}\t${sample_id}\n" >> "~{output_basename}_dataset_sample_table.tsv"
+        done
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
+    }
+
+    output {
+        File output_tsv = "~{output_basename}_dataset_sample_table.tsv"
+    }
+}
+
+task MergeTSVsTask {
+    input {
+        Array[File] input_tsvs
+        String output_basename
+        String docker_image
+        Int disk_size = 10
+        Int preemptible = 1
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        # Write the tsv header:
+            # dataset_sample_id: dataset and sample ID, e.g. Biobank 1004 subject 10000054 = “1004-10000054”
+            # vcf_file: path to the individual VCF file for the sample
+            # dataset_id: dataset number, e.g. Biobank 1004 = "1004"
+            # sample_id: sample ID
+        printf "entity:dataset_sample_id\tvcf_file\tdataset_id\tsample_id\n" > "~{output_basename}_dataset_sample_table.tsv"
+
+        # Add info from each tsv to the final output
+        for c in '~{sep="' '" input_tsvs}'
+        do
+            cat $c >> "~{output_basename}_dataset_sample_table.tsv"
         done
     >>>
 
