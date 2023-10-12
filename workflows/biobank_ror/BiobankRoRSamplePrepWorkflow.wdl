@@ -131,6 +131,22 @@ workflow IndividualSamplePrepWorkflow {
                     output_basename = dataset,
                     docker_image = bcftools_docker_image
             }
+            # Write a table containing individual VCFs info
+            call WriteTSVTask as WriteIndividualVCFsTSV {
+                input:
+                    input_files = MakeIndividualVCFs.output_vcf_gz,
+                    final_tsv = false,
+                    dataset = dataset,
+                    output_basename = dataset,
+                    docker_image = bcftools_docker_image
+            }
+        }
+        # Merge tables containing individual VCFs info (for uploading to Terra)
+        call MergeTSVsTask as MergeIndividualVCFsTSVs {
+            input:
+                input_tsvs = WriteIndividualVCFsTSV.output_tsv,
+                output_basename = dataset,
+                docker_image = ubuntu_docker_image
         }
     }
     # If data structure is individual VCFs, concat them for Alamut annotation and loading
@@ -150,33 +166,15 @@ workflow IndividualSamplePrepWorkflow {
     }
 
     ## Write a table containing individual VCFs info to upload to the Terra workspace
-    if (defined(MakeIndividualVCFs.output_vcf_gz)) {
-        scatter (vcf_batch in MakeIndividualVCFs.output_vcf_gz) {
-            call WriteTSVTask as WriteIndividualVCFsTSV {
-                input:
-                    input_files = vcf_batch,
-                    final_tsv = false,
-                    dataset = dataset,
-                    output_basename = dataset,
-                    docker_image = bcftools_docker_image
-            }
-        }
-        call MergeTSVsTask as MergeIndividualVCFsTSVs {
-            input:
-                input_tsvs = WriteIndividualVCFsTSV.output_tsv,
-                output_basename = dataset,
-                docker_image = ubuntu_docker_image
-        }
-    }
     if (!defined(MakeIndividualVCFs.output_vcf_gz)) {
-            call WriteTSVTask as WriteOtherTSV {
-                input:
-                    input_files = select_first([FilterVCFs.output_vcf_gz, dataset_vcfs]),
-                    final_tsv = true,
-                    dataset = dataset,
-                    output_basename = dataset,
-                    docker_image = bcftools_docker_image
-            }
+        call WriteTSVTask as WriteOtherTSV {
+            input:
+                input_files = select_first([FilterVCFs.output_vcf_gz, dataset_vcfs]),
+                final_tsv = true,
+                dataset = dataset,
+                output_basename = dataset,
+                docker_image = bcftools_docker_image
+        }
     }
 
     output {
@@ -208,6 +206,12 @@ task BatchSamplesTask {
         mkdir batches
         # Split the sample IDs list into batches of 5000 samples
         split "~{sample_ids_list}" "batches/batch_" -l "~{batch_size}" -d
+
+        # End all batch lists with a new line for easy reading later
+        for file in batches/*
+        do
+            printf "\n" >> $file
+        done
     >>>
 
     runtime {
@@ -276,7 +280,7 @@ task WriteTSVTask {
 
         # If the tsv is the final output tsv, then write the header first
             # Otherwise this will be written during the merging of all tsvs
-        if [ "~{final_tsv}" ]
+        if [ "~{final_tsv}" == "true" ]
         then
             # dataset_sample_id: dataset and sample ID, e.g. Biobank 1004 subject 10000054 = “1004-10000054”
             # vcf_file: path to the individual VCF file for the sample
