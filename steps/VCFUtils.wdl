@@ -19,7 +19,7 @@ task SortVCFTask {
     command <<<
         set -euxo pipefail
 
-        bcftools sort --max-mem ~{sort_max_mem}G --output-type z "~{output_basename}_tmp.vcf.gz" > "~{output_basename}.vcf.gz"
+        bcftools sort --max-mem ~{sort_max_mem}G --output-type z "~{input_vcf}" > "~{output_basename}.vcf.gz"
 
         # Build a new index file if desired
         if [ "~{output_index}" == "true" ]
@@ -244,5 +244,40 @@ task ExtractSamplesFromVCFTask {
 
     output {
         File output_vcf_gz = "~{output_basename}.vcf.gz"
+    }
+}
+
+task ConvertBCFTask {
+    input {
+        File input_bcf
+        Boolean output_index = false
+        String index_format = "csi" # either "csi" or "tbi"
+        String output_basename = sub(basename(input_bcf), "\\.(bcf|BCF|bcf.gz|BCF.GZ|bcf.bgz|BCF.BGZ)$", "")
+        String docker_image
+        Int disk_size = 10 + ceil(size(input_bcf, "GB") * 2.5)
+        Int preemptible = 1
+        File? empty_output_placeholder
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        # Convert based on desired file output format and create index if desired
+        bcftools convert --output-type z --output "~{output_basename}.vcf.gz" "~{input_bcf}"
+        if [ "~{output_index}" == "true" ]
+        then
+            bcftools index --~{index_format} "~{output_basename}.vcf.gz"
+        fi
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: preemptible
+    }
+
+    output {
+        File? output_vcf_gz = "~{output_basename}.vcf.gz"
+        File? output_vcf_idx = if output_index then "~{output_basename}.vcf.gz.~{index_format}" else empty_output_placeholder
     }
 }

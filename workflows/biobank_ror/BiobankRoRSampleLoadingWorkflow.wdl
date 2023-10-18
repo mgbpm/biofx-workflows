@@ -13,18 +13,18 @@ workflow SampleLoadingWorkflow {
         String dataset
         String batch
         # GCP project and Terra workspace for secret retrieval
-        String gcp_project_id
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker image
-        String orchutils_docker_image
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921"
         # reference genome
         String reference_build = "GRCh38"
         # qceval inputs
         String qceval_project_type = "WES"
-        String qceval_docker_image
+        String qceval_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20231006"
         # FAST loading inputs
-        Boolean has_haploid_sites
-        String sample_data_load_config_name
+        Boolean has_haploid_sites = false
+        String sample_data_load_config_name = "Sample_VCF_PPM_Eval"
     }
 
     # Annotate individual sample VCF with QCEval INFO field

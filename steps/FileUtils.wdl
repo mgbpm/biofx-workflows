@@ -127,7 +127,8 @@ task FetchFilesTask {
         grep -i "[.]cram$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-cram.txt
         grep -i "[.]crai$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-crai.txt
         grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-vcf.txt
-        grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" | sort | head -1 | xargs basename > target-file-list-vcfidx.txt
+        grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx|csi)$" | sort | head -1 | xargs basename > target-file-list-vcfidx.txt
+        grep -iE "[.](bcf|bcf.gz)$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-bcf.txt
 
         # diagnostic output for debugging
         ls -al "${ROOTDIR}/fetched"
@@ -148,6 +149,7 @@ task FetchFilesTask {
         File? crai = if size("target-file-list-crai.txt") > 0 then glob_dir + read_string("target-file-list-crai.txt") else empty_output_placeholder
         File? vcf = if size("target-file-list-vcf.txt") > 0 then glob_dir + read_string("target-file-list-vcf.txt") else empty_output_placeholder
         File? vcf_index = if size("target-file-list-vcfidx.txt") > 0 then glob_dir + read_string("target-file-list-vcfidx.txt") else empty_output_placeholder
+        File? bcf = if size("target-file-list-bcf.txt") > 0 then glob_dir + read_string("target-file-list-bcf.txt") else empty_output_placeholder
     }
 }
 

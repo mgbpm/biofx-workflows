@@ -53,6 +53,7 @@ Retrieves files from a location and places them in the task directory.
 * File? crai - the cram index file, if present; if multiple match, the first when sorted alphanumerically
 * File? vcf - the vcf or gvcf file, if present; if multiple match, the first when sorted alphanumerically
 * File? vcf_index - the vcf or gvcf index file, if present; if multiple match, the first when sorted alphanumerically
+* File? bcf - the bcf or bcfgz file, if present; if multiple match, the first when sorted alphanumerically
 * Array[File] all_files - all retrieved files
 
 ## DownloadOutputsTask

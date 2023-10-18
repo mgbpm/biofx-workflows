@@ -4,13 +4,19 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 ## Input Parameters
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| Array[Pair[File,File]] | dataset_files | Yes | An array where each item in the array is a vcf file-index pair; the left being the vcf and the right being the corresponding index file | |
-| File | sample_ids_list | Yes | A tsv file containing sample IDs from the dataset | |
+| Array[String] | filenames | Yes | List of input file names | |
+| Array[String] | file_locations | Yes | List of Wasabi or GCP locations for input files | |
+| String | fetch_file_type | Yes | Type of input file that is being fetched; either "vcf" or "bcf" | |
+| File | sample_ids_list | No | A tsv file containing sample IDs from the dataset; if not provided, one will be created from the fetched files | |
 | String | dataset | Yes | Name of Biobank dataset | |
-| String | dataset_structure | Yes | Whether the dataset is made of joint VCFs or individual sample VCFS; input either "individual" or "joint" | |
-| File | target_roi_bed | Yes | BED file containing gene regions; the VCFs in the dataset will be filtered to these regions | |
+| String | dataset_structure | Yes | Whether the dataset is made of joint VCFs or individual sample VCFS; either "individual" or "joint" | |
+| File | target_roi_bed | No | BED file containing gene regions; the VCFs in the dataset will be filtered to these regions | |
 | Boolean | is_sharded | Yes | Whether or not the input data is sharded | |
-| String | bcftools_docker_image | Yes | The name of the bcftools Docker image for VCF annotation | |
+| String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921" |
+| String | ubuntu_docker_image | No | The name of the ubuntu Docker image | "ubuntu:latest" |
+| String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
+| String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
 
 ## Output Parameters
 | Type | Name | When | Description |

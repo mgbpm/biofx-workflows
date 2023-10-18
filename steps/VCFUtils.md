@@ -11,7 +11,7 @@ Sorts the input vcf with the option of creating an index file for the final sort
 * Boolean output_index - optional - If true, an index file will be created for the final sorted file; Defaults to false
 * String index_format - optional - The type of format for the index file if output_index is true; Defaults to "csi" with the other option being "tbi"
 * String docker_image - required - Docker image to run; must have bcftools in the path
-* Int disk_size - optional - disk size to allocate in GB; defaults to 10 plus the input VCF size times 20
+* Int disk_size - optional - disk size to allocate in GB; defaults to 10 plus the input VCF size times 23
 * Int mem_size - optional - memory to allocate in GB; defaults to 4 if the input VCF is less than 10GB, 8 otherwise
 * Float sort_max_mem - optional - number of GBs for the `--max-mem` parameter; defaults to 0.75 of the memory size
 * Int preemptible - optional - the preemptible runtime setting
@@ -70,7 +70,7 @@ Concatenates a list of VCF files
 * String output_basename - optional - the basename that will be used to name the output file, defaults to the first input
   VCF name with file extensions removed and ".concat" added
 * String docker_image - required - Docker image to run; must have bcftools in the path
-* Int disk_size - optional - disk size to allocation in GB; defaults to 10 plus the input VCFs size times 20
+* Int disk_size - optional - disk size to allocation in GB; defaults to 10 plus the input VCFs size times 30
 * Int mem_size - optional - memory to allocate in GB; defaults to 4 if the input VCFs is less than 10GB, 8 otherwise
 * Float sort_max_mem - optional - number of GBs for the `--max-mem` parameter; defaults to 0.75 of the memory size
 * Int preemptible - optional - the preemptible runtime setting
@@ -94,3 +94,19 @@ Extracts one or more samples from a joint VCF file
 
 ## Output Parameters
 * File output_vcf_gz - the output VCF file
+
+# ConvertBCFTask
+
+## Input Parameters
+* File input_bcf - required - the input bcf file
+* Boolean output_index - optional - whether or not to create an index for the output vcf; Default is false
+* String index_format - optional - format for the output vcf index file (options are "csi" or "tbi"); Default is "csi"
+* String output_basename - optional - the basename that will be used to name the output file, defaults to the input
+  VCF name with file extensions removed and ".subset" added
+* String docker_image - required - Docker image to run; must have bcftools in the path
+* Int disk_size - optional - disk size to allocation in GB; defaults to 10 plus the input bcf times 2.5
+* Int preemptible - optional - the preemptible runtime setting
+
+## Output Parameters
+* File output_vcf_gz - the output VCF file
+* File output_vcf_idx - the output VCF's index file (if desired)

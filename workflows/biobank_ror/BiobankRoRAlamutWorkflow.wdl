@@ -13,12 +13,12 @@ workflow LoadingAlamutAndGnomadWorkflow {
         # File for batch annotation
         File batch_annotation_input
         # GCP project and Terra workspace for secret retrieval
-        String gcp_project_id
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker image
-        String orchutils_docker_image
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921"
         # bcftools docker image
-        String bcftools_docker_image
+        String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # reference genome
         String reference_build = "GRCh38"
         # alamut inputs
@@ -30,7 +30,7 @@ workflow LoadingAlamutAndGnomadWorkflow {
         String alamut_user_secret_name = "alamut-batch-ini-user"
         Int alamut_queue_limit = 4
         String alamut_queue_folder = "gs://biofx-task-queue/alamut"
-        String alamut_docker_image
+        String alamut_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
         Boolean alamut_save_working_files = false
         String alamut_anno_src_id = "228"
         String alamut_anno_min_age = "P6M"
@@ -40,9 +40,9 @@ workflow LoadingAlamutAndGnomadWorkflow {
         Array[String] gnomad_headers
         String gnomad_column_list = "CHROM,POS,INFO/DP_gnomadG"
         # FAST loading inputs
-        Boolean has_haploid_sites
+        Boolean has_haploid_sites = false
         String gnomad_data_load_config_name
-        String alamut_data_load_config_name
+        String alamut_data_load_config_name = "Alamut"
     }
 
     # Pre-filter the concat/whole VCF file to input to Alamut to remove
