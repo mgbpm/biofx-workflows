@@ -216,7 +216,7 @@ workflow IndividualSamplePrepWorkflow {
                 docker_image = ubuntu_docker_image
         }
         scatter (samples_batch in MakeBatches.sample_batches) {
-            Int individual_vcf_disk_space = ceil(length(read_lines(samples_batch)) / 10) + 50
+            Int individual_vcf_disk_space = ceil(length(read_lines(samples_batch)) / 15) + 50
             call MakeIndividualVCFsTask as MakeIndividualVCFs {
                 input:
                     input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, select_first([filtered_files, dataset_files])[0]]),
@@ -336,6 +336,11 @@ task BatchSamplesTask {
         mkdir batches
         # Split the sample IDs list into batches of samples
         split "~{sample_ids_list}" "batches/batch_" -l "~{batch_size}" -d
+
+        # Add new line at end of batch files (for reading later)
+        for file in batches/*; do
+            printf "\n" >> $file
+        done
     >>>
 
     runtime {
@@ -418,7 +423,8 @@ task WriteTSVTask {
         for c in '~{sep="' '" input_files}'
         do
             vcf_path=$(echo $c | sed 's/\/cromwell_root\//gs:\/\//')
-            sample_id=$(bcftools query --list-samples $c)
+            remove="~{dataset}_"
+            sample_id=$(basename -s .vcf.gz $c | sed "s|$remove||")
             dataset_sample_id="~{dataset}-${sample_id}"
             printf "${dataset_sample_id}\t${vcf_path}\t~{dataset}\t${sample_id}\n" >> "~{output_basename}_dataset_sample_table.tsv"
         done
