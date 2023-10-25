@@ -248,6 +248,7 @@ workflow BgwgsWorkflow {
         String alamut_user_secret_name = "alamut-batch-ini-user"
         Int alamut_queue_limit = 4
         String alamut_queue_folder = "gs://biofx-task-queue/alamut"
+        Int alamut_queue_wait_limit_hrs = 16
         String alamut_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
         Boolean alamut_save_working_files = false
         String alamut_anno_src_id = "228"
@@ -268,11 +269,17 @@ workflow BgwgsWorkflow {
         Array[String] fast_annotated_sample_data_regions
         Array[String]? fast_annotated_sample_data_scripts
         String fast_annotated_sample_data_saved_filter_name
+        Int fast_data_load_wait_interval_secs = 300
+        Int fast_data_load_wait_max_intervals = 144
+        Int fast_adi_wait_interval_secs = 600
+        Int fast_adi_wait_max_intervals = 144
         # Reporting steps
         String igvreport_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
         String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "S"
+        Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]
+        Array[File] igv_track_index_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz.tbi" ]
     }
 
     # Prefer a BAM file to avoid conversion
@@ -492,6 +499,7 @@ workflow BgwgsWorkflow {
             alamut_user_secret_name = alamut_user_secret_name,
             alamut_queue_limit = alamut_queue_limit,
             alamut_queue_folder = alamut_queue_folder,
+            alamut_queue_wait_limit_hrs = alamut_queue_wait_limit_hrs,
             docker_image = alamut_docker_image,
             output_working_files = alamut_save_working_files
     }
@@ -558,12 +566,12 @@ workflow BgwgsWorkflow {
         }
     }
 
-    # Wait for data loads to complete
+    # Wait for up to 12 hours data loads to complete
     call FASTUtils.FASTWaitForDataLoadsTask {
         input:
             data_load_ids = select_all([QCEvalLoadTask.data_load_id, AlamutLoadTask.data_load_id, GnomadLoadTask.data_load_id]),
-            check_interval_secs = 300,
-            max_checks = 72,
+            check_interval_secs = fast_data_load_wait_interval_secs,
+            max_checks = fast_data_load_wait_max_intervals,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
             docker_image = orchutils_docker_image
@@ -584,11 +592,11 @@ workflow BgwgsWorkflow {
     # Create annotated sample data
     if (FASTWaitForDataLoadsTask.wait_result.total == FASTWaitForDataLoadsTask.wait_result.succeeded) {
 
-        # Wait up to 12 hours for annotation data initialization to complete
+        # Wait up to 24 hours for annotation data initialization to complete
         call FASTUtils.FASTWaitForADITask {
             input:
-                check_interval_secs = 600,
-                max_checks = 72,
+                check_interval_secs = fast_adi_wait_interval_secs,
+                max_checks = fast_adi_wait_max_intervals,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
                 docker_image = orchutils_docker_image
@@ -603,7 +611,7 @@ workflow BgwgsWorkflow {
             # Create annotated sample data
             call FASTUtils.FASTCreateAnnotatedSampleDataTask {
                 input:
-                    annotated_sample_data_name = subject_id + "_" + sample_id,
+                    annotated_sample_data_name = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name,
                     sample_data_names_and_labels = [subject_id + "_" + sample_id],
                     region_names_and_masks = fast_annotated_sample_data_regions,
                     scripts = fast_annotated_sample_data_scripts,
@@ -641,7 +649,7 @@ workflow BgwgsWorkflow {
                     input:
                         annotated_sample_data_name = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
                         format = "TXT",
-                        output_basename = subject_id + "_" + sample_id + ".fastexport",
+                        output_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output + ".fastexport",
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name,
                         docker_image = orchutils_docker_image
@@ -653,6 +661,7 @@ workflow BgwgsWorkflow {
                         reference_build = reference_build,
                         oms_query = "Y",
                         transcript_exonNum = gil_transcript_exon_count,
+                        report_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name,
                         fast_parser_image = fast_parser_image
@@ -663,9 +672,11 @@ workflow BgwgsWorkflow {
                             bam_cram = sample_bam,
                             bai_crai = sample_bai,
                             parsed_fast_output = select_first([FASTOutputParserTask.parsed_report]),
-                            output_basename = subject_id + "_" + sample_id + ".igvreport",
+                            output_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output + ".igvreport",
                             ref_fasta = ref_fasta,
                             ref_fasta_index = ref_fasta_index,
+                            track_files = igv_track_files,
+                            track_index_files = igv_track_index_files,
                             docker_image = igvreport_docker_image
                     }
                 }
@@ -715,6 +726,7 @@ workflow BgwgsWorkflow {
         File? fast_export_file = FASTExportAnnotatedSampleDataTask.output_file
         # FAST summary file
         File? fast_summary_file = BgwgsFASTSummaryTask.fast_summary_file
+        File? fast_summary_xlsx = BgwgsFASTSummaryTask.fast_summary_xlsx
         # IGV report
         File? igv_report = IgvReportFromParsedFASTOutputTask.igv_report
         # FAST Parsed output and NVA report
@@ -728,21 +740,34 @@ task BgwgsFASTSummaryTask {
         String subject_id
         String sample_id
         Array[String]? fast_annotated_sample_data_regions
-        String? fast_annotated_sample_data_saved_filter_name
+        String fast_annotated_sample_data_saved_filter_name
     }
 
     command <<<
-        summary_file="~{subject_id}_~{sample_id}_FAST_summary.txt"
+        summary_file="~{subject_id}_~{sample_id}_~{fast_annotated_sample_data_saved_filter_name}_FAST_summary.txt"
 
         printf "PM_number\tSaved_filter\tRegions\n" >> "${summary_file}"
         printf "%s\t%s\t%s\n" "~{subject_id}" "~{fast_annotated_sample_data_saved_filter_name}" "~{sep=',' fast_annotated_sample_data_regions}" >> "${summary_file}"
+
+        pip install openpyxl
+        python -c 'import openpyxl
+wb = openpyxl.Workbook()
+ws = wb.active
+ws.cell(row=1, column=1).value = "PM_number"
+ws.cell(row=1, column=2).value = "Saved_filter"
+ws.cell(row=1, column=3).value = "Regions"
+ws.cell(row=2, column=1).value = "~{subject_id}"
+ws.cell(row=2, column=2).value = "~{fast_annotated_sample_data_saved_filter_name}"
+ws.cell(row=2, column=3).value = "~{sep=',' fast_annotated_sample_data_regions}"
+wb.save("~{subject_id}_~{sample_id}_~{fast_annotated_sample_data_saved_filter_name}_FAST_summary.xlsx")'
     >>>
 
     runtime {
-        docker: "ubuntu:22.04"
+        docker: "python:3.10"
     }
 
     output {
-        File fast_summary_file = subject_id + "_" + sample_id + "_FAST_summary.txt"
+        File fast_summary_file = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name + "_FAST_summary.txt"
+        File fast_summary_xlsx = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name + "_FAST_summary.xlsx"
     }
 }

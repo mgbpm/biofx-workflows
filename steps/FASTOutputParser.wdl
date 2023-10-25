@@ -7,6 +7,7 @@ task FASTOutputParserTask {
         String reference_build = "GRCh38"
         String oms_query = "Y"
         File transcript_exonNum
+        String report_basename = sub(basename(fast_output_file), "\\.(txt.gz|txt|TXT.GZ|TXT)$", "")
         String gcp_project_id
         String workspace_name
         String fast_parser_image
@@ -41,12 +42,25 @@ task FASTOutputParserTask {
                     -e "~{transcript_exonNum}" \
                     -b "~{reference_build}" \
                     -k oms-client-config.json
+
+        # Rename the output file to match the report basename
+        if [[ "~{file_basename}" != "~{report_basename}" ]]
+        then
+            if [ -f "~{file_basename}.xlsx" ]
+            then
+                mv "~{file_basename}.xlsx" "~{report_basename}.xlsx"
+            fi
+            if [ -f "~{file_basename}.xlsm" ]
+            then
+                mv "~{file_basename}.xlsm" "~{report_basename}.xlsm"
+            fi
+        fi
     >>>
 
     output {
         File? parsed_report = file_basename + ".parsed.txt"
-        File? nva_report_xlsx = file_basename + ".xlsx"
-        File? nva_report_xlsm = file_basename + ".xlsm"
+        File? nva_report_xlsx = report_basename + ".xlsx"
+        File? nva_report_xlsm = report_basename + ".xlsm"
         File nva_report = select_first([nva_report_xlsm, nva_report_xlsx])
     }
 }
