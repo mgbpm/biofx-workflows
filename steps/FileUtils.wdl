@@ -15,6 +15,7 @@ task CopyFilesTask {
         String? target_location
         Boolean flatten = false
         Boolean recursive = true
+        Boolean verbose = false
         String docker_image
         Int disk_size = 75
         String gcp_project_id
@@ -50,7 +51,7 @@ task CopyFilesTask {
 
         # execute script to copy files
         mkdir "${ROOTDIR}/fetched"
-        ./bin/copy_files.py ~{if flatten then "--flatten" else ""} ~{if recursive then "" else "--no-recursive"} --verbose \
+        ./bin/copy_files.py ~{if flatten then "--flatten" else ""} ~{if recursive then "" else "--no-recursive"} ~{if verbose then "--verbose" else ""} \
             --source "~{source_location}" --target "${FINAL_TARGET_LOC}" ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} ${FILE_MATCHERS_ARG} \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt"
 
@@ -81,6 +82,7 @@ task FetchFilesTask {
         Array[String] file_types = []
         Array[String] file_match_keys = []
         Array[FileMatcher] file_matchers = []
+        Boolean verbose = false
         String docker_image
         Int disk_size = 75
         String gcp_project_id
@@ -113,19 +115,20 @@ task FetchFilesTask {
         # execute script to copy files
         mkdir "${ROOTDIR}/fetched"
         ./bin/copy_files.py \
-            --source "~{data_location}" --target "${ROOTDIR}/fetched" --flatten ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} ${FILE_MATCHERS_ARG} --verbose \
+            --source "~{data_location}" --target "${ROOTDIR}/fetched" --flatten ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} ${FILE_MATCHERS_ARG} ~{if verbose then "--verbose" else ""} \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt" \
             ~{if recursive then "" else "--no-recursive"}
         popd
 
         # extract specific file types from list for outputs
         set +e
-        grep -i "[.]bam$" target-file-list.txt | xargs basename > target-file-list-bam.txt
-        grep -i "[.]bai$" target-file-list.txt | xargs basename > target-file-list-bai.txt
-        grep -i "[.]cram$" target-file-list.txt | xargs basename > target-file-list-cram.txt
-        grep -i "[.]crai$" target-file-list.txt | xargs basename > target-file-list-crai.txt
-        grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt | xargs basename > target-file-list-vcf.txt
-        grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx)$" | xargs basename > target-file-list-vcfidx.txt
+        grep -i "[.]bam$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-bam.txt
+        grep -i "[.]bai$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-bai.txt
+        grep -i "[.]cram$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-cram.txt
+        grep -i "[.]crai$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-crai.txt
+        grep -iE "[.](vcf|vcf.gz|vcf.bgz|vcf.bz2|gvcf|gvcf.gz|gvcf.bgz|gvcf.bz2)$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-vcf.txt
+        grep -iE "[.](vcf|gvcf)" target-file-list.txt | grep -iE "[.](tbi|idx|csi)$" | sort | head -1 | xargs basename > target-file-list-vcfidx.txt
+        grep -iE "[.](bcf|bcf.gz)$" target-file-list.txt | sort | head -1 | xargs basename > target-file-list-bcf.txt
 
         # diagnostic output for debugging
         ls -al "${ROOTDIR}/fetched"
@@ -146,6 +149,7 @@ task FetchFilesTask {
         File? crai = if size("target-file-list-crai.txt") > 0 then glob_dir + read_string("target-file-list-crai.txt") else empty_output_placeholder
         File? vcf = if size("target-file-list-vcf.txt") > 0 then glob_dir + read_string("target-file-list-vcf.txt") else empty_output_placeholder
         File? vcf_index = if size("target-file-list-vcfidx.txt") > 0 then glob_dir + read_string("target-file-list-vcfidx.txt") else empty_output_placeholder
+        File? bcf = if size("target-file-list-bcf.txt") > 0 then glob_dir + read_string("target-file-list-bcf.txt") else empty_output_placeholder
     }
 }
 
@@ -154,6 +158,7 @@ task DownloadOutputsTask {
         String outputs_json
         Array[String] config_json_list
         String? default_target_location
+        Boolean verbose = false
         String docker_image
         String gcp_project_id
         String? workspace_namespace
@@ -183,7 +188,7 @@ task DownloadOutputsTask {
         done
 
         # execute script to copy files
-        ./bin/copy_outputs.py --outputs "~{write_lines([outputs_json])}" --config "~{write_lines(config_json_list)}" --verbose \
+        ./bin/copy_outputs.py --outputs "~{write_lines([outputs_json])}" --config "~{write_lines(config_json_list)}" ~{if verbose then "--verbose" else ""} \
             ${DEF_TARGET_ARG} ${WSNS_ARG} --workspace-name "~{workspace_name}" ${SUBID_ARG} --local-manifest-file "${ROOTDIR}/copy-manifest.json"
         popd
     >>>

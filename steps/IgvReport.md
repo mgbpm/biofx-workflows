@@ -9,6 +9,9 @@ that is not categorized as "Benign/Likely benign".
 * String output_basename - optional - the basename that will be used to name the output file, defaults to the parsed FAST output basename with ".igvreport" appended
 * File ref_fasta - required - the reference build FASTA file to use for IGV
 * File ref_fasta_index - required - the reference build FASTA index file
+* Array[File] track_files - optional - a list of files for additional data tracks on the IGV display
+* Array[File] track_index_files - optional - corresponding index files for the track files; must have the same basename as
+the corresponding track file
 * String docker_image - required - the Docker image name and tag
 
 __Parsed FAST Output Format__

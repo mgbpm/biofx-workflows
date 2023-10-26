@@ -12,6 +12,12 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
     readMePath: /workflows/bgwgs/BgwgsWorkflow.md
+    filters:
+      branches:
+        - master
+        - /.*bgwgs.*/
+      tags:
+        - BGWGS_*
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
@@ -72,3 +78,18 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/RiskAllelesWorkflow.wdl
     readMePath: /workflows/pgxrisk/RiskAllelesWorkflow.md
+  - name: BgwgsPanelWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bgwgs/BgwgsPanelWorkflow.wdl
+  - name: BiobankRoRAlamutWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRAlamutWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRAlamutWorkflow.md
+  - name: BiobankRoRSamplePrepWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSamplePrepWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRSamplePrepWorkflow.md
+  - name: BiobankRoRSampleLoadingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.md

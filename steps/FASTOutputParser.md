@@ -12,6 +12,7 @@ a parsed output with variants categorized that is used to populate an Excel work
 | String | reference_build | No | The genome reference build name | "GRCh38" |
 | String | oms_query | Yes | Whether or not to query OMS for primers, either "Y" or "N" | "Y" |
 | File | transcript_exonNum | Yes | A tab delimited file of transcript id and exon count |
+| String | report_basename | No | The basename to use for the report file | The basename of the fast_output_file |
 | String | fast_parser_image | Yes | The name of the Docker image to run the FAST output parser task | |
 | String | gcp_project_id | Yes | The GCP project to fetch secrets from | |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |

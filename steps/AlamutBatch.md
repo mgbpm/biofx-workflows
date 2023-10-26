@@ -18,6 +18,7 @@ reference data from the provided Alamut database.
 * Int alamut_queue_limit - optional - the maximum number of concurrent Alamut tasks to allow, defaults to 4
 * String alamut_queue_folder - optional - the Alamut concurrency queue folder (cloud storage URI), 
   defaults to "gs://biofx-task-queue/alamut"
+* Int alamut_queue_wait_limit_hrs - optional - the maximum number of hours to wait for a queue slot before failing
 * String alamut_docker_image - required - the name of the Alamut docker image to run
 
 ## Output Parameters

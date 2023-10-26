@@ -57,6 +57,7 @@ task AlamutBatchTask {
         String alamut_user_secret_name = "alamut-batch-ini-user"
         Int alamut_queue_limit = 4
         String alamut_queue_folder = "gs://biofx-task-queue/alamut"
+        Int alamut_queue_wait_limit_hrs = 8
         String docker_image
         Int disk_size = 150
         Boolean output_working_files = false
@@ -110,14 +111,22 @@ task AlamutBatchTask {
         $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/enter_task_queue.py --queue-folder "~{alamut_queue_folder}" \
             --entry-details "source = AlamutBatch.wdl, input vcf = ~{input_vcf}" \
             --queue-limit ~{alamut_queue_limit} \
-            --wait --wait-ttl-hrs 8 --wait-interval-mins 5 | tee queue_entry_id
+            --wait --wait-ttl-hrs ~{alamut_queue_wait_limit_hrs} --wait-interval-mins 5 | tee queue_entry_id
         QUEUE_ENTRY_ID=$(cat queue_entry_id)
 
         # run alamut batch process (but don't abort script on failure to cleanup queue)
+        #  if alamut batch exits with a segfault (which happens sporadically), try again before failing the task
         set +e
         alamut-batch --in workdir/alamut.input.vcf --ann workdir/alamut.output.ann.tsv --unann workdir/alamut.output.unann.tsv \
             --assbly ~{reference_build} --processes 1 --alltrans --ssIntronicRange 2 --nomispred --outputannonly
         ALA_RETVAL=$?
+        if [ ${ALA_RETVAL} -eq 139 ]
+        then
+            rm -f workdir/alamut.output.ann.tsv workdir/alamut.output.unann.tsv
+            alamut-batch --in workdir/alamut.input.vcf --ann workdir/alamut.output.ann.tsv --unann workdir/alamut.output.unann.tsv \
+                --assbly ~{reference_build} --processes 1 --alltrans --ssIntronicRange 2 --nomispred --outputannonly
+            ALA_RETVAL=$?
+        fi
 
         # remove the queue entry
         $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/remove_task_queue_entry.py --queue-folder "~{alamut_queue_folder}" --entry-id ${QUEUE_ENTRY_ID}

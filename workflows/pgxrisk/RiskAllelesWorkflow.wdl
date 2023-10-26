@@ -107,6 +107,7 @@ task RiskTask {
         docker: "~{mgbpmbiofx_docker_image}"
         disks: "local-disk ~{disk_size} SSD"
         preemptible: 1
+        bootDiskSizeGb: 15
     }
 
     output {
