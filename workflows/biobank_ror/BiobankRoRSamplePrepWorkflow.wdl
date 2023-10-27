@@ -16,6 +16,7 @@ workflow IndividualSamplePrepWorkflow {
         File? target_roi_bed
         Boolean is_sharded
         # Docker images
+        String python_docker_image = "python:3.12"
         String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921"
         String ubuntu_docker_image = "ubuntu:latest"
@@ -216,24 +217,21 @@ workflow IndividualSamplePrepWorkflow {
                 docker_image = ubuntu_docker_image
         }
         scatter (samples_batch in MakeBatches.sample_batches) {
-            Int individual_vcf_disk_space = ceil(length(read_lines(samples_batch)) / 15) + 50
-            call MakeIndividualVCFsTask as MakeIndividualVCFs {
+            call MakeSampleVCFsTask as MakeSampleVCFs {
                 input:
                     input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, select_first([filtered_files, dataset_files])[0]]),
-                    sample_ids_list = samples_batch,
+                    sample_ids = read_lines(samples_batch),
                     output_basename = dataset,
-                    docker_image = bcftools_docker_image,
-                    disk_size = individual_vcf_disk_space
+                    docker_image = bcftools_docker_image
             }
             # Write a table containing individual VCFs info
             call WriteTSVTask as WriteIndividualVCFsTSV {
                 input:
-                    input_files = MakeIndividualVCFs.output_vcf_gz,
+                    input_files = MakeSampleVCFs.output_vcf_gz,
                     final_tsv = false,
                     dataset = dataset,
                     output_basename = dataset,
-                    docker_image = bcftools_docker_image,
-                    disk_size = individual_vcf_disk_space
+                    docker_image = bcftools_docker_image
             }
         }
         # Merge tables containing individual VCFs info (for uploading to Terra)
@@ -261,7 +259,7 @@ workflow IndividualSamplePrepWorkflow {
     }
 
     ## Write a table containing individual VCFs info to upload to the Terra workspace
-    if (!defined(MakeIndividualVCFs.output_vcf_gz)) {
+    if (!defined(MakeSampleVCFs.output_vcf_gz)) {
         call WriteTSVTask as WriteOtherTSV {
             input:
                 input_files = select_first([filtered_files, dataset_files]),
@@ -272,15 +270,23 @@ workflow IndividualSamplePrepWorkflow {
         }
     }
 
+    ## Make a collective sample VCF for batch annotation
+    call VCFUtils.MakeCollectiveVCFTask as MakeCollectiveVCF {
+        input:
+            input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz, select_first([FilterVCFs.output_vcf_gz, dataset_files])[0]]),
+            docker_image = python_docker_image,
+            output_basename = dataset + ".collective"
+    }
+
     output {
         # Filtered VCF(s)/BCF(s)
         Array[File]? filtered_dataset_files = filtered_files
         # Concat VCF
         File concat_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz])
         # Individual VCFs
-        Array[File] individual_vcfs = flatten(select_first([MakeIndividualVCFs.output_vcf_gz]))
+        Array[File] individual_vcfs = flatten(select_first([MakeSampleVCFs.output_vcf_gz]))
         # File to use for batch annotation
-        File batch_annotation_input_file = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz, select_first([FilterVCFs.output_vcf_gz, dataset_files])[0]])
+        File batch_annotation_input_file = MakeCollectiveVCF.output_vcf_gz
         # List of paths for individual VCFs (Table to upload to Terra)
         File dataset_sample_table = select_first([MergeIndividualVCFsTSVs.output_tsv, WriteOtherTSV.output_tsv])
     }
@@ -324,7 +330,7 @@ task FindSampleIDs {
 task BatchSamplesTask {
     input {
         File sample_ids_list
-        Int batch_size = 5000
+        Int batch_size = 50
         String docker_image
         Int disk_size = 10 + ceil(size(sample_ids_list, "GB"))
         Int preemptible = 1
@@ -336,11 +342,6 @@ task BatchSamplesTask {
         mkdir batches
         # Split the sample IDs list into batches of samples
         split "~{sample_ids_list}" "batches/batch_" -l "~{batch_size}" -d
-
-        # Add new line at end of batch files (for reading later)
-        for file in batches/*; do
-            printf "\n" >> $file
-        done
     >>>
 
     runtime {
@@ -354,32 +355,41 @@ task BatchSamplesTask {
     }
 }
 
-task MakeIndividualVCFsTask {
+task MakeSampleVCFsTask {
     input {
         File input_vcf
-        File sample_ids_list
-        String docker_image
+        Array[String] sample_ids
         String output_basename
-        Int disk_size
+        String docker_image
+        Int disk_size = 10 + ceil(length(sample_ids)) + ceil(size(input_vcf, "GB"))
         Int mem_size = 4
         Int preemptible = 1
     }
 
-     command <<<
+    command <<<
         set -euxo pipefail
 
-        # Create a file of IDs and output basename for bcftools split
-            # Need 3 columns: ID, new ID, and output file base name
-        while read -r line
+        mkdir tmp_vcfs
+        mkdir headers
+        mkdir output_vcfs
+
+        for sample in '~{sep="' '" sample_ids}'
         do
-            printf "${line}\t${line}\t~{output_basename}_${line}\n" >> "~{output_basename}_sample_ids.txt"
-        done < "~{sample_ids_list}"
+            # Filter the concat VCF to the sample
+            bcftools view "~{input_vcf}" \
+                -c1 \
+                --samples "${sample}" \
+                --output-type z \
+                --output "tmp_vcfs/~{output_basename}_${sample}.vcf.gz"
 
-        # Put all individual sample vcfs in an output directory
-        mkdir "output"
-
-        # Split the input vcf by sample
-        bcftools +split -S "~{output_basename}_sample_ids.txt" --output-type z --output "output" "~{input_vcf}"
+            # Retrieve the header
+            bcftools view --header-only "tmp_vcfs/~{output_basename}_${sample}.vcf.gz" > headers/${sample}_old_header.txt
+            # Edit the header for ID=AD -- "Number=."
+            sed 's/ID=AD,Number=R/ID=AD,Number=\./' headers/${sample}_old_header.txt > headers/${sample}_new_header.txt
+            # Replace the header
+            bcftools reheader "tmp_vcfs/~{output_basename}_${sample}.vcf.gz" \
+                --header "headers/${sample}_new_header.txt" > "output_vcfs/~{output_basename}_${sample}.vcf.gz"
+        done
     >>>
 
     runtime {
@@ -390,7 +400,7 @@ task MakeIndividualVCFsTask {
     }
 
     output {
-        Array[File] output_vcf_gz = glob("output/*.vcf.gz")
+        Array[File] output_vcf_gz = glob("output_vcfs/*.vcf.gz")
     }
 }
 

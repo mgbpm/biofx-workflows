@@ -7,9 +7,6 @@ import "../../steps/Utilities.wdl" # for fail task
 
 workflow LoadingAlamutAndGnomadWorkflow {
     input {
-        # About the dataset
-        String dataset
-        String batch
         # File for batch annotation
         File batch_annotation_input
         # GCP project and Terra workspace for secret retrieval
@@ -50,7 +47,7 @@ workflow LoadingAlamutAndGnomadWorkflow {
     call FASTUtils.FASTRemoveAlreadyAnnotatedFromVCFTask {
         input:
             input_vcf = batch_annotation_input,
-            output_basename = dataset + "_" + batch + ".alamutprefilter",
+            output_basename = sub(basename(batch_annotation_input), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".alamutprefilter",
             reference_build = reference_build,
             annotation_source_id = alamut_anno_src_id,
             annotation_min_age = alamut_anno_min_age,
@@ -62,7 +59,7 @@ workflow LoadingAlamutAndGnomadWorkflow {
     call AlamutBatch.AlamutBatchTask {
         input:
             input_vcf = FASTRemoveAlreadyAnnotatedFromVCFTask.output_vcf_gz,
-            output_basename = dataset + "_" + batch + ".alamut",
+            output_basename = sub(basename(batch_annotation_input), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".alamut",
             alamut_db = alamut_db,
             alamut_fields_tsv = alamut_fields_tsv,
             alamut_db_name = alamut_db_name,
@@ -80,7 +77,7 @@ workflow LoadingAlamutAndGnomadWorkflow {
     call VCFUtils.AnnotateVCFTask as AnnotateGnomadTask {
         input:
             input_vcf = batch_annotation_input,
-            output_basename = dataset + "_" + batch + ".gnomad",
+            output_basename = sub(basename(batch_annotation_input), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".gnomad",
             annotations_file = gnomad_coverage_file,
             annotations_idx_file = gnomad_coverage_file_idx,
             headers_file = write_lines(gnomad_headers),

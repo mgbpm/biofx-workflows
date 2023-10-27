@@ -281,3 +281,44 @@ task ConvertBCFTask {
         File? output_vcf_idx = if output_index then "~{output_basename}.vcf.gz.~{index_format}" else empty_output_placeholder
     }
 }
+
+task MakeCollectiveVCFTask {
+    input {
+        File input_vcf
+        String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".collective"
+        String collective_sample_name = "CollectiveSample"
+        String collective_gt_call = "0/0"
+        String docker_image
+        Int disk_size = ceil(size(input_vcf, "GB") * 1.5) + 10
+        Int preemptible = 1
+        Int mem_size = 4
+    }
+
+    command <<<
+        pip install vcfpy
+
+        # For each record, replace all samples with a fake sample
+        python -c 'import vcfpy
+        from collections import OrderedDict
+        with vcfpy.Reader.from_path("~{input_vcf}") as rd:
+            rd.header.parsed_samples=set([])
+            outhdr = rd.header.copy()
+            outhdr.samples = vcfpy.SamplesInfos(["~{collective_sample_name}"])
+            with vcfpy.Writer.from_path("~{output_basename}.vcf.gz", outhdr) as wr:
+                for rec in rd:
+                    rec.FORMAT = ["GT"]
+                    rec.update_calls([vcfpy.Call("~{collective_sample_name}", OrderedDict([("GT", "~{collective_gt_call}")]))])
+                    wr.write_record(rec)'
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
+        preemptible: preemptible
+    }
+
+    output {
+        File output_vcf_gz = "~{output_basename}.vcf.gz"
+    }
+}

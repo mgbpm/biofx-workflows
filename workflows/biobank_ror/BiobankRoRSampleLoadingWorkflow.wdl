@@ -11,7 +11,6 @@ workflow SampleLoadingWorkflow {
         String sample_ID
         # About the dataset
         String dataset
-        String batch
         # GCP project and Terra workspace for secret retrieval
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
@@ -20,8 +19,8 @@ workflow SampleLoadingWorkflow {
         # reference genome
         String reference_build = "GRCh38"
         # qceval inputs
-        String qceval_project_type = "WES"
-        String qceval_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20231006"
+        String qceval_project_type
+        String qceval_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20231005"
         # FAST loading inputs
         Boolean has_haploid_sites = false
         String sample_data_load_config_name = "Sample_VCF_PPM_Eval"
@@ -32,7 +31,7 @@ workflow SampleLoadingWorkflow {
         input:
             input_vcf = input_vcf,
             project_type = qceval_project_type,
-            output_basename = dataset + "_" + batch + "_" + sample_ID + ".qceval",
+            output_basename = dataset + "_" + sample_ID + ".qceval",
             docker_image = qceval_docker_image
     }
     # Load sample data to FAST
@@ -41,7 +40,7 @@ workflow SampleLoadingWorkflow {
             reference_build = reference_build,
             vcf_file = QCEvalTask.output_vcf_gz,
             has_haploid_sites = has_haploid_sites,
-            sample_data_name = dataset + "_" + batch + "_" + sample_ID,
+            sample_data_name = dataset + "_" + sample_ID,
             data_load_config_name = sample_data_load_config_name,
             data_load_target = "SAMPLE_DATA",
             annotation_record_ts = "now",
@@ -76,6 +75,6 @@ workflow SampleLoadingWorkflow {
         # Annotated qceval VCF
         File qceval_vcf_gz = QCEvalTask.output_vcf_gz
         # FAST sample data name
-        String fast_sample_data_name = dataset + "_" + batch + "_" + sample_ID
+        String fast_sample_data_name = dataset + "_" + sample_ID
     }
 }

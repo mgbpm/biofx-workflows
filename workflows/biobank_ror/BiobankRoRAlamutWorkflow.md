@@ -5,9 +5,7 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| String | dataset | Yes | Name of Biobank dataset | |
-| String | batch | Yes | Name of batch or batch number | |
-| File | batch_annotation_input | Yes | The file to use for Alamut and gnomAD batch annotation; final product from Data Prep workflow | |
+| File | batch_annotation_input | Yes | The file to use for Alamut and gnomAD batch annotation; collective VCF from Data Prep workflow | |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
 | String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921" |

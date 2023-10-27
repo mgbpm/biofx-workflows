@@ -96,17 +96,32 @@ Extracts one or more samples from a joint VCF file
 * File output_vcf_gz - the output VCF file
 
 # ConvertBCFTask
+Converts a BCF file to either vcf.gz or vcf format
 
 ## Input Parameters
-* File input_bcf - required - the input bcf file
-* Boolean output_index - optional - whether or not to create an index for the output vcf; Default is false
-* String index_format - optional - format for the output vcf index file (options are "csi" or "tbi"); Default is "csi"
-* String output_basename - optional - the basename that will be used to name the output file, defaults to the input
+* File input_bcf - required - the input BCF file
+* Boolean output_index - optional - whether or not to create an index for the output VCF; Default is false
+* String index_format - optional - format for the output VCF index file (options are "csi" or "tbi"); Default is "csi"
+* String output_basename - optional - the basename that will be used to name the output file; defaults to the input BCF's name
   VCF name with file extensions removed and ".subset" added
 * String docker_image - required - Docker image to run; must have bcftools in the path
-* Int disk_size - optional - disk size to allocation in GB; defaults to 10 plus the input bcf times 2.5
+* Int disk_size - optional - disk size to allocate in GB; defaults to 10 plus the input BCF times 2.5
 * Int preemptible - optional - the preemptible runtime setting
 
 ## Output Parameters
 * File output_vcf_gz - the output VCF file
 * File output_vcf_idx - the output VCF's index file (if desired)
+
+# MakeCollectiveVCFTask
+
+## Input Parameters
+* File input_vcf - required - the input joint VCF file
+* String output_basename - optional - the basename that will be used to name the output file; defaults to the input VCF's name plus ".collective"
+* String collective_sample_name - optional - name for fake sample; defaults to "CollectiveSample"
+* String collective_gt_call - optional - genotype of fake sample, either "0/0", "0/1", "1/1", "./."; defaults to "0/0"
+* String docker_image - required - Docker image to run; must be a version of a python docker image
+* Int disk_size - optional - disk size to allocate in GB; defaults to 10 plus the input VCF times 1.5
+* Int preemptible - optional - the preemptible runtime setting
+
+## Output Parameters
+* File output_vcf_gz - the output collective sample VCF file

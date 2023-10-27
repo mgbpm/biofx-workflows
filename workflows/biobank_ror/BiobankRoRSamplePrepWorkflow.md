@@ -12,6 +12,7 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | String | dataset_structure | Yes | Whether the dataset is made of joint VCFs or individual sample VCFS; either "individual" or "joint" | |
 | File | target_roi_bed | No | BED file containing gene regions; the VCFs in the dataset will be filtered to these regions | |
 | Boolean | is_sharded | Yes | Whether or not the input data is sharded | |
+| String | python_docker_image | No | The name of the python Docker image for creating a collective VCF | "python:3.12" |
 | String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
 | String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921" |
 | String | ubuntu_docker_image | No | The name of the ubuntu Docker image | "ubuntu:latest" |
@@ -24,5 +25,5 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | Array[File] | filtered_vcfs | When filtering input VCFs is applicable | Result of filtering dataset VCFs |
 | File | concat_vcf | When concatenating dataset VCFs is applicable; when the dataset is sharded | Result of concatenating dataset VCFs |
 | Array[File] | individual_vcfs | When the dataset contains joint VCFs | Result of splitting the dataset VCFs into per sample VCFs |
-| File | batch_annotation_input_file | Always | File to use for batch annotation with Alamut and gnomAD; used as input for BiobankRoRAlamutWorkflow |
+| File | batch_annotation_input_file | Always | Collective VCF file to use for batch annotation with Alamut and gnomAD; used as input for BiobankRoRAlamutWorkflow |
 | File | dataset_sample_table | Always | TSV file containing file paths for individual sample VCFs; upload to Terra to continue the pipeline |
