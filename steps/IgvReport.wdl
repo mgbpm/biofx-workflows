@@ -95,6 +95,8 @@ task IgvReportFromGenomePanelsBedTask {
         File sample_bai
         File ref_fasta
         File ref_fasta_index
+        Array[File]? track_files
+        Array[File]? track_index_files
         String output_basename 
         String docker_image
         Int preemptible = 1
@@ -120,10 +122,27 @@ task IgvReportFromGenomePanelsBedTask {
 
         if [ "$num_sites" -gt 0 ]
         then
+
+            track_files=""
+            if [ -n "~{sep=' ' track_files}" ]
+            then
+                mkdir track_files
+                mv ~{sep=" " track_files} track_files
+                for file in ~{sep=" " track_files}
+                do
+                    file_name=$(basename $file)
+                    track_files="$track_files track_files/$file_name"
+                done
+            fi
+            if [ -n "~{sep=' ' track_index_files}" ]
+            then
+                mv ~{sep=" " track_index_files} track_files
+            fi
+
             create_report "~{bed_file}" "~{ref_fasta}" \
                 --sequence 1 --begin 2 --end 3 --flanking 50 \
                 --info-columns cDNA_Position Predicted_AA \
-                --tracks "~{sample_bam}" \
+                --tracks "~{sample_bam}" "$track_files" \
                 --output "~{output_basename}.html"
         fi
     >>>
