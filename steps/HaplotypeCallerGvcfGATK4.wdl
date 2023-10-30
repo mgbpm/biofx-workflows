@@ -277,3 +277,144 @@ task MergeGVCFs {
     File output_vcf_index = "~{output_filename}.tbi"
   }
 }
+
+task GenomePanelsVariantCallingTask {
+  input {
+        # Command parameters
+        File input_bam
+        File input_bam_index
+        File interval_list
+        File ref_dict
+        File ref_fasta
+        File ref_fasta_index
+        File dbsnp
+        File dbsnp_vcf_index
+        String gatk_path = "/gatk/gatk"
+
+        # Runtime parameters
+        String docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_gb = select_first([mem_gb, 24])
+    Int command_mem_gb = machine_mem_gb - 1
+
+    Float ref_size = size(ref_fasta, "GB") + size(ref_dict, "GB") + size(dbsnp, "GB")
+    Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
+
+    Boolean is_cram = sub(basename(input_bam), ".*\\.", "") == "cram"
+    String sample_basename = if is_cram then  basename(input_bam, ".cram") else basename(input_bam, ".bam")
+    String gvcf = sample_basename + ".g.vcf"
+    String all_calls_vcf = sample_basename + ".allcalls.vcf"
+
+    command <<<
+      set -euxo pipefail
+
+      ~{gatk_path} --java-options "-Xmx~{command_mem_gb}G" \
+      HaplotypeCaller \
+      --input ~{input_bam} \
+      --output ~{gvcf} \
+      --reference ~{ref_fasta} \
+      --intervals ~{interval_list} \
+      --dbsnp ~{dbsnp} \
+      -mbq 10 \
+      -stand-call-conf 30 \
+      -A QualByDepth \
+      -A FisherStrand \
+      -A RMSMappingQuality \
+      -A MappingQualityZero \
+      -A StrandOddsRatio \
+      -A DepthPerAlleleBySample \
+      --read-filter MappingQualityReadFilter \
+      --minimum-mapping-quality '17' \
+      --read-filter MappingQualityNotZeroReadFilter \
+      -ip '15' \
+      --do-not-run-physical-phasing 'true' \
+      -ERC BP_RESOLUTION
+      
+      ~{gatk_path} --java-options "-Xmx~{command_mem_gb}G" \
+      GenotypeGVCFs \
+      --variant ~{gvcf} \
+      --output ~{all_calls_vcf} \
+      --reference ~{ref_fasta} \
+      --intervals ~{interval_list} \
+      --dbsnp ~{dbsnp} \
+      -A QualByDepth \
+      -A FisherStrand \
+      -A RMSMappingQuality \
+      -A MappingQualityZero \
+      -A StrandOddsRatio \
+      -A DepthPerAlleleBySample \
+      --read-filter MappingQualityReadFilter \
+      --minimum-mapping-quality '17' \
+      -ip '15' \
+      --read-filter MappingQualityNotZeroReadFilter 
+
+    >>>
+
+    runtime {
+      docker: docker
+      memory: machine_mem_gb + " GB"
+      disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
+      preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+      File all_calls_vcf_file = "~{all_calls_vcf}"
+      File all_calls_vcf_idx_file = "~{all_calls_vcf}.idx"
+      File gvcf_file = "~{gvcf}"
+      File gvcf_idx_file = "~{gvcf}.idx"
+    }
+}
+
+task GenomePanelsRefSitesSortTask {
+  input {
+        # Command parameters
+        File gvcf_file
+        File all_calls_vcf_file
+        File ref_positions_vcf_file
+        String gatk_path = "/gatk/gatk"
+        String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
+
+        # Runtime parameters
+        String docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_gb = select_first([mem_gb, 24])
+    Int command_mem_gb = machine_mem_gb - 1
+
+    Int disk_size = ceil(size(gvcf_file, "GB") + size(all_calls_vcf_file, "GB")) + 10
+
+    String sample_basename = basename(gvcf_file, ".g.vcf")
+    String all_bases_vcf = sample_basename + ".allbases.vcf"
+
+    command <<<
+      set -euxo pipefail
+
+      ~{java_path} -Xms12g "-Xmx~{command_mem_gb}G" \
+      -jar ~{gatk_path}.jar SortVcf \
+      -I ~{ref_positions_vcf_file} \
+      -I ~{all_calls_vcf_file} \
+      -O ~{all_bases_vcf}
+
+    >>>
+
+    runtime {
+      docker: docker
+      memory: machine_mem_gb + " GB"
+      disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
+      preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+      File all_bases_vcf_file = "~{all_bases_vcf}"
+      File all_bases_vcf_idx_file = "~{all_bases_vcf}.idx"
+    }
+}

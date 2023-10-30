@@ -87,3 +87,74 @@ task IgvReportFromParsedFASTOutputTask {
         File? igv_report = "~{output_basename}.html"
     }
 }
+
+task IgvReportFromGenomePanelsBedTask {
+    input {
+        File bed_file
+        File sample_bam
+        File sample_bai
+        File ref_fasta
+        File ref_fasta_index
+        Array[File]? track_files
+        Array[File]? track_index_files
+        String output_basename 
+        String docker_image
+        Int preemptible = 1
+    }
+
+    command <<<
+
+        set -euxo pipefail
+
+        # The bam/cram/ref_fasta index files have to be discoverable by igv-reports
+        if [[ "~{sample_bam}" =~ \.bam$ ]]
+        then
+            [ ! -f "~{sample_bam}.bai" ] && ln -s "~{sample_bai}" "~{sample_bam}.bai"
+        elif [[ "~{sample_bam}" =~ \.cram$ ]]
+        then
+            [ ! -f "~{sample_bam}.crai" ] && ln -s "~{sample_bai}" "~{sample_bam}.crai"
+        fi
+        [ ! -f "~{ref_fasta}.fai" ] && ln -s "~{ref_fasta_index}" "~{ref_fasta}.fai"
+
+        # Check to make certain there are one or more variants in the file
+        #   before building the IGV output
+        num_sites=$(cat "~{bed_file}" | wc -l)
+
+        if [ "$num_sites" -gt 0 ]
+        then
+
+            track_files=""
+            if [ -n "~{sep=' ' track_files}" ]
+            then
+                mkdir track_files
+                mv ~{sep=" " track_files} track_files
+                for file in ~{sep=" " track_files}
+                do
+                    file_name=$(basename $file)
+                    track_files="$track_files track_files/$file_name"
+                done
+            fi
+            if [ -n "~{sep=' ' track_index_files}" ]
+            then
+                mv ~{sep=" " track_index_files} track_files
+            fi
+
+            create_report "~{bed_file}" "~{ref_fasta}" \
+                --sequence 1 --begin 2 --end 3 --flanking 50 \
+                --info-columns cDNA_Position Predicted_AA \
+                --tracks "~{sample_bam}" "$track_files" \
+                --output "~{output_basename}.html"
+        fi
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + ceil(size(sample_bam, "GB") + 15) + " HDD"
+        preemptible: preemptible
+    }
+
+    output {
+        File igv_report = "~{output_basename}.html"
+    }
+
+}
