@@ -4,12 +4,22 @@ version 1.0
 
 workflow BiobankShardingWorkflow {
   input {
-  # Int      shard_area     = 50000000
-    Int      shard_area     = 500000000
+  # Int      shard_area       = 50000000
+    Int      shard_area       = 500000000
     # File     areas_tsv
     String   areas_tsv
     String   base_directory
-    String   docker_image   = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.0"
+    String   docker_image     = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.1"
+
+    # -------------------------------------------------------------------------
+    # NB: The parameters below this point are rarely needed!
+
+    Int      do_excerpts_code = 0  # SHOULD NEVER BE USED IN PRODUCTION; used
+                                   # only when generating fixtures for testing
+
+    String   output_base      = "" # If do_excerpts_code > 0, output_base
+                                   # MUST be specified as a non-empty string
+                                   # different from base_directory.
   }
 
   # call ShowEnvironment {
@@ -17,7 +27,7 @@ workflow BiobankShardingWorkflow {
   #     docker_image = docker_image
   # }
 
-  # -------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   call MakeShardingBatches {
     input:
@@ -30,10 +40,12 @@ workflow BiobankShardingWorkflow {
   scatter (storage_and_batch in MakeShardingBatches.storage_and_batch_array) {
     call ShardVcfs {
       input:
-        base_directory = base_directory,
-        batch          = storage_and_batch.batch,
-        storage        = storage_and_batch.storage,
-        docker_image   = docker_image
+        base_directory   = base_directory,
+        batch            = storage_and_batch.batch,
+        do_excerpts_code = do_excerpts_code,
+        output_base      = output_base,
+        storage          = storage_and_batch.storage,
+        docker_image     = docker_image
     }
   }
 
@@ -50,7 +62,6 @@ workflow BiobankShardingWorkflow {
 }
 
 # -----------------------------------------------------------------------------
-
 
 # task ShowEnvironment {
 #   input {
@@ -153,9 +164,11 @@ task  MakeShardingBatches {
 task  ShardVcfs {
   # ...
   input {
-    Int             storage
     String          base_directory
     Array[Object]   batch
+    Int             do_excerpts_code
+    String          output_base
+    Int             storage
     String          docker_image
   }
 
@@ -184,11 +197,34 @@ task  ShardVcfs {
 
   mkdir --parents '~{OUTPUTDIR}'
 
-  shard_vcfs.py              \
-      --logging-level=DEBUG  \
-      '~{base_directory}'    \
-      '~{write_json(batch)}' \
-    > '~{STDOUT}'
+  declare -a EXTRAFLAGS
+  EXTRAFLAGS=()
+
+  DO_EXCERPTS_CODE=~{do_excerpts_code}
+  OUTPUT_BASE='~{output_base}'
+
+  if (( DO_EXCERPTS_CODE != 0 ))
+  then
+      EXTRAFLAGS+=( "--do-excerpts-code=${DO_EXCERPTS_CODE}" )
+  fi
+
+  if [[ -n ${OUTPUT_BASE} ]]
+  then
+      EXTRAFLAGS+=( "--output-base=${OUTPUT_BASE}" )
+  elif (( DO_EXCERPTS_CODE > 0 ))
+  then
+      printf --                                                         \
+          'ERROR: positive DO_EXCERPTS_CODE (%d) and empty OUTPUT_BASE' \
+          "${DO_EXCERPTS_CODE}" >&2
+      exit 1
+  fi
+
+  shard_vcfs.py                           \
+      --logging-level=DEBUG               \
+      ${EXTRAFLAGS[@]+"${EXTRAFLAGS[@]}"} \
+      '~{base_directory}'                 \
+      '~{write_json(batch)}'              \
+  > '~{STDOUT}'
 
   >>>
 
