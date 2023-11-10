@@ -142,7 +142,7 @@ task IgvReportFromGenomePanelsBedTask {
             create_report "~{bed_file}" "~{ref_fasta}" \
                 --sequence 1 --begin 2 --end 3 --flanking 50 \
                 --info-columns cDNA_Position Predicted_AA \
-                --tracks "~{sample_bam}" "$track_files" \
+                --tracks "~{sample_bam}" $track_files \
                 --output "~{output_basename}.html"
         fi
     >>>
