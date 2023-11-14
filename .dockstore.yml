@@ -93,3 +93,7 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.wdl
     readMePath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.md
+  - name: BiobankRoRFASTParsingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRFASTParsing.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRFASTParsing.md
