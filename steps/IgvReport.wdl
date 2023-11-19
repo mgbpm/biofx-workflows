@@ -41,7 +41,7 @@ task IgvReportFromParsedFASTOutputTask {
 
         # Check to make certain there are one or more variants in the file
         #   before building the IGV output
-        num_sites=$(grep -vic ^chr igv_sites.txt)
+        num_sites=$(grep -vi ^chr igv_sites.txt | wc -l)
 
         # Prefix chromosome symbols with 'chr'
         sed -i -e 's/^\([0-9MTXY]*\)\t/chr\1\t/' igv_sites.txt
