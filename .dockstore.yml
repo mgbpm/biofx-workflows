@@ -84,3 +84,6 @@ workflows:
   - name: BiobankShardingWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank-scrub/BiobankShardingWorkflow.wdl
+  - name: BiobankScrubWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank-scrub/BiobankScrubWorkflow.wdl
