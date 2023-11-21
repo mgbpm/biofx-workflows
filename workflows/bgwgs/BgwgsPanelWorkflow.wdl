@@ -137,7 +137,7 @@ workflow BgwgsPanelWorkflow {
 
     call LMMVariantReportTask {
         input:
-            subject_id = subject_id,
+            subject_id = sub(subject_id, '-([A-Z])$', '$1'),
             sample_id = sample_id,
             sample_lmm_id = sample_lmm_id,
             sample_barcode = sample_barcode,
@@ -166,7 +166,7 @@ workflow BgwgsPanelWorkflow {
             bed_file = CreateBedRegionsFromXLSTask.output_bed_file,
             sample_bam = sample_bam,
             sample_bai = sample_bai,
-            output_basename = sample_id + '__' + sample_lmm_id + '__' + subject_id + '__' + sample_barcode + '__' + batch_id + ".igvreport",
+            output_basename = sample_id + '__' + sample_lmm_id + '__' + sub(subject_id, '-([A-Z])$', '$1') + '__' + sample_barcode + '__' + batch_id + ".igvreport",
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
             docker_image = igvreport_docker_image
