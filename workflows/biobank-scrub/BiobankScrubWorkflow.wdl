@@ -26,7 +26,7 @@ workflow BiobankScrubWorkflow {
     String   current_datadir      = "gs://mgbpm-biobank-data/datasets/current"
     String   database             = "gs://mgbpm-biobank-data/reference/biobank/dbdump.tsv"
     Boolean  force                = false
-    String   docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.2"
+    String   docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.3"
   }
 
   call BiobankUtils.ShowEnvironment as ShowEnvironment {
