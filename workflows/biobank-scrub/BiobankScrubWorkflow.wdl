@@ -199,7 +199,7 @@ task  ValidateInputs {
   validate_inputs.py          \
       --logging-level=DEBUG   \
       '~{write_json(inputs)}' \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   date >> '~{DUMMY}'
   >>>
@@ -244,7 +244,7 @@ task  MaybeInitializeRundir {
       --logging-level=DEBUG   \
       '~{rundir}'             \
       '~{write_json(inputs)}' \
-      > '~{STDOUT}'
+      | tee '~{STDOUT}'
   >>>
 
   output {
@@ -277,7 +277,11 @@ task  ListWithdrawnSubjects {
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   mkdir --parents '~{OUTPUTDIR}'
-  list_withdrawn_subjects.py '~{rundir}' '~{database}' | sort > '~{STDOUT}'
+  list_withdrawn_subjects.py \
+      '~{rundir}'            \
+      '~{database}'          \
+    | sort                   \
+    | tee '~{STDOUT}'
   >>>
 
   output {
@@ -309,7 +313,7 @@ task  ListDatasetIds {
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{base_datadir}'
 
   mkdir --parents '~{OUTPUTDIR}'
-  list_dataset_ids.py '~{base_datadir}' > '~{STDOUT}'
+  list_dataset_ids.py '~{base_datadir}' | tee '~{STDOUT}'
   >>>
 
   output {
@@ -362,7 +366,7 @@ task  FindNonCompliant {
       '~{current_datadir}' \
       '~{initial_datadir}' \
       '~{dataset_id}'      \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
   >>>
 
   output {
@@ -401,7 +405,7 @@ task  MakeScrubBatches {
       '~{write_json(non_compliant)}' \
       ~{nbatches}                    \
       '~{staging_area}'              \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
   # PRINTS TO STDOUT AN ARRAY OF nbatches ARRAYS OF OBJECTS; EACH OBJECT IN
   # THIS OUTPUT CORRESPONDS TO A (STILL-PENDING) OBJECT IN THE non_compliant
   # INPUT.
@@ -461,7 +465,7 @@ task  ScrubBatch {
       '~{initial_datadir}'   \
       '~{staging_area}'      \
       '~{write_json(batch)}' \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   date >> '~{DUMMY}'
   >>>
@@ -508,7 +512,7 @@ task  CollectShards {
   collect_shards.py                  \
       '~{write_json(non_compliant)}' \
       '~{staging_area}'              \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   date >> '~{DUMMY}'
   >>>
@@ -554,7 +558,7 @@ task  ConcatenateShards {
   concatenate_shards.py      \
       '~{staging_area}'      \
       '~{write_json(batch)}' \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   date >> '~{DUMMY}'
   >>>
@@ -612,7 +616,7 @@ task  MakePushBatches {
       '~{staging_area}'         \
       "${SCRUBRESULTS}"         \
       "${CONCATENATIONRESULTS}" \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   >>>
 
@@ -654,7 +658,7 @@ task  PushScrubbed {
       '~{staging_area}'      \
       '~{current_datadir}'   \
       '~{write_json(batch)}' \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   >>>
 
@@ -711,7 +715,7 @@ task  Summarize {
       "${SCRUBRESULTS}"         \
       "${CONCATENATIONRESULTS}" \
       "${PUSHRESULTS}"          \
-    > '~{STDOUT}'
+    | tee '~{STDOUT}'
 
   >>>
 
