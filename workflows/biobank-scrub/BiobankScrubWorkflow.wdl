@@ -24,6 +24,7 @@ workflow BiobankScrubWorkflow {
     String   scrubsdir            = "gs://mgbpm-biobank-data/scrubs"
     String   initial_datadir      = "gs://mgbpm-biobank-data/datasets/initial"
     String   current_datadir      = "gs://mgbpm-biobank-data/datasets/current"
+    String?  release_datadir
     String   database             = "gs://mgbpm-biobank-data/reference/biobank/dbdump.tsv"
     Boolean  force                = false
     String   docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.3"
@@ -41,6 +42,7 @@ workflow BiobankScrubWorkflow {
     scrubsdir            : scrubsdir,
     initial_datadir      : initial_datadir,
     current_datadir      : current_datadir,
+    release_datadir      : release_datadir,
     database             : database,
     force                : force,
     docker_image         : docker_image
@@ -154,7 +156,10 @@ workflow BiobankScrubWorkflow {
     call PushScrubbed {
       input:
         staging_area    = staging_area,
-        current_datadir = current_datadir,
+        release_datadir = select_first([
+                                        release_datadir,
+                                        current_datadir
+                                       ]),
         batch           = batch,
         docker_image    = docker_image
     }
@@ -633,7 +638,7 @@ task  PushScrubbed {
 
   input {
     String          staging_area
-    String          current_datadir
+    String          release_datadir
     Array[String]   batch
     String          docker_image
   }
@@ -650,13 +655,13 @@ task  PushScrubbed {
 
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{current_datadir}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{release_datadir}'
 
   mkdir --parents '~{OUTPUTDIR}'
 
   push_scrubbed.py           \
       '~{staging_area}'      \
-      '~{current_datadir}'   \
+      '~{release_datadir}'   \
       '~{write_json(batch)}' \
     | tee '~{STDOUT}'
 
