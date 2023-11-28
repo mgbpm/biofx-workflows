@@ -21,8 +21,9 @@ workflow FASTParsingWorkflow {
         Array[String]? fast_annotated_sample_data_scripts
         String? fast_annotated_sample_data_saved_filter_name
         # Reporting steps
-        String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230531"
-        File gil_transcript_exon_count
+        Boolean create_parsed_output = false
+        String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920"
+        File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "B"
     }
     
@@ -70,23 +71,25 @@ workflow FASTParsingWorkflow {
                 workspace_name = workspace_name,
                 docker_image = orchutils_docker_image
         }
-        call FASTOutputParser.FASTOutputParserTask {
-            input:
-                fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
-                sample_type = fast_parser_sample_type,
-                reference_build = reference_build,
-                oms_query = "Y",
-                transcript_exonNum = gil_transcript_exon_count,
-                gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name,
-                fast_parser_image = fast_parser_image
-        }
+        if (create_parsed_output) {
+            call FASTOutputParser.FASTOutputParserTask {
+                input:
+                    fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
+                    sample_type = fast_parser_sample_type,
+                    reference_build = reference_build,
+                    oms_query = "Y",
+                    transcript_exonNum = gil_transcript_exon_count,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name,
+                    fast_parser_image = fast_parser_image
+            }
+        } 
     }
 
     output {
         # FAST export file
         File? fast_export_file = FASTExportAnnotatedSampleDataTask.output_file
-        # FAST Parsed output and NVA report
+        # FAST Parsed output
         File? fast_parsed_output = FASTOutputParserTask.parsed_report
     }
 }
