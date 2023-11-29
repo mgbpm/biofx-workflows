@@ -27,6 +27,8 @@ workflow BiobankScrubWorkflow {
     String?  release_datadir
     String   database             = "gs://mgbpm-biobank-data/reference/biobank/dbdump.tsv"
     Boolean  force                = false
+    Int      scrub_memory         = 100  # in GB  ### FIXME: find smallest viable default memory
+    Int      scrub_disk_size      = 750  # in GB  ### FIXME: find smallest viable default disk size
     String   docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.3"
   }
 
@@ -45,6 +47,8 @@ workflow BiobankScrubWorkflow {
     release_datadir      : release_datadir,
     database             : database,
     force                : force,
+    scrub_memory         : scrub_memory,
+    scrub_disk_size      : scrub_disk_size,
     docker_image         : docker_image
   }
 
@@ -120,6 +124,8 @@ workflow BiobankScrubWorkflow {
         initial_datadir = initial_datadir,
         staging_area    = staging_area,
         batch           = batch,
+        memory          = "~{scrub_memory}GB",
+        storage         = "local-disk ~{scrub_disk_size} HDD",
         docker_image    = docker_image
     }
   }
@@ -432,6 +438,8 @@ task  ScrubBatch {
     String          initial_datadir
     String          staging_area
     Array[Object]   batch
+    String          memory
+    String          storage
     String          docker_image
   }
 
@@ -441,10 +449,45 @@ task  ScrubBatch {
 
   command <<<
   set -o errexit
-  # set -o pipefail
-  # set -o nounset
+  set -o pipefail
+  set -o nounset
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  export STARTDIR="${PWD}"
+
+  (
+    exec >&2
+
+    free --bytes
+    free --human
+  )
+
+  (
+    exec >&2
+
+    df --block-size=1  "${TMPDIR}"
+    df --block-size=G  "${TMPDIR}"
+    df --block-size=GB "${TMPDIR}"
+    df --human         "${TMPDIR}"
+  )
+
+  (
+    exec >&2
+
+    set +o errexit
+
+    du --summarize --apparent-size --block-size=1  "${STARTDIR}" 2>/dev/null
+    du --summarize                 --block-size=1  "${STARTDIR}" 2>/dev/null
+    du --summarize --apparent-size --block-size=G  "${STARTDIR}" 2>/dev/null
+    du --summarize                 --block-size=G  "${STARTDIR}" 2>/dev/null
+    du --summarize --apparent-size --block-size=GB "${STARTDIR}" 2>/dev/null
+    du --summarize                 --block-size=GB "${STARTDIR}" 2>/dev/null
+    du --summarize --apparent-size --human         "${STARTDIR}" 2>/dev/null
+    du --summarize                 --human         "${STARTDIR}" 2>/dev/null
+
+    true
+  )
 
   export RCLONE_LOG_LEVEL=DEBUG
   export RCLONE_STATS_LOG_LEVEL=DEBUG
@@ -464,15 +507,43 @@ task  ScrubBatch {
   mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
 
-  scrub_batch.py             \
-      --logging-level=DEBUG  \
-      '~{withdrawn_list}'    \
-      '~{initial_datadir}'   \
-      '~{staging_area}'      \
-      '~{write_json(batch)}' \
-    | tee '~{STDOUT}'
+  /usr/bin/time -v               \
+      scrub_batch.py             \
+          --logging-level=DEBUG  \
+          '~{withdrawn_list}'    \
+          '~{initial_datadir}'   \
+          '~{staging_area}'      \
+          '~{write_json(batch)}' \
+        | tee '~{STDOUT}'
 
   date >> '~{DUMMY}'
+
+  (
+    exec >&2
+
+    df --block-size=1  "${TMPDIR}"
+    df --block-size=G  "${TMPDIR}"
+    df --block-size=GB "${TMPDIR}"
+    df --human         "${TMPDIR}"
+  )
+
+  (
+    exec >&2
+
+    set +o errexit
+
+    du --summarize --apparent-size --block-size=1  "${STARTDIR}" 2>/dev/null
+    du --summarize                 --block-size=1  "${STARTDIR}" 2>/dev/null
+    du --summarize --apparent-size --block-size=G  "${STARTDIR}" 2>/dev/null
+    du --summarize                 --block-size=G  "${STARTDIR}" 2>/dev/null
+    du --summarize --apparent-size --block-size=GB "${STARTDIR}" 2>/dev/null
+    du --summarize                 --block-size=GB "${STARTDIR}" 2>/dev/null
+    du --summarize --apparent-size --human         "${STARTDIR}" 2>/dev/null
+    du --summarize                 --human         "${STARTDIR}" 2>/dev/null
+
+    true
+  )
+
   >>>
 
   output {
@@ -481,9 +552,9 @@ task  ScrubBatch {
 
   runtime {
     docker: docker_image
-    memory: "100GB"
+    memory: memory
     cpus:   8
-    disks:  "local-disk 750 HDD" ### FIXME: find smallest viable disk size
+    disks:  storage
   }
 }
 
