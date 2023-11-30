@@ -8,7 +8,7 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | File | batch_annotation_input | Yes | The file to use for Alamut and gnomAD batch annotation; collective VCF from Data Prep workflow | |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
-| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921" |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129" |
 | String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
 | String | reference_build | No | The genome reference build name | "GRCh38" |
 | File | alamut_db | Yes | The database file for Alamut batch | |

@@ -8,12 +8,12 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | Array[String] | fast_data_sample_names | Yes | Names of samples in FAST for which to create annotated sample data
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
-| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921" |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129" |
 | String | reference_build | No | The genome reference build name | "GRCh38" |
 | Array[String] | fast_annotated_sample_data_regions | No | The list of regions to include in the FAST annotated sample data; each element is a "name:applyMask" pair | |
 | Array[String] | fast_annotated_sample_data_scripts | No | The list of custom scripts to run on the FAST annotated sample data after creation | |
 | String | fast_annotated_sample_data_saved_filter_name | No | The saved filter to apply to the FAST annotated sample data | |
-| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920" |
+| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231129" |
 | File | gil_transcript_exon_count | No | A tab delimited file of transcript id and exon count | "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt" |
 | String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | B |
 

@@ -13,7 +13,7 @@ workflow LoadingAlamutAndGnomadWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker image
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921"
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # bcftools docker image
         String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # reference genome

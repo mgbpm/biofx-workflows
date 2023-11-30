@@ -11,7 +11,7 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
 | String | reference_build | No | The genome reference build name | "GRCh38" |
 | String | python_docker_image | No | The name of the Python Docker image | "python:3.10" |
-| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920" |
+| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231129" |
 | File | gil_transcript_exon_count | No | A tab delimited file of transcript id and exon count | "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt" |
 | String | fast_parser_sample_type | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | B |
 

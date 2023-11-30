@@ -13,7 +13,7 @@ workflow FASTParsingWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921"
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # reference genome files
         String reference_build = "GRCh38"
         # FAST loading inputs
@@ -22,7 +22,7 @@ workflow FASTParsingWorkflow {
         String? fast_annotated_sample_data_saved_filter_name
         # Reporting steps
         Boolean create_parsed_output = false
-        String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920"
+        String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231129"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "B"
     }

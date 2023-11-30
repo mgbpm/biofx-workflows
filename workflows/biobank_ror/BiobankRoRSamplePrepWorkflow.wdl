@@ -18,7 +18,7 @@ workflow IndividualSamplePrepWorkflow {
         # Docker images
         String python_docker_image = "python:3.10"
         String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230921"
+        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         String ubuntu_docker_image = "ubuntu:latest"
         # GCP project and Terra workspace for secret retrieval
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
