@@ -553,7 +553,6 @@ task  ScrubBatch {
   runtime {
     docker: docker_image
     memory: memory
-    cpus:   8
     disks:  storage
   }
 }
