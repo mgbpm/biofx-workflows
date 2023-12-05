@@ -8,10 +8,7 @@ import "BiobankUtils.wdl"
 
 struct RundirInitialized {
   String          staging_area
-  Boolean         found_saved_withdrawn_list
-  Array[String]   withdrawn_list
-  File?           nullvalue                   # a pathetic hack to get around
-                                              # the WDL's limitations
+  File?           maybe_saved_withdrawn_list
 }
 
 # -----------------------------------------------------------------------------
@@ -19,17 +16,17 @@ struct RundirInitialized {
 workflow BiobankScrubWorkflow {
   input {
     String   runid
-    File?    maybe_withdrawn_list
-    Int      nbatches             = 500
-    String   scrubsdir            = "gs://mgbpm-biobank-data/scrubs"
-    String   initial_datadir      = "gs://mgbpm-biobank-data/datasets/initial"
-    String   current_datadir      = "gs://mgbpm-biobank-data/datasets/current"
+    Int      nbatches                = 500
+    String   scrubsdir               = "gs://mgbpm-biobank-data/scrubs"
+    String   initial_datadir         = "gs://mgbpm-biobank-data/datasets/initial"
+    String   current_datadir         = "gs://mgbpm-biobank-data/datasets/current"
     String?  release_datadir
-    String   database             = "gs://mgbpm-biobank-data/reference/biobank/dbdump.tsv"
-    Boolean  force                = false
-    Int      scrub_memory         = 100  # in GB  ### FIXME: find smallest viable default memory
-    Int      scrub_disk_size      = 750  # in GB  ### FIXME: find smallest viable default disk size
-    String   docker_image         = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.3"
+    File     latest_withdrawn_list   = "gs://mgbpm-biobank-data/reference/biobank/withdrawn.txt"
+    File?    withdrawn_list_override
+    Boolean  force                   = false
+    Int      scrub_memory            = 100  # in GB  ### FIXME: find smallest viable default memory
+    Int      scrub_disk_size         = 750  # in GB  ### FIXME: find smallest viable default disk size
+    String   docker_image            = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.4"
   }
 
   call BiobankUtils.ShowEnvironment as ShowEnvironment {
@@ -38,18 +35,18 @@ workflow BiobankScrubWorkflow {
   }
 
   Object inputs = object {
-    runid                : runid,
-    maybe_withdrawn_list : maybe_withdrawn_list,
-    nbatches             : nbatches,
-    scrubsdir            : scrubsdir,
-    initial_datadir      : initial_datadir,
-    current_datadir      : current_datadir,
-    release_datadir      : release_datadir,
-    database             : database,
-    force                : force,
-    scrub_memory         : scrub_memory,
-    scrub_disk_size      : scrub_disk_size,
-    docker_image         : docker_image
+    runid                   : runid,
+    nbatches                : nbatches,
+    scrubsdir               : scrubsdir,
+    initial_datadir         : initial_datadir,
+    current_datadir         : current_datadir,
+    release_datadir         : release_datadir,
+    latest_withdrawn_list   : latest_withdrawn_list,
+    withdrawn_list_override : withdrawn_list_override,
+    force                   : force,
+    scrub_memory            : scrub_memory,
+    scrub_disk_size         : scrub_disk_size,
+    docker_image            : docker_image
   }
 
   call ValidateInputs {
@@ -67,26 +64,12 @@ workflow BiobankScrubWorkflow {
   }
 
   File? maybe_saved_withdrawn_list =
-    if MaybeInitializeRundir.info.found_saved_withdrawn_list
-    then write_lines(MaybeInitializeRundir.info.withdrawn_list)
-    else MaybeInitializeRundir.info.nullvalue
+    MaybeInitializeRundir.info.maybe_saved_withdrawn_list
 
-  if (!(   defined(maybe_saved_withdrawn_list)
-        || defined(maybe_withdrawn_list))) {
-    call ListWithdrawnSubjects {
-      input:
-        rundir       = rundir,
-        database     = database,
-        docker_image = docker_image
-    }
-  }
-
-  # FIXME: handle conditions arising from multiple, inconsistent
-  # versions of the withdrawn subjects list
   File withdrawn_list = select_first([
+    withdrawn_list_override,
     maybe_saved_withdrawn_list,
-    maybe_withdrawn_list,
-    ListWithdrawnSubjects.withdrawn_list
+    latest_withdrawn_list
   ])
 
   call ListDatasetIds {
@@ -264,43 +247,6 @@ task  MaybeInitializeRundir {
 
   runtime {
     docker: inputs.docker_image
-  }
-}
-
-
-task  ListWithdrawnSubjects {
-  input {
-    String  rundir
-    String  database
-    String  docker_image
-  }
-
-  String   OUTPUTDIR = "OUTPUT"
-  String   STDOUT    = OUTPUTDIR + "/STDOUT"
-
-  command <<<
-  set -o errexit
-  set -o pipefail
-  # set -o nounset
-  set -o xtrace
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
-
-  mkdir --parents '~{OUTPUTDIR}'
-  list_withdrawn_subjects.py \
-      '~{rundir}'            \
-      '~{database}'          \
-    | sort                   \
-    | tee '~{STDOUT}'
-  >>>
-
-  output {
-    File   withdrawn_list = STDOUT
-  }
-
-  runtime {
-    docker: docker_image
   }
 }
 
