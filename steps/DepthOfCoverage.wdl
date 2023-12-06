@@ -15,7 +15,7 @@ workflow DepthOfCoverageWorkflow {
         Array[RoiAndRefGeneFilePair?] roi_genes
         File? gene_names
         Int gatk_max_heap_gb = 31
-        Int gatk_disk_size = 100
+        Int gatk_disk_size = ceil(size(bam, "GB") * 1.5) + 10
         String cov_docker_image
         String gatk_docker_image = "broadinstitute/gatk3:3.7-0"
         Int preemptible = 1
@@ -115,14 +115,14 @@ struct RoiAndRefGeneFilePair {
 
 task DepthOfCoverageWGSTask {
     input {
-        String output_basename
         File ref_fasta
         File ref_fasta_index
         File ref_dict
         File bam
         File bai
+        String output_basename = sub(basename(bam), "\\.(bam|BAM|cram|CRAM)$", "") + ".cov"
         Int max_heap_gb
-        Int disk_size
+        Int disk_size = ceil(size(bam, "GB") * 1.5) + 10
         String docker_image
         Int preemptible = 1
     }
@@ -143,7 +143,7 @@ task DepthOfCoverageWGSTask {
     runtime {
         docker: "~{docker_image}"
         memory: (max_heap_gb + 4) + "GB"
-        disks: "local-disk " + disk_size + " HDD"
+        disks: "local-disk " + disk_size + " SSD"
         preemptible: preemptible
     }
 
@@ -155,15 +155,15 @@ task DepthOfCoverageWGSTask {
 
 task DepthOfCoverageROITask {
     input {
-        String output_basename
         File ref_fasta
         File ref_fasta_index
         File ref_dict
         File bam
         File bai
         File bed
+        String output_basename = sub(basename(bam), "\\.(bam|BAM|cram|CRAM)$", "") + ".cov"
         Int max_heap_gb
-        Int disk_size
+        Int disk_size = ceil(size(bam, "GB") * 1.5) + 10
         String docker_image
         Int preemptible = 1
     }
@@ -185,7 +185,7 @@ task DepthOfCoverageROITask {
     runtime {
         docker: "~{docker_image}"
         memory: (max_heap_gb + 4) + "GB"
-        disks: "local-disk " + disk_size + " HDD"
+        disks: "local-disk " + disk_size + " SSD"
         preemptible: preemptible
     }
 
@@ -202,7 +202,6 @@ task DepthOfCoverageROITask {
 
 task DepthOfCoverageGeneTask {
     input {
-        String output_basename
         File ref_fasta
         File ref_fasta_index
         File ref_dict
@@ -211,8 +210,9 @@ task DepthOfCoverageGeneTask {
         File roi_bed
         File ref_gene
         File? ref_gene_idx
+        String output_basename = sub(basename(bam), "\\.(bam|BAM|cram|CRAM)$", "") + ".cov"
         Int max_heap_gb
-        Int disk_size
+        Int disk_size = ceil(size(bam, "GB") * 1.5) + 10
         String docker_image
         Int preemptible = 1
     }
@@ -245,7 +245,7 @@ task DepthOfCoverageGeneTask {
     runtime {
         docker: "~{docker_image}"
         memory: (max_heap_gb + 4) + "GB"
-        disks: "local-disk " + disk_size + " HDD"
+        disks: "local-disk " + disk_size + " SSD"
         preemptible: preemptible
     }
 
