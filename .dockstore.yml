@@ -97,3 +97,12 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRFASTParsing.wdl
     readMePath: /workflows/biobank_ror/BiobankRoRFASTParsing.md
+  - name: LmmgapWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/lmmgap/lmmgap.wdl
+    filters:
+      branches:
+        - master
+        - /.*lmmgap.*/
+      tags:
+        - LMMGAP_*
