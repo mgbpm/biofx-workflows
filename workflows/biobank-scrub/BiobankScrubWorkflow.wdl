@@ -551,9 +551,10 @@ task  ScrubBatch {
   }
 
   runtime {
-    docker: docker_image
-    memory: memory
-    disks:  storage
+    docker:           docker_image
+    memory:           memory
+    disks:            storage
+    ignoreExitStatus: true
   }
 }
 
@@ -644,8 +645,9 @@ task  ConcatenateShards {
   }
 
   runtime {
-    docker: docker_image
-    disks:  "local-disk ~{storage} HDD"
+    docker:           docker_image
+    disks:            "local-disk ~{storage} HDD"
+    ignoreExitStatus: true
   }
 }
 
@@ -742,7 +744,8 @@ task  PushScrubbed {
   }
 
   runtime {
-    docker: docker_image
+    docker:           docker_image
+    ignoreExitStatus: true
   }
 }
 
