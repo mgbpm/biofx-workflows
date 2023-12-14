@@ -97,6 +97,10 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRFASTParsing.wdl
     readMePath: /workflows/biobank_ror/BiobankRoRFASTParsing.md
+  - name: BiobankRoRMergeFASTExportsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRMergeFASTExports.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRFASTMergeFASTExports.md
   - name: LmmgapWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/lmmgap/lmmgap.wdl

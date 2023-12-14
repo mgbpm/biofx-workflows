@@ -13,8 +13,8 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | File | target_roi_bed | No | BED file containing gene regions; the VCFs in the dataset will be filtered to these regions | |
 | Boolean | is_sharded | Yes | Whether or not the input data is sharded | |
 | String | python_docker_image | No | The name of the python Docker image for creating a collective VCF | "python:3.10" |
-| String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
-| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129" |
+| String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129" |
 | String | ubuntu_docker_image | No | The name of the ubuntu Docker image | "ubuntu:latest" |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |

@@ -15,7 +15,7 @@ workflow MergeFASTExportsWorkflow {
         String reference_build = "GRCh38"
         # Reporting steps
         String python_docker_image = "python:3.10"
-        String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231129"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231206"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "B"
     }
@@ -42,6 +42,8 @@ workflow MergeFASTExportsWorkflow {
     }
 
     output {
+        # Merged export file
+        File merged_export_file = MergeExports.merged_fast_export
         # FAST parsed output
         File? fast_parsed_output = FASTOutputParserTask.parsed_report
     }

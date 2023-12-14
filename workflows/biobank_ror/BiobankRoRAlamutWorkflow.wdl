@@ -13,9 +13,9 @@ workflow LoadingAlamutAndGnomadWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker image
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # bcftools docker image
-        String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
+        String bcftools_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # reference genome
         String reference_build = "GRCh38"
         # alamut inputs
@@ -27,7 +27,7 @@ workflow LoadingAlamutAndGnomadWorkflow {
         String alamut_user_secret_name = "alamut-batch-ini-user"
         Int alamut_queue_limit = 4
         String alamut_queue_folder = "gs://biofx-task-queue/alamut"
-        String alamut_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
+        String alamut_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
         Boolean alamut_save_working_files = false
         String alamut_anno_src_id = "228"
         String alamut_anno_min_age = "P6M"

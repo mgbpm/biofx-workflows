@@ -13,12 +13,12 @@ workflow SampleLoadingWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker image
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # reference genome
         String reference_build = "GRCh38"
         # qceval inputs
         String qceval_project_type
-        String qceval_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20231005"
+        String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20231005"
         # FAST loading inputs
         Boolean has_haploid_sites = false
         String sample_data_load_config_name = "Sample_VCF_PPM_Eval"
