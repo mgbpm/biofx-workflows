@@ -84,7 +84,7 @@ task MergeExportsTask {
 
     runtime {
         docker: "~{docker_image}"
-        memory: "~{mem_size}"
+        memory: mem_size + "GB"
         disks: "local-disk " + disk_size + " SSD"
     }
 
