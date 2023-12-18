@@ -5,7 +5,6 @@ The Biobank Return of Results pipeline is meant to filter Biobank datasets and c
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | String | annotated_sample_data_name | Yes | Name for created annotated sample data in FAST | |
-| String | sourcename | Yes | Input for the SOURCENAME info field of the merged export output | |
 | Array[Files] | fast_export_files | Yes | Full paths to fast export files (result of FAST Parsing workflow) | |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
