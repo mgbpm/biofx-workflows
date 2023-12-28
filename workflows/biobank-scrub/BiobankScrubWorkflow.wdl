@@ -98,7 +98,7 @@ workflow BiobankScrubWorkflow {
     input:
       non_compliant = non_compliant,
       nbatches      = nbatches,
-      staging_area  = staging_area,   # to check for already-scrubbed files
+      rundir        = rundir,         # to check for already-scrubbed files
       docker_image  = docker_image
   }
 
@@ -107,7 +107,7 @@ workflow BiobankScrubWorkflow {
       input:
         withdrawn_list  = withdrawn_list,
         initial_datadir = initial_datadir,
-        staging_area    = staging_area,
+        rundir          = rundir,
         batch           = batch,
         memory          = "~{scrub_memory}GB",
         storage         = "local-disk ~{scrub_disk_size} HDD",
@@ -119,7 +119,7 @@ workflow BiobankScrubWorkflow {
 
   call CollectShards {
     input:
-      staging_area        = staging_area,
+      rundir              = rundir,
       non_compliant       = non_compliant,
       sequencing_sentinel = ScrubBatch.results,  # ignored
       docker_image        = docker_image
@@ -128,7 +128,7 @@ workflow BiobankScrubWorkflow {
   scatter (storage_and_batch in CollectShards.storage_and_batch_array) {
     call ConcatenateShards {
       input:
-        staging_area = staging_area,
+        rundir       = rundir,
         batch        = storage_and_batch.batch,
         storage      = storage_and_batch.storage,
         docker_image = docker_image
@@ -137,7 +137,7 @@ workflow BiobankScrubWorkflow {
 
   call MakePushBatches {
     input:
-      staging_area          = staging_area,
+      rundir                = rundir,
       scrub_results         = ScrubBatch.results,
       concatenation_results = ConcatenateShards.results,
       docker_image          = docker_image
@@ -146,7 +146,7 @@ workflow BiobankScrubWorkflow {
   scatter (batch in MakePushBatches.batches) {
     call PushScrubbed {
       input:
-        staging_area    = staging_area,
+        rundir          = rundir,
         release_datadir = select_first([
                                         release_datadir,
                                         current_datadir
@@ -343,7 +343,7 @@ task  MakeScrubBatches {
     Array[Object]   non_compliant   # each object in this array has
                                     # members path and type
     Int             nbatches        # desired number of batches
-    String          staging_area    # url to a directory for staging
+    String          rundir          # url to a run directory
     String          docker_image
   }
 
@@ -357,13 +357,13 @@ task  MakeScrubBatches {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   mkdir --parents '~{OUTPUTDIR}'
   make_scrub_batches.py              \
       '~{write_json(non_compliant)}' \
       ~{nbatches}                    \
-      '~{staging_area}'              \
+      '~{rundir}'                    \
     | tee '~{STDOUT}'
   # PRINTS TO STDOUT AN ARRAY OF nbatches ARRAYS OF OBJECTS; EACH OBJECT IN
   # THIS OUTPUT CORRESPONDS TO A (STILL-PENDING) OBJECT IN THE non_compliant
@@ -384,7 +384,7 @@ task  ScrubBatch {
   input {
     File            withdrawn_list
     String          initial_datadir
-    String          staging_area
+    String          rundir
     Array[Object]   batch
     String          memory
     String          storage
@@ -450,7 +450,7 @@ task  ScrubBatch {
       ls -Altr  "${BINDIR}"
   )
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
@@ -460,7 +460,7 @@ task  ScrubBatch {
           --logging-level=DEBUG  \
           '~{withdrawn_list}'    \
           '~{initial_datadir}'   \
-          '~{staging_area}'      \
+          '~{rundir}'            \
           '~{write_json(batch)}' \
         | tee '~{STDOUT}'
 
@@ -509,7 +509,7 @@ task  ScrubBatch {
 
 task  CollectShards {
   input {
-    String          staging_area        # url to a directory for staging
+    String          rundir              # url to a run directory
     Array[Object]   non_compliant       # each object in this array has
                                         # members path and type
     Array[Object]   sequencing_sentinel # ensures proper sequencing of
@@ -531,11 +531,11 @@ task  CollectShards {
   mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   collect_shards.py                  \
       '~{write_json(non_compliant)}' \
-      '~{staging_area}'              \
+      '~{rundir}'                    \
     | tee '~{STDOUT}'
 
   date >> '~{DUMMY}'
@@ -556,7 +556,7 @@ task  ConcatenateShards {
   # ...
   input {
     Int             storage        # required disk size (in GB)
-    String          staging_area   # url to a directory for staging
+    String          rundir         # url to a run directory
     Array[Object]   batch          # each object in this array has
                                    # members nshards, source, and
                                    # endpoint
@@ -574,13 +574,13 @@ task  ConcatenateShards {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   mkdir --parents '~{OUTPUTDIR}'
   ( hostname --long ; date ) > '~{DUMMY}'
 
   concatenate_shards.py      \
-      '~{staging_area}'      \
+      '~{rundir}'            \
       '~{write_json(batch)}' \
     | tee '~{STDOUT}'
 
@@ -603,7 +603,7 @@ task  ConcatenateShards {
 task  MakePushBatches {
 
   input {
-    String          staging_area
+    String          rundir
     Array[Object]   scrub_results
     Array[Object]   concatenation_results
     String          docker_image
@@ -621,7 +621,7 @@ task  MakePushBatches {
 
   RESULTSDIR="${PWD}/results"
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   mkdir --parents "${RESULTSDIR}"
 
@@ -638,7 +638,7 @@ task  MakePushBatches {
   mkdir --parents '~{OUTPUTDIR}'
 
   make_push_batches.py          \
-      '~{staging_area}'         \
+      '~{rundir}'               \
       "${SCRUBRESULTS}"         \
       "${CONCATENATIONRESULTS}" \
     | tee '~{STDOUT}'
@@ -657,7 +657,7 @@ task  MakePushBatches {
 task  PushScrubbed {
 
   input {
-    String          staging_area
+    String          rundir
     String          release_datadir
     Array[String]   batch
     String          docker_image
@@ -673,14 +673,14 @@ task  PushScrubbed {
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{staging_area}'
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{release_datadir}'
 
   mkdir --parents '~{OUTPUTDIR}'
 
   push_scrubbed.py           \
-      '~{staging_area}'      \
+      '~{rundir}'            \
       '~{release_datadir}'   \
       '~{write_json(batch)}' \
     | tee '~{STDOUT}'
