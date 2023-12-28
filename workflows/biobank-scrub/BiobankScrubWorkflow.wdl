@@ -9,6 +9,7 @@ import "BiobankUtils.wdl"
 struct RundirInitialized {
   String          staging_area
   File?           maybe_saved_withdrawn_list
+  Int             attempt_index
 }
 
 # -----------------------------------------------------------------------------
@@ -63,7 +64,8 @@ workflow BiobankScrubWorkflow {
       sequencing_dummy = ValidateInputs.sequencing_dummy
   }
 
-  File? maybe_saved_withdrawn_list =
+  Int      attempt_index              = MaybeInitializeRundir.info.attempt_index
+  File?    maybe_saved_withdrawn_list =
     MaybeInitializeRundir.info.maybe_saved_withdrawn_list
 
   File withdrawn_list = select_first([
