@@ -361,6 +361,7 @@ task  MakeScrubBatches {
 
   mkdir --parents '~{OUTPUTDIR}'
   make_scrub_batches.py              \
+      --logging-level=DEBUG          \
       '~{write_json(non_compliant)}' \
       ~{nbatches}                    \
       '~{rundir}'                    \
@@ -520,6 +521,7 @@ task  CollectShards {
   String   OUTPUTDIR = "OUTPUT"
   String   STDOUT    = OUTPUTDIR + "/STDOUT"
   String   DUMMY     = OUTPUTDIR + "/DUMMY"
+  String   DEBUGGING = OUTPUTDIR + "/DEBUGGING"
 
   command <<<
   set -o errexit
@@ -533,7 +535,10 @@ task  CollectShards {
 
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
+  export COLLECT_SHARDS__DEBUGGING='~{DEBUGGING}'
+
   collect_shards.py                  \
+      --logging-level=DEBUG          \
       '~{write_json(non_compliant)}' \
       '~{rundir}'                    \
     | tee '~{STDOUT}'
@@ -544,6 +549,7 @@ task  CollectShards {
   output {
     String                 sequencing_dummy = read_string(DUMMY)
     Array[Object]   storage_and_batch_array = read_json(STDOUT)
+    File                     debugging_info = DEBUGGING
   }
 
   runtime {
@@ -580,6 +586,7 @@ task  ConcatenateShards {
   ( hostname --long ; date ) > '~{DUMMY}'
 
   concatenate_shards.py      \
+      --logging-level=DEBUG  \
       '~{rundir}'            \
       '~{write_json(batch)}' \
     | tee '~{STDOUT}'
