@@ -205,7 +205,8 @@ task  ValidateInputs {
   }
 
   runtime {
-    docker: inputs.docker_image
+    preemptible: 2
+    docker:      inputs.docker_image
   }
 }
 
@@ -248,7 +249,9 @@ task  MaybeInitializeRundir {
   }
 
   runtime {
-    docker: inputs.docker_image
+    # NO PREEMPTION FOR THIS TASK
+    preemptible: 0
+    docker:      inputs.docker_image
   }
 }
 
@@ -280,7 +283,8 @@ task  ListDatasetIds {
   }
 
   runtime {
-    docker: docker_image
+    preemptible: 2
+    docker:      docker_image
   }
 }
 
@@ -333,7 +337,8 @@ task  FindNonCompliant {
   }
 
   runtime {
-    docker: docker_image
+    preemptible: 2
+    docker:      docker_image
   }
 }
 
@@ -376,7 +381,8 @@ task  MakeScrubBatches {
   }
 
   runtime {
-    docker: docker_image
+    preemptible: 2
+    docker:      docker_image
   }
 }
 
@@ -500,6 +506,7 @@ task  ScrubBatch {
   }
 
   runtime {
+    preemptible:      10
     docker:           docker_image
     memory:           memory
     disks:            storage
@@ -553,7 +560,8 @@ task  CollectShards {
   }
 
   runtime {
-    docker: docker_image
+    preemptible: 2
+    docker:      docker_image
   }
 }
 
@@ -600,6 +608,7 @@ task  ConcatenateShards {
   }
 
   runtime {
+    preemptible:      10
     docker:           docker_image
     disks:            "local-disk ~{storage} HDD"
     ignoreExitStatus: true
@@ -657,7 +666,8 @@ task  MakePushBatches {
   }
 
   runtime {
-    docker: docker_image
+    preemptible: 2
+    docker:      docker_image
   }
 }
 
@@ -699,6 +709,7 @@ task  PushScrubbed {
   }
 
   runtime {
+    preemptible:      10
     docker:           docker_image
     ignoreExitStatus: true
   }
@@ -757,7 +768,8 @@ task  Summarize {
   }
 
   runtime {
-    docker: docker_image
+    preemptible: 2
+    docker:      docker_image
   }
 }
 
