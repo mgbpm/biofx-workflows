@@ -27,7 +27,7 @@ workflow BiobankScrubWorkflow {
     Boolean  force                   = false
     Int      scrub_memory            = 100  # in GB  ### FIXME: find smallest viable default memory
     Int      scrub_disk_size         = 750  # in GB  ### FIXME: find smallest viable default disk size
-    String   docker_image            = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.5"
+    String   docker_image            = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.6"
   }
 
   call BiobankUtils.ShowEnvironment as ShowEnvironment {
