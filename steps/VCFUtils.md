@@ -95,6 +95,41 @@ Extracts one or more samples from a joint VCF file
 ## Output Parameters
 * File output_vcf_gz - the output VCF file
 
+<<<<<<< HEAD
+# ConcatVCFsTask
+Concatenates an array of VCFs
+
+## Input Parameters
+* Array[File] input_vcfs - required - the input VCF files
+* Boolean sorted - optional - whether or not to produce a sorted VCF output; default is false
+* Boolean output_index - optional - whether or not to produce an index of the output; default is false
+* Boolean output_index - optional - whether or not to produce an index of the output; default is false
+* String output_basename - optional - the basename that will be used to name the output file; defaults to the input
+* String index_format - optional - type of index format for the output; defaults to "csi" with the other option being "tbi"
+* String docker_image - optional - Docker image to run; must have bcftools in the path; defaults to "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
+* Int disk_size - optional - disk size to allocation in GB; defaults to 10 plus the input VCFs size times 23
+* Int mem_size - optional - memory to allocate in GB; defaults to 4 if the input VCFs is less than 10GB, 8 otherwise
+* Float sort_max_mem - optional - number of GBs for the `--max-mem` parameter; defaults to 0.75 of the memory size
+* Int preemptible - optional - default is 1
+
+## Output Parameters
+* File output_vcf_gz - the output VCF file
+
+# MergeVCFsTask
+Merges an array of VCFs
+
+## Input Parameters
+* Array[File] input_vcfs - required - the input VCF files
+* Boolean sorted - optional - whether or not to produce a sorted VCF output; default is false
+* Boolean output_index - optional - whether or not to produce an index of the output; default is false
+* String output_basename - required - the basename that will be used to name the output file
+* String index_format - optional - type of index format for the output; defaults to "csi" with the other option being "tbi"
+* String docker_image - optional - Docker image to run; must have bcftools in the path; defaults to "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
+* Int disk_size - optional - disk size to allocation in GB; defaults to 10 plus the input VCFs size times 23
+* Int mem_size - optional - memory to allocate in GB; defaults to 4 if the input VCFs is less than 10GB, 8 otherwise
+* Float sort_max_mem - optional - number of GBs for the `--max-mem` parameter; defaults to 0.75 of the memory size
+* Int preemptible - optional - default is 1
+=======
 # ConvertBCFTask
 Converts a BCF file to either vcf.gz or vcf format
 
@@ -125,3 +160,4 @@ Converts a BCF file to either vcf.gz or vcf format
 
 ## Output Parameters
 * File output_vcf_gz - the output collective sample VCF file
+>>>>>>> master

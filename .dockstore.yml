@@ -78,6 +78,10 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/RiskAllelesWorkflow.wdl
     readMePath: /workflows/pgxrisk/RiskAllelesWorkflow.md
+  - name: BahrainPipelinesWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainPipelinesWorkflow.wdl
+    readMePath: /workflows/bahrain_project/BahrainPipelinesWorkflow.md
   - name: BgwgsPanelWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsPanelWorkflow.wdl

@@ -82,7 +82,7 @@ task FilterVCFWithBEDTask {
                 region_count=$((0))
                 for seq in $(bcftools index -s "~{input_vcf}" | cut -f1)
                 do
-                    seq_region_count=$(( $(grep -c "^$seq\\b" "~{input_bed}") ))
+                    seq_region_count=$(( $(grep -c "^$seq\\b" "~{input_bed}") )) || :
                     region_count=$((region_count + seq_region_count))
                 done
             # Else just count the total number of regions in the bed file
@@ -136,7 +136,7 @@ task AnnotateVCFTask {
         String column_list
         String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + ".annotated"
         String docker_image
-        Int disk_size = ceil((size(input_vcf, "GB") * 2.5) + size(annotations_file, "GB") + size(annotations_idx_file, "GB")) + 10
+        Int disk_size = 10 + ceil(size(input_vcf, "GB") * 2.5) + ceil(size(annotations_file, "GB"))
         Int preemptible = 1
     }
 
@@ -320,5 +320,66 @@ task MakeCollectiveVCFTask {
 
     output {
         File output_vcf_gz = "~{output_basename}.vcf.gz"
+    }
+}
+
+task MergeVCFsTask {
+    input {
+        Array[File] input_vcfs
+        Array[File?] input_vcfs_idx
+        Boolean sorted = false
+        Boolean output_index = false
+        String index_format = "csi" # either "csi" or "tbi"
+        String output_basename
+        String docker_image
+        # Bcftools uses uncompressed temp files for sorting
+        #  so disk needs to be able to hold uncompressed VCF data
+        Int disk_size = ceil(size(input_vcfs, "GB") * 23) + 10
+        Int mem_size = if size(input_vcfs, "GB") > 10 then 8 else 4 
+        Float sort_max_mem = (if size(input_vcfs, "GB") > 10 then 8 else 4) * 0.75
+        Int preemptible = 1
+        File? empty_output_placeholder
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        # Show vm stats in logs
+        echo "Mem size = ~{mem_size}"
+        echo "Sort max mem = ~{sort_max_mem}"
+        bash -c 'while [ 1 -eq 1 ]; do vmstat 1 2; df -H; sleep 300; done' &
+
+        # Create list of files to merge
+        for c in '~{sep="' '" input_vcfs}'
+        do
+            echo $c >> "merge_these_files.txt"
+        done
+
+        # Merge files in list and sort if desired
+        if [ "~{sorted}" == "true" ]
+        then
+            bcftools merge --no-version --merge none --file-list "merge_these_files.txt" --output-type u  > "~{output_basename}_tmp.vcf.gz" 
+            bcftools sort --max-mem ~{sort_max_mem}G --output-type z "~{output_basename}_tmp.vcf.gz" > "~{output_basename}.vcf.gz"
+        else
+            bcftools merge --no-version --merge none --file-list "merge_these_files.txt" --output-type z > "~{output_basename}.vcf.gz" 
+        fi
+
+        # Build a new index file if desired
+        if [ "~{output_index}" == "true" ]
+        then
+            bcftools index --~{index_format} "~{output_basename}.vcf.gz"
+        fi
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
+        preemptible: preemptible
+    }
+
+    output {
+        File output_vcf_gz = "~{output_basename}.vcf.gz"
+        File? output_vcf_idx = if output_index then "~{output_basename}.vcf.gz.~{index_format}" else empty_output_placeholder
     }
 }
