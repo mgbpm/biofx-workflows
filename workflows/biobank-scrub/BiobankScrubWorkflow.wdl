@@ -25,8 +25,8 @@ workflow BiobankScrubWorkflow {
     File     latest_withdrawn_list   = "gs://mgbpm-biobank-data/reference/biobank/withdrawn.txt"
     File?    withdrawn_list_override
     Boolean  force                   = false
-    Int      scrub_memory            = 100  # in GB  ### FIXME: find smallest viable default memory
-    Int      scrub_disk_size         = 750  # in GB  ### FIXME: find smallest viable default disk size
+    Int      scrub_memory            = 26   # in GB
+    Int      scrub_disk_size         = 375  # in GB
     String   docker_image            = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:1.0.6"
   }
 
