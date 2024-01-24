@@ -1,5 +1,5 @@
 version 1.0
-
+# https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md
 # -----------------------------------------------------------------------------
 
 import "BiobankUtils.wdl"
@@ -608,7 +608,7 @@ task  ConcatenateShards {
   }
 
   runtime {
-    preemptible:      10
+    preemptible:      3
     docker:           docker_image
     disks:            "local-disk ~{storage} HDD"
     ignoreExitStatus: true
