@@ -22,9 +22,10 @@ workflow FASTParsingWorkflow {
         String? fast_annotated_sample_data_saved_filter_name
         # Reporting steps
         Boolean create_parsed_output = false
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231206"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20240117"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "B"
+        Boolean gatk_source = false
     }
     
     # Create annotated sample data
@@ -79,6 +80,7 @@ workflow FASTParsingWorkflow {
                     reference_build = reference_build,
                     oms_query = "Y",
                     transcript_exonNum = gil_transcript_exon_count,
+                    gatk_source = gatk_source,
                     gcp_project_id = gcp_project_id,
                     workspace_name = workspace_name,
                     fast_parser_image = fast_parser_image

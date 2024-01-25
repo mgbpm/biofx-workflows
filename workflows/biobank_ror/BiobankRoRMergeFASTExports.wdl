@@ -4,18 +4,20 @@ import "../../steps/FASTOutputParser.wdl"
 
 workflow MergeFASTExportsWorkflow {
     input {
+        # Sample data name for merged exports
         String annotated_sample_data_name
         # FAST export files (as full paths to bucket locations)
         Array[File] fast_export_files
         # GCP project and Terra workspace for secret retrieval
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
-        # reference genome files
+        # Reference genome files
         String reference_build = "GRCh38"
         # Reporting steps
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231214"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20240117"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "B"
+        Boolean gatk_source = false
     }
     
     # Merge FAST export files into one large file
@@ -34,6 +36,7 @@ workflow MergeFASTExportsWorkflow {
             reference_build = reference_build,
             oms_query = "Y",
             transcript_exonNum = gil_transcript_exon_count,
+            gatk_source = gatk_source,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
             fast_parser_image = fast_parser_image

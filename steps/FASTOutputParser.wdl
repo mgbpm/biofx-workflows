@@ -8,6 +8,7 @@ task FASTOutputParserTask {
         String oms_query = "Y"
         File transcript_exonNum
         String report_basename = sub(basename(fast_output_file), "\\.(txt.gz|txt|TXT.GZ|TXT)$", "")
+        Boolean gatk_source = false
         String gcp_project_id
         String workspace_name
         String fast_parser_image
@@ -36,12 +37,16 @@ task FASTOutputParserTask {
         mv "~{fast_output_file}" "~{file_name}"
 
         # Run the parser
+        GATK_SOURCE=""
+        [ ! -z "~{gatk_source}" ] && GATK_SOURCE="-a"
+
         $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
                     -s "~{sample_type}" \
                     -o "~{oms_query}" \
                     -e "~{transcript_exonNum}" \
                     -b "~{reference_build}" \
-                    -k oms-client-config.json
+                    -k oms-client-config.json \
+                    $GATK_SOURCE
 
         # Rename the output file to match the report basename
         if [[ "~{file_basename}" != "~{report_basename}" ]]
