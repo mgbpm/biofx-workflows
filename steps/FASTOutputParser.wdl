@@ -37,16 +37,22 @@ task FASTOutputParserTask {
         mv "~{fast_output_file}" "~{file_name}"
 
         # Run the parser
-        GATK_SOURCE=""
-        [ ! -z "~{gatk_source}" ] && GATK_SOURCE="-a"
-
-        $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
-                    -s "~{sample_type}" \
-                    -o "~{oms_query}" \
-                    -e "~{transcript_exonNum}" \
-                    -b "~{reference_build}" \
-                    -k oms-client-config.json \
-                    $GATK_SOURCE
+        if [ "~{gatk_source}" == "true" ]; then
+            $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
+                        -s "~{sample_type}" \
+                        -o "~{oms_query}" \
+                        -e "~{transcript_exonNum}" \
+                        -b "~{reference_build}" \
+                        -k oms-client-config.json \
+                        -a
+        else
+           $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
+                        -s "~{sample_type}" \
+                        -o "~{oms_query}" \
+                        -e "~{transcript_exonNum}" \
+                        -b "~{reference_build}" \
+                        -k oms-client-config.json 
+        fi
 
         # Rename the output file to match the report basename
         if [[ "~{file_basename}" != "~{report_basename}" ]]
