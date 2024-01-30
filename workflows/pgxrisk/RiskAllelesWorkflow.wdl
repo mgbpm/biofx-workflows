@@ -29,6 +29,7 @@ workflow RiskAllelesWorkflow {
             input_cram = input_cram,
             input_crai = input_crai,
             sample_id =sample_id,
+            accession_id = accession_id,
             test_code = test_code,
             reference_fasta = reference_fasta,
             reference_fasta_fai = reference_fasta_fai,
@@ -111,8 +112,8 @@ task RiskTask {
     }
 
     output {
-        File risk_report = "~{out_path}/~{sample_id}_~{test_code}.report.xlsx"
-        File genotype_xlsx = "~{out_path}/~{sample_id}_~{test_code}.genotype.xlsx"
-        File genotype_txt = "~{out_path}/~{sample_id}_~{test_code}.genotype.txt"
+        File risk_report = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.report.xlsx"
+        File genotype_xlsx = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.genotype.xlsx"
+        File genotype_txt = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.genotype.txt"
     }
 }

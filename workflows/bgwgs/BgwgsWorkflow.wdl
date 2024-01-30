@@ -19,9 +19,9 @@ workflow BgwgsWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
         # bcftools docker image
-        String bcftools_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
+        String bcftools_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # subject, sample id and data location
         String subject_id
         String sample_id
@@ -225,16 +225,16 @@ workflow BgwgsWorkflow {
             }
         ]
         File cov_gene_names = "gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt"
-        String cov_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/coverage:20230630"
+        String cov_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/coverage:20230630"
         String gatk3_docker_image = "broadinstitute/gatk3:3.7-0"
         # pgx inputs
         String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20230711"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
         File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
         File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
         # risk alleles inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
-        String risk_alleles_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20230724"
+        String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
         # vcf filter inputs
@@ -249,13 +249,13 @@ workflow BgwgsWorkflow {
         Int alamut_queue_limit = 4
         String alamut_queue_folder = "gs://biofx-task-queue/alamut"
         Int alamut_queue_wait_limit_hrs = 16
-        String alamut_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
+        String alamut_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
         Boolean alamut_save_working_files = false
         String alamut_anno_src_id = "228"
         String alamut_anno_min_age = "P6M"
         # qceval inputs
         String qceval_project_type = "WGS"
-        String qceval_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20230630"
+        String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20230630"
         # gnomad annotation inputs
         File gnomad_coverage_file = "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz"
         File gnomad_coverage_file_idx = "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz.tbi"
@@ -274,8 +274,8 @@ workflow BgwgsWorkflow {
         Int fast_adi_wait_interval_secs = 600
         Int fast_adi_wait_max_intervals = 144
         # Reporting steps
-        String igvreport_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
-        String fast_parser_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920"
+        String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type = "S"
         Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]

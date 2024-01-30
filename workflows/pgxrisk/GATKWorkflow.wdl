@@ -6,6 +6,7 @@ workflow GATKWorkflow {
         File input_cram
         File input_crai
         String sample_id
+        String accession_id
         String test_code
         String java_path = "/usr/lib/jvm/java-8-openjdk-amd64/bin/java"
         File reference_fasta
@@ -19,7 +20,7 @@ workflow GATKWorkflow {
     }
 
     String out_path = "outputs/"
-    String out_prefix = sample_id + "_" + test_code
+    String out_prefix = accession_id + "_" + sample_id + "_" + test_code
     String gvcf = out_path + out_prefix + ".g.vcf"
     String all_calls_vcf = out_path + out_prefix + '.allcalls.vcf'
     String ref_positions_vcf = out_path + out_prefix + '.ref_positions.vcf'
