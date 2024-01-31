@@ -36,12 +36,12 @@ workflow BahrainPipelinesWorkflow {
         File? dbsnp_vcf_index
         # PGx inputs
         String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20230711"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
         File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
         File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
         # Risk alleles inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
-        String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20230724"
+        String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
         # Alamut inputs
@@ -71,7 +71,7 @@ workflow BahrainPipelinesWorkflow {
         Int fast_data_load_wait_max_intervals = 72
         Int fast_adi_wait_interval_secs = 600
         Int fast_adi_wait_max_intervals = 144
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231206"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20240130"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
         String fast_parser_sample_type
     }
