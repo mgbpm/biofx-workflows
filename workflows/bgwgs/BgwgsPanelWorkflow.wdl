@@ -12,8 +12,8 @@ workflow BgwgsPanelWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Docker images
-        String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
-        String genome_panels_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genome-panels:20231030"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
+        String genome_panels_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genome-panels:20240208"
         # Run, sample id and data location
         String subject_id
         String sample_id
@@ -22,7 +22,14 @@ workflow BgwgsPanelWorkflow {
         String batch_id
         String sample_data_location
         Boolean fetch_cram = true
+        Array[String] fetch_cram_filter_keys = [subject_id, sample_id]
+        Array[FileMatcher]? fetch_cram_file_matchers
         Boolean fetch_bam = true
+        Array[String] fetch_bam_filter_keys = [subject_id, sample_id]
+        Array[FileMatcher]? fetch_bam_file_matchers
+        Array[String] fetch_vcf_filter_keys = [subject_id, sample_id]
+        Array[FileMatcher]? fetch_vcf_file_matchers
+        Boolean fetch_files_verbose = false
         String test_code
         Int fetch_disk_size = 75
         # reference genome files
@@ -33,11 +40,12 @@ workflow BgwgsPanelWorkflow {
         File extra_amplicons_file
         File duplicate_amplicons_file
         # variant calling inputs
+        Boolean do_variant_calling = true
         File target_intervals
-        File dbsnp
-        File dbsnp_vcf_index
+        File? dbsnp
+        File? dbsnp_vcf_index
         # Reporting steps
-        String igvreport_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
+        String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
     }
 
     # Prefer a BAM file to avoid conversion
@@ -45,9 +53,11 @@ workflow BgwgsPanelWorkflow {
         call FileUtils.FetchFilesTask as FetchBam {
             input:
                 data_location = sample_data_location,
-                file_types = ["bam"],
+                file_types = if defined(fetch_bam_file_matchers) then [] else ["bam"],
                 recursive = false,
-                file_match_keys = [sample_id, subject_id],
+                file_match_keys = if defined(fetch_bam_file_matchers) then [] else fetch_bam_filter_keys,
+                file_matchers = fetch_bam_file_matchers,
+                verbose = fetch_files_verbose,
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
@@ -60,9 +70,11 @@ workflow BgwgsPanelWorkflow {
         call FileUtils.FetchFilesTask as FetchCram {
             input:
                 data_location = sample_data_location,
-                file_types = ["cram"],
+                file_types = if defined(fetch_cram_file_matchers) then [] else ["cram"],
                 recursive = false,
-                file_match_keys = [sample_id, subject_id],
+                file_match_keys = if defined(fetch_cram_file_matchers) then [] else fetch_cram_filter_keys,
+                file_matchers = fetch_cram_file_matchers,
+                verbose = fetch_files_verbose,
                 docker_image = orchutils_docker_image,
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
@@ -109,31 +121,51 @@ workflow BgwgsPanelWorkflow {
     File sample_bai = select_first([FetchBam.bai, CramToBamTask.output_bai])
 
     # Run haplotype caller
-    call HaplotypeCallerGvcfGATK4.GenomePanelsVariantCallingTask {
-        input:
-            input_bam = sample_bam,
-            input_bam_index = sample_bai,
-            interval_list = target_intervals,
-            ref_fasta = ref_fasta,
-            ref_fasta_index = ref_fasta_index,
-            ref_dict = ref_dict,
-            dbsnp = dbsnp,
-            dbsnp_vcf_index = dbsnp_vcf_index
+    if (do_variant_calling) {
+        call HaplotypeCallerGvcfGATK4.GenomePanelsVariantCallingTask {
+            input:
+                input_bam = sample_bam,
+                input_bam_index = sample_bai,
+                interval_list = target_intervals,
+                ref_fasta = ref_fasta,
+                ref_fasta_index = ref_fasta_index,
+                ref_dict = ref_dict,
+                dbsnp = select_first([dbsnp]),
+                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+        }
+
+        call CreateRefSitesTask {
+            input:
+                gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
+                all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
+                docker = genome_panels_docker_image 
+        }
+
+        call HaplotypeCallerGvcfGATK4.GenomePanelsRefSitesSortTask {
+            input:
+                gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
+                all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
+                ref_positions_vcf_file = CreateRefSitesTask.ref_positions_vcf_file
+        }
     }
 
-    call CreateRefSitesTask {
-        input:
-            gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
-            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
-            docker = genome_panels_docker_image 
+    if (!do_variant_calling) {
+        # Fetch the VCF files from the storage location
+        call FileUtils.FetchFilesTask as FetchVcf {
+            input:
+                data_location = sample_data_location,
+                file_types = if defined(fetch_vcf_file_matchers) then [] else ["vcf"],
+                recursive = false,
+                file_match_keys = if defined(fetch_vcf_file_matchers) then [] else fetch_vcf_filter_keys,
+                file_matchers = fetch_vcf_file_matchers,
+                verbose = fetch_files_verbose,
+                docker_image = orchutils_docker_image,
+                gcp_project_id = gcp_project_id,
+                workspace_name = workspace_name
+        }
     }
 
-    call HaplotypeCallerGvcfGATK4.GenomePanelsRefSitesSortTask {
-        input:
-            gvcf_file = GenomePanelsVariantCallingTask.gvcf_file,
-            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
-            ref_positions_vcf_file = CreateRefSitesTask.ref_positions_vcf_file
-    }
+    File vcf_file = select_first([GenomePanelsRefSitesSortTask.all_bases_vcf_file, FetchVcf.vcf]) 
 
     call LMMVariantReportTask {
         input:
@@ -147,8 +179,8 @@ workflow BgwgsPanelWorkflow {
             extra_amplicons_file = extra_amplicons_file,
             duplicate_amplicons_file = duplicate_amplicons_file,
             test_code = test_code,
-            all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file,
-            all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file,
+            all_bases_vcf_file = vcf_file,
+            all_calls_vcf_file = select_first([GenomePanelsVariantCallingTask.all_calls_vcf_file]), 
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
             docker_image = genome_panels_docker_image
@@ -174,13 +206,13 @@ workflow BgwgsPanelWorkflow {
 
     output {
         # Variant calling outputs
-        File all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file 
-        File all_calls_vcf_idx_file = GenomePanelsVariantCallingTask.all_calls_vcf_idx_file
-        File gvcf_file = GenomePanelsVariantCallingTask.gvcf_file 
-        File gvcf_idx_file = GenomePanelsVariantCallingTask.gvcf_idx_file
-        File ref_positions_vcf_file = CreateRefSitesTask.ref_positions_vcf_file
-        File all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file
-        File all_bases_vcf_idx_file = GenomePanelsRefSitesSortTask.all_bases_vcf_idx_file
+        File? all_calls_vcf_file = GenomePanelsVariantCallingTask.all_calls_vcf_file 
+        File? all_calls_vcf_idx_file = GenomePanelsVariantCallingTask.all_calls_vcf_idx_file
+        File? gvcf_file = GenomePanelsVariantCallingTask.gvcf_file 
+        File? gvcf_idx_file = GenomePanelsVariantCallingTask.gvcf_idx_file
+        File? ref_positions_vcf_file = CreateRefSitesTask.ref_positions_vcf_file
+        File? all_bases_vcf_file = GenomePanelsRefSitesSortTask.all_bases_vcf_file
+        File? all_bases_vcf_idx_file = GenomePanelsRefSitesSortTask.all_bases_vcf_idx_file
 
         # LMM variant detection outputs
         File all_bases_noChr_vcf_file = LMMVariantReportTask.all_bases_noChr_vcf_file
@@ -249,15 +281,15 @@ task LMMVariantReportTask {
         File extra_amplicons_file
         File duplicate_amplicons_file
         File all_bases_vcf_file
-        File all_calls_vcf_file
+        File all_calls_vcf_file = all_bases_vcf_file
         String gcp_project_id
         String workspace_name
         String docker_image
         Int disk_size = 10
     }
 
-    String sample_basename = basename(all_bases_vcf_file, ".allbases.vcf")
-    String all_bases_noChr_vcf = sample_basename + ".allbases.noChr.vcf"
+    String sample_basename = basename(all_bases_vcf_file, ".vcf")
+    String all_bases_noChr_vcf = sample_basename + ".noChr.vcf"
     String lmm_vc_prefix = sample_id + '__' + sample_lmm_id + '__' + subject_id + '__' + sample_barcode + '__' + batch_id
     String xls_report_out = lmm_vc_prefix + '.variantReport.xls'
     String snps_out = lmm_vc_prefix + '.cleaned.common_ysnps.txt'
@@ -267,7 +299,7 @@ task LMMVariantReportTask {
         set -euxo pipefail
 
         #make a copy of three files for lmm_variant_detection_report.py
-        sed 's/chr//' ~{all_bases_vcf_file} >  ~{all_bases_noChr_vcf}
+        sed 's/chr//' ~{all_bases_vcf_file} > ~{all_bases_noChr_vcf}
 
         "$MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh" \
             -p ~{gcp_project_id} -w ~{workspace_name} -n gil > gil-client-config.json
@@ -297,9 +329,9 @@ task LMMVariantReportTask {
 
     runtime {
         docker: "~{docker_image}"
-        # memory: machine_mem_gb + " GB"
+        memory: "8 GB"
         disks: "local-disk ~{disk_size} SSD"
-        preemptible: 2
+        preemptible: 1
     }
 
     output {
