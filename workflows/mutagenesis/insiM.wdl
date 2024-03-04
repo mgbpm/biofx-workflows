@@ -1,27 +1,98 @@
 version 1.0
 
+import "../../steps/Utilities.wdl"
+import "../../steps/IgvReport.wdl"
+import "../pgxrisk/PGxWorkflow.wdl"
+import "../pgxrisk/RiskAllelesWorkflow.wdl"
+
 workflow insiMWorkflow {
     input {
+        ## insiM inputs
+        # Input BAM files
         File input_bam
         File input_bai
-        File genome_ref_fasta
-        File genome_ref_amb
-        File genome_ref_ann
-        File genome_ref_bwt
-        File genome_ref_pac
-        File genom_ref_sa
-        String assay_type
-        String mutation_type
-        String output_basename
-        String vaf = ""
-        String inslen = ""
-        String insseq = ""
-        String? amp_read_length
-        String docker_image
+        # Reference files
+        File ref_fasta
+        File ref_fai
+        File ref_amb
+        File ref_ann
+        File ref_bwt
+        File ref_pac
+        File ref_sa
+        File? ref_dict
+        File? dbsnp_vcf
+        File? dbsnp_vcf_index
+        # Target inputs
         Array[MutationTargets] targets
         Array[AmpliconBed] ampbed = []
+        # insiM inputs
+        String assay_type
+        String mutation_type
+        String? vaf
+        String? inslen
+        String? insseq
+        String? amp_read_length
+        # File naming inputs
+        String sample_name
+        String mutation_name
+        # insiM docker image
+        String insim_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/insim:testing"
+        # Picard docker image
+        String picard_docker_image = "biocontainers/picard:v1.139_cv3"
+        # BWA docker image
+        String bwa_docker_image = "biocontainers/bwa:v0.7.17_cv1"
+        # SAMtools docker image
+        String samtools_docker_image = "biocontainers/samtools:v1.9-4-deb_cv1"
+        # IGV docker image
+        String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
+
+        ## PGX/RISK
+        # Toggle PGx/Risk
+        Boolean run_pgx = true
+        Boolean run_risk = true
+        # PGx inputs
+        String pgx_test_code = "lmPGX-pnlC_L"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
+        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
+        # Risk inputs
+        String risk_alleles_test_code = "lmRISK-pnlB_L"
+        String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
+        File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
+        File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
+        # GCP project and Terra workspace for secret retrieval
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
+        String? workspace_name
     }
 
+    ## Run tests on inputs to ensure their compatibility
+    # Test for assay type
+    if ((assay_type != "capture") && (assay_type != "amplicon")) {
+        String AssayTypeFail = "Assay type should either be 'capture' or 'amplicon'."
+    }
+    # Test for mutation type
+    if ((mutation_type != "snv") && (mutation_type != "ins") && (mutation_type != "del") && (mutation_type != "dup") && (mutation_type != "mix")) {
+        String MutationTypeFail = "Acceptable mutation types are 'snv', 'ins', 'del', 'dup', or 'mix.'"
+    }
+    # Test for VAF if mutation type is not "mix"
+    if ((mutation_type != "mix") && (!defined(vaf))) {
+        String VAFFail = "VAF input is required for non-'mix' (snv, ins, del, dup) mutations."
+    }
+    # Test for input ampbed_array and amp_read_length when input is an amplicon assay
+    if ((assay_type == "amplicon") && (!defined(amp_read_length))) {
+        String AmpReadLengthFail = "Amplicon read length not defined"
+    }
+    # Fail the workflow if there is an error
+    String input_error_message = select_first([AssayTypeFail, MutationTypeFail, VAFFail, AmpReadLengthFail, ""])
+    if (input_error_message != "") {
+        call Utilities.FailTask as InputParameterError {
+            input:
+                error_message = input_error_message
+        }
+    }
+
+    ## Mutate input BAM based on assay type
+    String output_basename = sample_name + "_" + mutation_name + ".bam"
     if (assay_type == 'amplicon') {
         call MutateAmpliconAssayTask as MutateAmplicon {
             input:
@@ -30,45 +101,16 @@ workflow insiMWorkflow {
                 assay_type = assay_type,
                 targets = targets,
                 mutation_type = mutation_type,
-                genome_ref_fasta = genome_ref_fasta,
+                ref_fasta = ref_fasta,
                 amp_read_length = amp_read_length,
                 vaf = vaf,
                 inslen = inslen,
                 insseq = insseq,
                 ampbed = ampbed,
                 output_basename = output_basename,
-                docker_image = docker_image
-        }
-
-        call ConvertToSamTask as AmpliconSam {
-            input:
-                genome_ref_fasta = genome_ref_fasta,
-                genome_ref_amb = genome_ref_amb,
-                genome_ref_ann = genome_ref_ann,
-                genome_ref_bwt = genome_ref_bwt,
-                genome_ref_pac = genome_ref_pac,
-                genom_ref_sa = genom_ref_sa,
-                in_fastq1 = MutateAmplicon.fastq1,
-                in_fastq2 = MutateAmplicon.fastq2,
-                input_bam = input_bam,
-                output_basename = output_basename
-        }
-
-        call ConvertToBamTask as AmpliconBam {
-            input:
-                output_basename = output_basename,
-                mut_sam = AmpliconSam.mut_sam,
-                input_bam = input_bam
-        }
-
-        call IndexBamTask as AmpliconIndexBam {
-            input:
-                output_basename = output_basename,
-                mut_dedup_bam = AmpliconBam.mut_dedup_bam,
-                input_bam = input_bam
+                docker_image = insim_docker_image
         }
     }
-
     if (assay_type == 'capture') {
         call MutateCaptureAssayTask as MutateCapture {
             input:
@@ -77,98 +119,173 @@ workflow insiMWorkflow {
                 assay_type = assay_type,
                 targets = targets,
                 mutation_type = mutation_type,
-                genome_ref_fasta = genome_ref_fasta,
+                ref_fasta = ref_fasta,
                 vaf = vaf,
                 inslen = inslen,
                 insseq = insseq,
                 output_basename = output_basename,
-                docker_image = docker_image
+                docker_image = insim_docker_image
         }
+    }
 
-        call ConvertToSamTask as CaptureSam {
+    ## Convert mutations to BAM
+    # Convert FASTQ to SAM
+    call ConvertToSAMTask as ConvertToSAM {
+        input:
+            ref_fasta = ref_fasta,
+            ref_fai = ref_fai,
+            ref_amb = ref_amb,
+            ref_ann = ref_ann,
+            ref_bwt = ref_bwt,
+            ref_pac = ref_pac,
+            ref_sa = ref_sa,
+            in_fastq1 = select_first([MutateCapture.output_fastq1, MutateAmplicon.output_fastq1]),
+            in_fastq2 = select_first([MutateCapture.output_fastq2, MutateAmplicon.output_fastq2]),
+            output_basename = output_basename,
+            docker_image = bwa_docker_image
+    }
+    # Convert SAM to BAM
+    call ConvertToBAMTask as ConvertToBAM {
+        input:
+            input_sam = ConvertToSAM.output_sam,
+            output_basename = output_basename,
+            docker_image = picard_docker_image
+    }
+    # Index final BAM
+    call IndexBAMTask as IndexBAM {
+        input:
+            output_basename = output_basename,
+            input_bam = ConvertToBAM.output_dedup_bam,
+            docker_image = samtools_docker_image
+    }
+
+    ## Generate IGV report
+    call IgvReport.IgvReportFromGenomePanelsBedTask as MutIGVReport {
+        input:
+            bed_file = select_first([MutateAmplicon.target_bed, MutateCapture.target_bed]),
+            sample_bam = ConvertToBAM.output_dedup_bam,
+            sample_bai = IndexBAM.output_bai,
+            ref_fasta = ref_fasta,
+            ref_fasta_index = ref_fai,
+            output_basename = sample_name + "_" + mutation_name + "_IGVreport",
+            docker_image = igvreport_docker_image
+    }
+
+     ## Run PGx & Risk
+    if (run_pgx) {
+        call PGxWorkflow.PGxWorkflow as MutBamPGx {
             input:
-                genome_ref_fasta = genome_ref_fasta,
-                genome_ref_amb = genome_ref_amb,
-                genome_ref_ann = genome_ref_ann,
-                genome_ref_bwt = genome_ref_bwt,
-                genome_ref_pac = genome_ref_pac,
-                genom_ref_sa = genom_ref_sa,
-                in_fastq1 = MutateCapture.fastq1,
-                in_fastq2 = MutateCapture.fastq2,
-                input_bam = input_bam,
-                output_basename = output_basename
+                input_cram = ConvertToBAM.output_dedup_bam,
+                input_crai = IndexBAM.output_bai,
+                sample_id = sample_name + "_" + mutation_name,
+                accession_id = sample_name + "_" + mutation_name,
+                test_code = pgx_test_code,
+                reference_fasta = ref_fasta,
+                reference_fasta_fai = ref_fai,
+                reference_dict = select_first([ref_dict]),
+                roi_bed = pgx_roi_bed,
+                dbsnp = select_first([dbsnp_vcf]),
+                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                workflow_fileset = pgx_workflow_fileset,
+                mgbpmbiofx_docker_image = pgx_docker_image
         }
-
-        call ConvertToBamTask as CaptureBam {
+    }
+    if (run_risk) {
+        call RiskAllelesWorkflow.RiskAllelesWorkflow as MutBamRisk {
             input:
-                output_basename = output_basename,
-                mut_sam = CaptureSam.mut_sam,
-                input_bam = input_bam
-        }
-
-        call IndexBamTask as CaptureIndexBam {
-            input:
-                output_basename = output_basename,
-                mut_dedup_bam = CaptureBam.mut_dedup_bam,
-                input_bam = input_bam
+                input_cram = ConvertToBAM.output_dedup_bam,
+                input_crai = IndexBAM.output_bai,
+                sample_id = sample_name + "_" + mutation_name,
+                accession_id = sample_name + "_" + mutation_name,
+                test_code = risk_alleles_test_code,
+                reference_fasta = ref_fasta,
+                reference_fasta_fai = ref_fai,
+                reference_dict = select_first([ref_dict]),
+                roi_bed = risk_alleles_roi_bed,
+                dbsnp = select_first([dbsnp_vcf]),
+                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                workflow_fileset = risk_alleles_workflow_fileset,
+                gcp_project_id = gcp_project_id,
+                workspace_name = select_first([workspace_name]),
+                mgbpmbiofx_docker_image = risk_alleles_docker_image
         }
     }
 
     output {
-        File fastq1 = select_first([MutateCapture.fastq1, MutateAmplicon.fastq1])
-        File fastq2 = select_first([MutateCapture.fastq2, MutateAmplicon.fastq2])
-        File vcf = select_first([MutateCapture.vcf, MutateAmplicon.vcf])
-        File mut_sam = select_first([CaptureSam.mut_sam, AmpliconSam.mut_sam])
-        File mut_dedup_bam = select_first([CaptureBam.mut_dedup_bam, AmpliconBam.mut_dedup_bam])
-        File mut_sorted_bam = select_first([CaptureBam.mut_sorted_bam, AmpliconBam.mut_sorted_bam])
-        File metrics_file = select_first([CaptureBam.metrics_file, AmpliconBam.metrics_file])
-        File mut_dedup_bai = select_first([CaptureIndexBam.mut_dedup_bai, AmpliconIndexBam.mut_dedup_bai])
+        File output_fastq1 = select_first([MutateCapture.output_fastq1, MutateAmplicon.output_fastq1])
+        File output_fastq2 = select_first([MutateCapture.output_fastq2, MutateAmplicon.output_fastq2])
+        # insiM output VCF
+        File output_vcf = select_first([MutateCapture.output_vcf, MutateAmplicon.output_vcf])
+        # Files from converting to SAM
+        File output_mutated_sam = ConvertToSAM.output_sam
+        # Files from converting to BAM
+        File output_dedup_bam = ConvertToBAM.output_dedup_bam
+        File output_dedup_metrics = ConvertToBAM.metrics_file
+        File output_dedup_bai = IndexBAM.output_bai
+        # IGV report
+        File mut_igv_report = MutIGVReport.igv_report
+        # PGx output
+        File? pgx_CPIC_report = MutBamPGx.CPIC_report
+        File? pgx_FDA_report = MutBamPGx.FDA_report
+        File? pgx_genotype_xlsx = MutBamPGx.genotype_xlsx
+        File? pgx_genotype_txt = MutBamPGx.genotype_txt
+        # Risk output
+        File? risk_alleles_report = MutBamRisk.risk_report
+        File? risk_alleles_genotype_xlsx = MutBamRisk.genotype_xlsx
+        File? risk_alleles_genotype_txt = MutBamRisk.genotype_txt
     }
 }
 
 struct MutationTargets {
-    String chr
+    String chrom
     Int start
     Int end
-    String? type
-    Float? vaf
+    String type
+    Float vaf
     String? ins_seq
     Int? ins_len
 }
 
 struct AmpliconBed {
-    String chr
+    String chrom
     Int start
     Int end
 }
 
-# add mutations to amplicon assay
 task MutateAmpliconAssayTask {
     input {
+        # Input BAM
         File input_bam
         File input_bai
+        # insiM inputs
         String assay_type
         Array[MutationTargets] targets
         Array[AmpliconBed] ampbed = []
         String mutation_type
-        File genome_ref_fasta
+        File ref_fasta
         String vaf = ""
         String inslen = ""
         String insseq = ""
         String? amp_read_length
+        # Docker inputs
         String output_basename
         String docker_image
+        Int disk_size = ceil((size(input_bam, "GB") * 3)) + ceil(size(ref_fasta, "GB")) + 10
+        Int mem_size = 16
     }
 
     command <<<
         set -euxo pipefail
+
+        # Create config file
         $MGBPMBIOFXPATH/insiM/create_insiM_input.py \
             --assay "~{assay_type}" \
             --input-bam "~{input_bam}" \
             --target-json-file "~{write_json(targets)}" \
             --mutation-type "~{mutation_type}" \
-            --genome-ref "~{genome_ref_fasta}" \
-            --config-file "config_amplicon.txt" \
+            --genome-ref "~{ref_fasta}" \
+            --config-file "amplicon_config.txt" \
+            --bed-name "amplicon_targets.bed" \
             --ampliconbed-json-file "~{write_json(ampbed)}" \
             --read-length "~{amp_read_length}" \
             --vaf "~{vaf}" \
@@ -176,158 +293,192 @@ task MutateAmpliconAssayTask {
             --insseq "~{insseq}" \
             --output-file "~{output_basename}"
 
-        $MGBPMBIOFXPATH/insiM/insiM_v2.0.py -config "config_amplicon.txt"
+        # Run insiM with the config file
+        $MGBPMBIOFXPATH/insiM/insiM_v2.0.py -config "amplicon_config.txt"
     >>>
 
     runtime {
         docker: "~{docker_image}"
-        memory: "14GB"
-        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
     }
 
     output {
-        File fastq1 = output_basename + "_R1_001.fastq"
-        File fastq2 = output_basename + "_R2_001.fastq"
-        File vcf = output_basename + ".insiM.vcf"
+        # Intermediary files
+        File insiM_config = "amplicon_config.txt"
+        File target_bed = "amplicon_targets.bed"
+        # Final insiM outputs
+        File output_fastq1 = "~{output_basename}_R1_001.fastq"
+        File output_fastq2 = "~{output_basename}_R2_001.fastq"
+        File output_vcf = "~{output_basename}.insiM.vcf"
     }
 }
 
-# add mutation to hybrid capture assay
 task MutateCaptureAssayTask {
     input {
+        # Input BAM
         File input_bam
         File input_bai
+        # insiM inputs
         String assay_type
         Array[MutationTargets] targets
         String mutation_type
-        File genome_ref_fasta
+        File ref_fasta
         String vaf = ""
         String inslen = ""
         String insseq = ""
+        # Docker inputs
         String output_basename
         String docker_image
+        Int disk_size = ceil((size(input_bam, "GB") * 3)) + ceil(size(ref_fasta, "GB")) + 10
+        Int mem_size = 16
     }
 
     command <<<
         set -euxo pipefail
-        $MGBPMBIOFXPATH/insiM/create_insiM_input.py \
+
+        # Create config file
+        $MGBPMBIOFXPATH/insiM/bin/create_insiM_input.py \
             --assay "~{assay_type}" \
             --input-bam "~{input_bam}" \
             --target-json-file "~{write_json(targets)}" \
             --mutation-type "~{mutation_type}" \
-            --genome-ref "~{genome_ref_fasta}" \
-            --config-file "config_capture.txt" \
+            --genome-ref "~{ref_fasta}" \
+            --config-file "capture_config.txt" \
+            --bed-name "capture_targets.bed" \
             --vaf "~{vaf}" \
             --inslen "~{inslen}" \
             --insseq "~{insseq}" \
             --output-file "~{output_basename}"
 
-        $MGBPMBIOFXPATH/insiM/insiM_v2.0.py -config "config_capture.txt"
+        # Run insiM with the config file
+        $MGBPMBIOFXPATH/insiM/bin/insiM_v2.0.py -config "capture_config.txt"
     >>>
 
     runtime {
         docker: "~{docker_image}"
-        memory: "14GB"
-        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
     }
 
     output {
-        File fastq1 = output_basename + "_R1_001.fastq"
-        File fastq2 = output_basename + "_R2_001.fastq"
-        File vcf = output_basename + ".insiM.vcf"
+        # Intermediary files
+        File insiM_config = "capture_config.txt"
+        File target_bed = "capture_targets.bed"
+        # Final insiM outputs
+        File output_fastq1 = "~{output_basename}_R1_001.fastq"
+        File output_fastq2 = "~{output_basename}_R2_001.fastq"
+        File output_vcf = "~{output_basename}.insiM.vcf"
     }
 }
 
-# convert FASTQ output from mutation tasks to BAM
-task ConvertToSamTask {
+task ConvertToSAMTask {
     input {
-        File genome_ref_fasta
-        File genome_ref_amb
-        File genome_ref_ann
-        File genome_ref_bwt
-        File genome_ref_pac
-        File genom_ref_sa
+        # Input FASTQs
         File in_fastq1
         File in_fastq2
-        File input_bam
+        # Reference files
+        File ref_fasta
+        File ref_fai
+        File ref_amb
+        File ref_ann
+        File ref_bwt
+        File ref_pac
+        File ref_sa
+        # Docker inputs
         String output_basename
+        String docker_image
+        Int disk_size = ceil(size(ref_fasta, "GB")) + ceil(size(ref_amb, "GB")) + ceil(size(ref_ann, "GB")) + ceil(size(ref_bwt, "GB")) + ceil(size(ref_fai, "GB")) + ceil(size(ref_pac, "GB")) + ceil(size(ref_sa, "GB")) + ceil((size(in_fastq1, "GB") * 4)) + 10
+        Int mem_size = 8
+        Int preemptible = 1
     }
 
     command <<<
         set -euxo pipefail
 
-        # align the FASTQ's to reference and produce SAM output
-        bwa mem -M "~{genome_ref_fasta}" "~{in_fastq1}" "~{in_fastq2}" \
-            > "~{output_basename}"_aligned_reads.sam
+        # Align the FASTQ's to reference and produce SAM output
+        bwa mem -M "~{ref_fasta}" "~{in_fastq1}" "~{in_fastq2}" > "~{output_basename}_aligned_reads.sam"
     >>>
 
     runtime {
-        docker: "biocontainers/bwa:v0.7.17_cv1"
-        memory: "14GB"
-        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
+        preemptible: preemptible
     }
 
     output {
-        File mut_sam = output_basename + "_aligned_reads.sam"
+        File output_sam =  "~{output_basename}_aligned_reads.sam"
     }
 }
 
-# convert SAM to BAM
-task ConvertToBamTask{
+task ConvertToBAMTask{
     input {
-        File mut_sam
-        File input_bam
+        File input_sam
         String output_basename
+        String docker_image
+        String picard_path = "/opt/conda/bin/"
+        Int disk_size = ceil((size(input_sam, "GB") * 2) + 10)
+        Int mem_size = 4
+        Int preemptible = 1
     }
 
     command <<<
         set -euxo pipefail
 
-        java -jar /usr/picard/picard.jar SortSam \
-            --INPUT "~{mut_sam}" \
-            --OUTPUT "~{output_basename}"_sorted_reads.bam \
-            --SORT_ORDER coordinate
+        # Sort SAM and conver to BAM
+        java -jar "~{picard_path}/picard.jar" SortSam \
+            INPUT="~{input_sam}" \
+            OUTPUT="~{output_basename}.sorted.bam" \
+            SORT_ORDER=coordinate
 
-        java -jar /usr/picard/picard.jar MarkDuplicates \
-            --INPUT "~{output_basename}"_sorted_reads.bam \
-            --OUTPUT "~{output_basename}"_dedup_reads.bam \
-            --METRICS_FILE "~{output_basename}"_metrics.txt
+        # Mark and remove duplicates in BAM
+        java -jar "~{picard_path}/picard.jar" MarkDuplicates \
+            INPUT="~{output_basename}.sorted.bam" \
+            OUTPUT="~{output_basename}.dedup.bam" \
+            REMOVE_DUPLICATES=true \
+            METRICS_FILE="~{output_basename}.metrics.txt"
     >>>
 
     runtime {
-        docker: "biocontainers/picard:v1.139_cv3"
-        memory: "14GB"
-        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
+        preemptible: preemptible
     }
 
     output {
-        File mut_sorted_bam = output_basename + "_sorted_reads.bam"
-        File mut_dedup_bam = output_basename + "_dedup_reads.bam"
-        File metrics_file = output_basename + "_metrics.txt"
+        File output_sorted_bam = "~{output_basename}.sorted.bam"
+        File output_dedup_bam = "~{output_basename}.dedup.bam"
+        File metrics_file = "~{output_basename}.metrics.txt"
     }
 }
 
-# index the output BAM
-task IndexBamTask {
+task IndexBAMTask {
     input {
         File input_bam
-        File mut_dedup_bam
-        String output_basename
+        String output_basename = basename(input_bam)
+        String docker_image
+        Int disk_size = ceil((size(input_bam, "GB") * 1.5) + 10)
+        Int mem_size = 4
+        Int preemptible = 1
     }
 
     command <<<
         set -euxo pipefail
 
-        # index the output mutated bam
-        samtools index -b "~{mut_dedup_bam}" "~{output_basename}"_dedup_reads.bam.bai
+        # Index the output mutated BAM
+        samtools index -b "~{input_bam}" "~{output_basename}.bai"
     >>>
 
     runtime {
-        docker: "biocontainers/samtools:v1.9-4-deb_cv1"
-        disks: "local-disk " + ceil((size(input_bam, "GB") * 2.5) + 20) + " HDD"
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
+        preemptible: preemptible
     }
 
     output {
-        File mut_dedup_bai = output_basename + "_dedup_reads.bam.bai"
+        File output_bai = "~{output_basename}.bai"
     }
 }

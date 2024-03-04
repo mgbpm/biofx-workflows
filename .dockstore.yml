@@ -120,3 +120,11 @@ workflows:
   - name: BiobankScrubWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank-scrub/BiobankScrubWorkflow.wdl
+  - name: insiMWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/mutagenesis/insiM.wdl
+    readMePath: /workflows/mutagenesis/insiM.md
+  - name: BamsurgeonWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/mutagenesis/bamsurgeon.wdl
+    readMePath: /workflows/mutagenesis/bamsurgeon.md
