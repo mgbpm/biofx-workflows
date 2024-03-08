@@ -128,3 +128,7 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/mutagenesis/bamsurgeon.wdl
     readMePath: /workflows/mutagenesis/bamsurgeon.md
+  - name: Glimpse2Imputation
+    subclass: WDL
+    primaryDescriptorPath: /workflows/lowpassimputation/Glimpse2Imputation.wdl
+    
