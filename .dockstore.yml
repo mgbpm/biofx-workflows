@@ -131,4 +131,6 @@ workflows:
   - name: Glimpse2Imputation
     subclass: WDL
     primaryDescriptorPath: /workflows/lowpassimputation/Glimpse2Imputation.wdl
-    
+  - name: Glimpse2SplitReference
+    subclass: WDL
+    primaryDescriptorPath: /workflows/lowpassimputation/Glimpse2SplitReference.wdl
