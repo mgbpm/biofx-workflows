@@ -136,7 +136,7 @@ task GlimpsePhase {
         Int? n_main
         Int? effective_population_size
 
-        Int mem_gb = 16
+        Int mem_gb = 24
         Int cpu = 4
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
         Int preemptible = 9
