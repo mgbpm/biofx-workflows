@@ -24,7 +24,7 @@ workflow Glimpse2Imputation {
 
         Boolean collect_qc_metrics = true
         
-        Int preemptible = 9
+        Int preemptible = 1
         String docker = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String docker_extract_num_sites_from_reference_chunk = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
         Int cpu_ligate = 4
@@ -136,7 +136,7 @@ task GlimpsePhase {
         Int? n_main
         Int? effective_population_size
 
-        Int mem_gb = 4
+        Int mem_gb = 16
         Int cpu = 4
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
         Int preemptible = 9
