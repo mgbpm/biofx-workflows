@@ -64,6 +64,7 @@ workflow BiobankScrubWorkflow {
       sequencing_dummy = ValidateInputs.sequencing_dummy
   }
 
+  String   staging_area               = MaybeInitializeRundir.info.staging_area
   Int      attempt_index              = MaybeInitializeRundir.info.attempt_index
   File?    maybe_saved_withdrawn_list =
     MaybeInitializeRundir.info.maybe_saved_withdrawn_list
@@ -91,8 +92,7 @@ workflow BiobankScrubWorkflow {
     }
   }
 
-  Array[Object] non_compliant = flatten(FindNonCompliant.non_compliant)
-  String        staging_area  = MaybeInitializeRundir.info.staging_area
+  Array[Object] non_compliant  = flatten(FindNonCompliant.non_compliant)
 
   call MakeScrubBatches {
     input:
@@ -135,32 +135,46 @@ workflow BiobankScrubWorkflow {
     }
   }
 
-  call MakePushBatches {
+  call CheckBatchedResults as CheckScrubResults {
     input:
-      rundir                = rundir,
-      scrub_results         = ScrubBatch.results,
-      concatenation_results = ConcatenateShards.results,
-      docker_image          = docker_image
+      batched_results = ScrubBatch.results,
+      docker_image    = docker_image
   }
 
-  scatter (batch in MakePushBatches.batches) {
-    call PushScrubbed {
+  call CheckBatchedResults as CheckConcatenationResults {
+    input:
+      batched_results = ConcatenateShards.results,
+      docker_image    = docker_image
+  }
+
+  if (CheckScrubResults.isok && CheckConcatenationResults.isok) {
+
+    call MakePushBatches {
       input:
-        rundir          = rundir,
-        release_datadir = select_first([
-                                        release_datadir,
-                                        current_datadir
-                                       ]),
-        batch           = batch,
-        docker_image    = docker_image
+        rundir       = rundir,
+        docker_image = docker_image
     }
+
+    scatter (batch in MakePushBatches.batches) {
+      call PushScrubbed {
+        input:
+          rundir          = rundir,
+          release_datadir = select_first([
+                                          release_datadir,
+                                          current_datadir
+                                         ]),
+          batch           = batch,
+          docker_image    = docker_image
+      }
+    }
+
   }
 
   call Summarize {
     input:
       scrub_results         = ScrubBatch.results,
       concatenation_results = ConcatenateShards.results,
-      push_results          = PushScrubbed.results,
+      push_results          = select_first([PushScrubbed.results, []]),
       docker_image          = docker_image
   }
 
@@ -542,6 +556,8 @@ task  CollectShards {
 
   /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
 
+  printf -- '{}' > '~{DEBUGGING}'
+
   export COLLECT_SHARDS__DEBUGGING='~{DEBUGGING}'
 
   collect_shards.py                  \
@@ -616,12 +632,9 @@ task  ConcatenateShards {
 }
 
 
-task  MakePushBatches {
-
+task CheckBatchedResults {
   input {
-    String          rundir
-    Array[Object]   scrub_results
-    Array[Object]   concatenation_results
+    Array[Object]   batched_results
     String          docker_image
   }
 
@@ -637,27 +650,59 @@ task  MakePushBatches {
 
   RESULTSDIR="${PWD}/results"
 
-  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
-
   mkdir --parents "${RESULTSDIR}"
 
-  SCRUBRESULTS="${RESULTSDIR}/scrub.json"
-  consolidate_batched_results.py     \
-      '~{write_json(scrub_results)}' \
-    > "${SCRUBRESULTS}"
-
-  CONCATENATIONRESULTS="${RESULTSDIR}/concatenation.json"
-  consolidate_batched_results.py             \
-      '~{write_json(concatenation_results)}' \
-    > "${CONCATENATIONRESULTS}"
+  RESULTS="${RESULTSDIR}/results.json"
+  consolidate_batched_results.py       \
+      '~{write_json(batched_results)}' \
+    > "${RESULTS}"
 
   mkdir --parents '~{OUTPUTDIR}'
 
-  make_push_batches.py          \
-      '~{rundir}'               \
-      "${SCRUBRESULTS}"         \
-      "${CONCATENATIONRESULTS}" \
-    | tee '~{STDOUT}'
+  if results_ok.py "${RESULTS}"
+  then
+      ISOK=true
+  else
+      ISOK=false
+  fi
+
+  printf -- '%s\n' "${ISOK}" | tee '~{STDOUT}'
+
+  >>>
+
+  output {
+    Boolean isok = read_json(STDOUT)
+  }
+
+  runtime {
+    preemptible: 2
+    docker:      docker_image
+  }
+}
+
+
+task  MakePushBatches {
+
+  input {
+    String   rundir
+    String   docker_image
+  }
+
+  String   OUTPUTDIR  = "OUTPUT"
+  String   STDOUT     = OUTPUTDIR + "/STDOUT"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
+
+  mkdir --parents '~{OUTPUTDIR}'
+
+  make_push_batches.py '~{rundir}' | tee '~{STDOUT}'
 
   >>>
 
