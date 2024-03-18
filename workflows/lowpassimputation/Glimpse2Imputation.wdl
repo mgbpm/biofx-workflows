@@ -139,7 +139,7 @@ task GlimpsePhase {
         Int mem_gb = 8
         Int cpu = 4
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
-        Int preemptible = 9
+        Int preemptible = 1
         Int max_retries = 3
         String docker
         File? monitoring_script
@@ -237,6 +237,10 @@ task GlimpseLigate {
         echo "nproc reported ${NPROC} CPUs, using that number as the threads argument for GLIMPSE."
         
         /bin/GLIMPSE2_ligate --input ~{write_lines(imputed_chunks)} --output ligated.vcf.gz --threads ${NPROC}
+
+        # sort ligated.vcf
+        bcftools sort -O z -o ligated_sorted.vcf.gz ligated.vcf.gz
+        mv ligated_sorted.vcf.gz ligated.vcf.gz
 
         # Set correct reference dictionary
         bcftools view -h --no-version ligated.vcf.gz > old_header.vcf        
@@ -392,7 +396,7 @@ task SelectResourceParameters {
         estimated_needed_threads = min(math.ceil(5e-6*n_sites*n_samples/240), 32)
         #estimated_needed_memory_gb = min(math.ceil((800e-3 + 0.97e-6 * n_rare * estimated_needed_threads + 14.6e-6 * n_common * estimated_needed_threads + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples))), 256)
         #The above estimated memore is not enough. So, change it by increase by X2.
-        estimated_needed_memory_gb = min(math.ceil((800e-3 + 0.97e-6 * n_rare * estimated_needed_threads + 14.6e-6 * n_common * estimated_needed_threads + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples))) * 2, 256)
+        estimated_needed_memory_gb = min(math.ceil((800e-3 + 0.97e-6 * n_rare * estimated_needed_threads + 14.6e-6 * n_common * estimated_needed_threads + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples))) * 2.2, 256)
         # recalc allowable threads, may be some additional threads available due to rounding memory up
         threads_to_use = max(math.floor((estimated_needed_memory_gb - (800e-3 + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples)))/(0.97e-6 * n_rare + 14.6e-6 * n_common)), 1) 
         #estimated_needed_memory_gb = math.ceil(1.2 * estimated_needed_memory_gb)
