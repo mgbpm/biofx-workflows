@@ -308,6 +308,7 @@ task LMMVariantReportTask {
         ~{target_intervals} \
         ~{all_bases_noChr_vcf} \
         ~{all_calls_vcf_file} \
+        --batch 100 \
         --genome-build 'GRCh38' \
         --test-code ~{test_code} \
         --bait-set ~{bait_file} \
@@ -329,7 +330,7 @@ task LMMVariantReportTask {
 
     runtime {
         docker: "~{docker_image}"
-        memory: "8 GB"
+        memory: "16 GB"
         disks: "local-disk ~{disk_size} SSD"
         preemptible: 1
     }
