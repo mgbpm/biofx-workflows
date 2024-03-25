@@ -369,9 +369,7 @@ task MakeSampleVCFsTask {
     command <<<
         set -euxo pipefail
 
-        mkdir tmp_vcfs
-        mkdir headers
-        mkdir output_vcfs
+        mkdir OUTPUT
 
         for sample in '~{sep="' '" sample_ids}'
         do
@@ -380,15 +378,7 @@ task MakeSampleVCFsTask {
                 -c1 \
                 --samples "${sample}" \
                 --output-type z \
-                --output "tmp_vcfs/~{output_basename}_${sample}.vcf.gz"
-
-            # Retrieve the header
-            bcftools view --header-only "tmp_vcfs/~{output_basename}_${sample}.vcf.gz" > headers/${sample}_old_header.txt
-            # Edit the header for ID=AD -- "Number=."
-            sed 's/ID=AD,Number=R/ID=AD,Number=\./' headers/${sample}_old_header.txt > headers/${sample}_new_header.txt
-            # Replace the header
-            bcftools reheader "tmp_vcfs/~{output_basename}_${sample}.vcf.gz" \
-                --header "headers/${sample}_new_header.txt" > "output_vcfs/~{output_basename}_${sample}.vcf.gz"
+                --output "OUTPUT/~{output_basename}_${sample}.vcf.gz"
         done
     >>>
 
@@ -400,7 +390,7 @@ task MakeSampleVCFsTask {
     }
 
     output {
-        Array[File] output_vcf_gz = glob("output_vcfs/*.vcf.gz")
+        Array[File] output_vcf_gz = glob("OUTPUT/*.vcf.gz")
     }
 }
 
