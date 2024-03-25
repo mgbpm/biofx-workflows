@@ -27,6 +27,8 @@ workflow SampleLoadingWorkflow {
         String sample_data_load_config_name = "Sample_VCF_PPM_Eval"
     }
 
+    String fast_sample_name = dataset + "_" + sample_ID + "_"
+
     # Remove extra values in AD field if necessary
     if (remove_extra_ad_values) {
         call RemoveExtraADValuesTask as RemoveExtraAD {
@@ -40,7 +42,7 @@ workflow SampleLoadingWorkflow {
         input:
             input_vcf = select_first([RemoveExtraAD.fixed_vcf, input_vcf]),
             project_type = qceval_project_type,
-            output_basename = dataset + "_" + sample_ID + ".qceval",
+            output_basename = fast_sample_name + ".qceval",
             docker_image = qceval_docker_image
     }
     # Load sample data to FAST
@@ -49,7 +51,7 @@ workflow SampleLoadingWorkflow {
             reference_build = reference_build,
             vcf_file = QCEvalTask.output_vcf_gz,
             has_haploid_sites = has_haploid_sites,
-            sample_data_name = dataset + "_" + sample_ID,
+            sample_data_name = fast_sample_name,
             data_load_config_name = sample_data_load_config_name,
             data_load_target = "SAMPLE_DATA",
             annotation_record_ts = "now",
@@ -66,7 +68,7 @@ workflow SampleLoadingWorkflow {
         # Annotated qceval VCF
         File qceval_vcf_gz = QCEvalTask.output_vcf_gz
         # FAST sample data name
-        String fast_sample_data_name = dataset + "_" + sample_ID
+        String fast_sample_data_name = fast_sample_name
         # QCEval load data id
         String qceval_data_load_id = QCEvalLoadTask.data_load_id
     }
