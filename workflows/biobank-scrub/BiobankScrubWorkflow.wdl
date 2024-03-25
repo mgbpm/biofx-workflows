@@ -17,6 +17,7 @@ struct RundirInitialized {
 workflow BiobankScrubWorkflow {
   input {
     String   runid
+    String   operator
     Int      nbatches                = 500
     String   scrubsdir               = "gs://mgbpm-biobank-data/scrubs"
     String   initial_datadir         = "gs://mgbpm-biobank-data/datasets/initial"
@@ -37,6 +38,7 @@ workflow BiobankScrubWorkflow {
 
   Object inputs = object {
     runid                   : runid,
+    operator                : operator,
     nbatches                : nbatches,
     scrubsdir               : scrubsdir,
     initial_datadir         : initial_datadir,
