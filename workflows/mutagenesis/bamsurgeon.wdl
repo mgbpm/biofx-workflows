@@ -9,8 +9,7 @@ workflow BamsurgeonWorkflow {
     input {
         ## BAMSURGEON
         # File naming inputs
-        String sample_name
-        String mutation_name
+        String output_files_base
         # Mutation to run
         String mutation_type
         # Input BAM files
@@ -106,7 +105,6 @@ workflow BamsurgeonWorkflow {
     }
 
     ## Create input files for bamsurgeon
-    String output_files_base = sample_name + "_" + mutation_name
     call RunBamsurgeonTask as RunBamsurgeon {
         input:
             mutation_bed_input = mutation_bed_input,
