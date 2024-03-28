@@ -237,7 +237,7 @@ struct MutationBED {
     String chr
     Int start
     Int end
-    String mut_type
+    String? mut_type
     Float? vaf
     String? base
     String? insert_seq
