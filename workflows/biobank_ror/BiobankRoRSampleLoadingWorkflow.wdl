@@ -10,11 +10,14 @@ workflow SampleLoadingWorkflow {
         String sample_ID
         String dataset
         Boolean remove_extra_ad_values = false
+        Boolean fix_ad_header = false
         # GCP project and Terra workspace for secret retrieval
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Ubuntu docker image
         String ubuntu_docker_image = "ubuntu:latest"
+        # Bcftools docker image
+        String bcftools_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # Orchestration utils docker image
         String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # reference genome
@@ -28,12 +31,20 @@ workflow SampleLoadingWorkflow {
     }
 
     String fast_sample_name = dataset + "_" + sample_ID + "_"
-
+    
+    # Fix AD field header if necessary
+    if (fix_ad_header) {
+        call FixADHeaderTask as FixADHeader {
+            input:
+                input_vcf = input_vcf,
+                docker_image = bcftools_docker_image
+        }
+    }
     # Remove extra values in AD field if necessary
     if (remove_extra_ad_values) {
         call RemoveExtraADValuesTask as RemoveExtraAD {
             input:
-                input_vcf = input_vcf,
+                input_vcf = select_first([FixADHeader.output_vcf_gz, input_vcf]),
                 docker_image = ubuntu_docker_image
         }
     }
@@ -71,6 +82,38 @@ workflow SampleLoadingWorkflow {
         String fast_sample_data_name = fast_sample_name
         # QCEval load data id
         String qceval_data_load_id = QCEvalLoadTask.data_load_id
+    }
+}
+
+task FixADHeaderTask {
+    input {
+        File input_vcf
+        String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
+        String docker_image
+        Int disk_size = 10 + ceil(size(input_vcf, "GB") * 2)
+        Int preemptible = 1
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        # Retrieve the header
+        bcftools view --header-only "~{input_vcf}" > old_header.txt
+        # Edit the header for ID=AD -- from "Number=." to "Number=R"
+        sed 's/ID=AD,Number=\./ID=AD,Number=R/' old_header.txt > new_header.txt
+        # Replace the header
+        bcftools reheader "~{input_vcf}" \
+            --header "new_header.txt" > "~{output_basename}.vcf.gz"
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        preemptible: preemptible
+    }
+
+    output {
+        File output_vcf_gz = "~{output_basename}.vcf.gz"
     }
 }
 
@@ -145,7 +188,7 @@ task RemoveExtraADValuesTask {
     }
 
     output {
-        File fixed_vcf = "OUTPUT/~{output_basename}.fixed_values.vcf"
+        File fixed_vcf = "OUTPUT/~{output_basename}.fixed_values.vcf.gz"
         File fixed_variants_list = "OUTPUT/~{output_basename}_fixed_variants.txt"
     }
 }
