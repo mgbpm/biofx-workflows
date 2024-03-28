@@ -103,6 +103,21 @@ workflow BamsurgeonWorkflow {
                 error_message = "BAM index should have BAM name + '.bai'"
         }
     }
+    ## Test that the inputs for PGx/Risk are included
+    if (run_pgx || run_risk){
+        if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
+            call Utilities.FailTask as PGxAndRiskInputsError {
+                input:
+                    error_message = "ref_dict, dbsnp_vcf, and dbsnp_vcf_index must be defined to run PGx and/or Risk."
+            }
+        }
+    }
+    if (run_risk && !defined(workspace_name)) {
+        call Utilities.FailTask as WorkspaceNameError {
+            input:
+                error_message = "Workspace name must be defined to run Risk pipeline."
+        }
+    }
 
     ## Create input files for bamsurgeon
     call RunBamsurgeonTask as RunBamsurgeon {
