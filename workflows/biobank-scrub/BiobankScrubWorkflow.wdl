@@ -803,6 +803,7 @@ task  Summarize {
   mkdir --parents '~{OUTPUTDIR}'
 
   summarize.py                  \
+      --logging-level=DEBUG     \
       "${SCRUBRESULTS}"         \
       "${CONCATENATIONRESULTS}" \
       "${PUSHRESULTS}"          \
