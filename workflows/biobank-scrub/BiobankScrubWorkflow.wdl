@@ -320,7 +320,7 @@ task  FindNonCompliant {
 
   command <<<
   set -o errexit
-  # set -o pipefail
+  set -o pipefail
   # set -o nounset
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -548,7 +548,7 @@ task  CollectShards {
 
   command <<<
   set -o errexit
-  # set -o pipefail
+  set -o pipefail
   # set -o nounset
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -601,7 +601,7 @@ task  ConcatenateShards {
 
   command <<<
   set -o errexit
-  # set -o pipefail
+  set -o pipefail
   # set -o nounset
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -732,7 +732,7 @@ task  PushScrubbed {
 
   command <<<
   set -o errexit
-  # set -o pipefail
+  set -o pipefail
   # set -o nounset
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -776,7 +776,7 @@ task  Summarize {
 
   command <<<
   set -o errexit
-  # set -o pipefail
+  set -o pipefail
   # set -o nounset
   set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
