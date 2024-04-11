@@ -202,7 +202,7 @@ task LmmgapTask {
         docker: "~{docker_image}"
         # for each GTC file about 1-1.5 GB of disk space is required
         disks: "local-disk " + (ceil(length(gtc_files) * 1.5) + 10) + " SSD"
-        memory: "16GB"
+        memory: "24GB"
         preemptible: 1
         maxRetries: 2
     }
