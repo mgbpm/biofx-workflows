@@ -8,7 +8,7 @@ import "BiobankUtils.wdl"
 
 struct RundirInitialized {
   String          staging_area
-  File?           maybe_saved_withdrawn_list
+  File            withdrawn_list
   Int             attempt_index
 }
 
@@ -23,8 +23,7 @@ workflow BiobankScrubWorkflow {
     String   initial_datadir         = "gs://mgbpm-biobank-data/datasets/initial"
     String   current_datadir         = "gs://mgbpm-biobank-data/datasets/current"
     String?  release_datadir
-    File     latest_withdrawn_list   = "gs://mgbpm-biobank-data/reference/biobank/withdrawn.txt"
-    File?    withdrawn_list_override
+    String   latest_withdrawn_list   = "gs://mgbpm-biobank-data/reference/biobank/withdrawn.txt"
     Boolean  force                   = false
     Int      scrub_memory            = 26   # in GB
     Int      scrub_disk_size         = 375  # in GB
@@ -45,7 +44,6 @@ workflow BiobankScrubWorkflow {
     current_datadir         : current_datadir,
     release_datadir         : release_datadir,
     latest_withdrawn_list   : latest_withdrawn_list,
-    withdrawn_list_override : withdrawn_list_override,
     force                   : force,
     scrub_memory            : scrub_memory,
     scrub_disk_size         : scrub_disk_size,
@@ -66,16 +64,9 @@ workflow BiobankScrubWorkflow {
       sequencing_dummy = ValidateInputs.sequencing_dummy
   }
 
-  String   staging_area               = MaybeInitializeRundir.info.staging_area
-  Int      attempt_index              = MaybeInitializeRundir.info.attempt_index
-  File?    maybe_saved_withdrawn_list =
-    MaybeInitializeRundir.info.maybe_saved_withdrawn_list
-
-  File withdrawn_list = select_first([
-    withdrawn_list_override,
-    maybe_saved_withdrawn_list,
-    latest_withdrawn_list
-  ])
+  String   staging_area     = MaybeInitializeRundir.info.staging_area
+  Int      attempt_index    = MaybeInitializeRundir.info.attempt_index
+  File     withdrawn_list   = MaybeInitializeRundir.info.withdrawn_list
 
   call ListDatasetIds {
     input:
