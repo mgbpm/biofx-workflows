@@ -203,7 +203,8 @@ task LmmgapTask {
         # for each GTC file about 1-1.5 GB of disk space is required
         disks: "local-disk " + (ceil(length(gtc_files) * 1.5) + 10) + " SSD"
         memory: "16GB"
-        preemptible: preemptible
+        preemptible: 1
+        maxRetries: 2
     }
 
     output {
