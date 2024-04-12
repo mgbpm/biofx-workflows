@@ -25,9 +25,9 @@ workflow LmmgapWorkflow {
         String reference_sample_id = "204339030100-R01C01"
         File reference_sample_gtc_file = "gs://lmm-reference-data/lmmgap/NA12878-A10_204339030100-R01C01.gtc"
         Float call_rate_cut_off = 0.99
-        File bpm_manifest_file = "gs://lmm-reference-data/lmmgap/GDA-8v1-0_A5.bpm"
-        File csv_manifest_file = "gs://lmm-reference-data/lmmgap/GDA-8v1-0_A5.csv"
-        File excluded_site_file = "gs://lmm-reference-data/lmmgap/GDA-8v1-0_A5.probes-to-exclude.tsv"
+        File bpm_manifest_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.bpm"
+        File csv_manifest_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.csv"
+        File excluded_site_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.probes-to-exclude.tsv"
         Boolean save_working_files = true
     }
 
@@ -202,9 +202,8 @@ task LmmgapTask {
         docker: "~{docker_image}"
         # for each GTC file about 1-1.5 GB of disk space is required
         disks: "local-disk " + (ceil(length(gtc_files) * 1.5) + 10) + " SSD"
-        memory: "24GB"
+        memory: "16GB"
         preemptible: 1
-        maxRetries: 2
     }
 
     output {
