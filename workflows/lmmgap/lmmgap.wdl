@@ -18,7 +18,7 @@ workflow LmmgapWorkflow {
         File genome_reference_fa
         File genome_reference_fai
         File genome_reference_dict
-        String genome_reference_name = "hg19"
+        String genome_reference_name = "hg38"
         File reference_sample_project_file = "gs://lmm-reference-data/lmmgap/27202778065-8_ReferenceProjectDetailReport.csv"
         String reference_sample_gender = "2"
         String reference_subject_id = "NA12878-A10"
