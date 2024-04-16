@@ -19,11 +19,11 @@ workflow LmmgapWorkflow {
         File genome_reference_fai
         File genome_reference_dict
         String genome_reference_name = "hg38"
-        File reference_sample_project_file = "gs://lmm-reference-data/lmmgap/27202778065-8_ReferenceProjectDetailReport.csv"
+        File reference_sample_project_file = ""
         String reference_sample_gender = "2"
-        String reference_subject_id = "NA12878-A10"
-        String reference_sample_id = "204339030100-R01C01"
-        File reference_sample_gtc_file = "gs://lmm-reference-data/lmmgap/NA12878-A10_204339030100-R01C01.gtc"
+        String reference_subject_id = ""
+        String reference_sample_id = ""
+        File reference_sample_gtc_file = ""
         Float call_rate_cut_off = 0.99
         File bpm_manifest_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.bpm"
         File csv_manifest_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.csv"
