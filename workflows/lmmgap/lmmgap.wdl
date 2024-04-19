@@ -23,7 +23,7 @@ workflow LmmgapWorkflow {
         String reference_sample_gender = "1"
         String reference_subject_id = "REF08546"
         String reference_sample_id = "208187410018-R99C99"
-        File reference_sample_gtc_file = "gs://lmm-reference-data/lmmgap/REF08546_208187410018_R99C99.gtc"
+        File reference_sample_gtc_file = "gs://lmm-reference-data/lmmgap/REF08546_208187410018-R99C99.gtc"
         Float call_rate_cut_off = 0.99
         File bpm_manifest_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.bpm"
         File csv_manifest_file = "gs://lmm-reference-data/lmmgap/GSA-24v3-0_A2.csv"
