@@ -15,8 +15,7 @@ Note that BWA makes assumptions that all genome reference files are conventional
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | Array[MutationBED] | mutation_bed_input | Yes | Array of target mutation information in JSON format | | 
-| String | sample_name | Yes | Name of sample | |
-| String | mutation_name | Yes | Name for intended mutation | |
+| String | output_files_base | Yes | Base name for output files (should include sample name and mutation information) | |
 | String | mutation_type | Yes | Type of mutation to introduce to input BAM file; either "snv", "sv", or "indel" | |
 | File | input_bam_file | Yes | BAM file to mutate | |
 | File | input_bai_file | Yes | BAM index for BAM to mutate | |

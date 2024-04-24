@@ -255,7 +255,8 @@ workflows:
     readMePath: /workflows/mutagenesis/insiM.md
     filters:
       branches:
-        - /.*[a-zA-Z0-9].*/
+        - fix/insim*
+        - feature/insim*
       tags:
         - insiM_*
   - name: BamsurgeonWorkflow
@@ -264,7 +265,8 @@ workflows:
     readMePath: /workflows/mutagenesis/bamsurgeon.md
     filters:
       branches:
-        - /.*[a-zA-Z0-9].*/
+        - fix/bamsurgeon*
+        - feature/bamsurgeon*
       tags:
         - Bamsurgeon_*
   - name: Glimpse2Imputation
