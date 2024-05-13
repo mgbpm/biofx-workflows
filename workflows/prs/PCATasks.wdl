@@ -55,7 +55,10 @@ task ProjectArray {
     String basename
     Int mem = 8
     Int nthreads = 16
+    Boolean orderIndependentCheck = false
   }
+
+  String postprocess = if orderIndependentCheck then "sort" else "cat"
 
   command <<<
     cp ~{bim} ~{basename}.bim
@@ -67,9 +70,9 @@ task ProjectArray {
 
     # Check if .bim file, pc loadings, and pc meansd files have the same IDs
     # 1. extract IDs, removing first column of .bim file and first rows of the pc files
-    awk '{print $2}' ~{basename}.bim > bim_ids.txt
-    awk '{print $1}' loadings.txt | tail -n +2 > pcloadings_ids.txt
-    awk '{print $1}' meansd.txt | tail -n +2 > meansd_ids.txt
+    awk '{print $2}' ~{basename}.bim | '~{postprocess}' > bim_ids.txt
+    awk '{print $1}' loadings.txt | tail -n +2 | '~{postprocess}' > pcloadings_ids.txt
+    awk '{print $1}' meansd.txt | tail -n +2 | '~{postprocess}' > meansd_ids.txt
 
     diff bim_ids.txt pcloadings_ids.txt > diff1.txt
     diff bim_ids.txt meansd_ids.txt > diff2.txt
