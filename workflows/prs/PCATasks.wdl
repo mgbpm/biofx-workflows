@@ -61,44 +61,57 @@ task ProjectArray {
   String postprocess = if orderIndependentCheck then "sort" else "cat"
 
   command <<<
-    cp ~{bim} ~{basename}.bim
-    cp ~{bed} ~{basename}.bed
-    cp ~{fam} ~{basename}.fam
+    cp '~{bim}' '~{basename}.bim'
+    cp '~{bed}' '~{basename}.bed'
+    cp '~{fam}' '~{basename}.fam'
 
-    cp ~{pc_loadings} loadings.txt
-    cp ~{pc_meansd} meansd.txt
+    cp '~{pc_loadings}' loadings.txt
+    cp '~{pc_meansd}'   meansd.txt
 
-    # Check if .bim file, pc loadings, and pc meansd files have the same IDs
-    # 1. extract IDs, removing first column of .bim file and first rows of the pc files
-    awk '{print $2}' ~{basename}.bim | '~{postprocess}' > bim_ids.txt
-    awk '{print $1}' loadings.txt | tail -n +2 | '~{postprocess}' > pcloadings_ids.txt
-    awk '{print $1}' meansd.txt | tail -n +2 | '~{postprocess}' > meansd_ids.txt
+    # Check that pc loadings and pc meansd files have the same IDs, and in the
+    # same order.
+    awk '{print $1}' loadings.txt | tail -n +2 > pcloadings_ids.txt
+    awk '{print $1}' meansd.txt   | tail -n +2 > meansd_ids.txt
 
-    diff bim_ids.txt pcloadings_ids.txt > diff1.txt
-    diff bim_ids.txt meansd_ids.txt > diff2.txt
-    diff pcloadings_ids.txt meansd_ids.txt > diff3.txt
+    diff pcloadings_ids.txt meansd_ids.txt > loadings_meansd_diff.txt
+    rm pcloadings_ids.txt
 
-    if [[ -s diff3.txt ]]
+    if [[ -s loadings_meansd_diff.txt ]]
     then
-    echo "PC loadings file and PC means file do not contain the same IDs; check your input files and run again."
-    exit 1
+        echo "PC loadings file and PC means file do not contain the same IDs (or in the same order); check your input files and run again." >&2
+        exit 1
     fi
+    rm loadings_meansd_diff.txt
 
-    # check if diff files are not empty
-    if [[ -s diff1.txt || -s diff2.txt ]]
+    # If we reach this point in the execution, we know that loadings.txt and
+    # meansd.txt contain the same IDs in the same order.
+
+    # Check that .bim file and meansd files have the same IDs (possibly up to
+    # reordering).
+    '~{postprocess}' meansd_ids.txt > pc_ids.txt
+    rm meansd_ids.txt
+    awk '{print $2}' '~{basename}.bim' | '~{postprocess}' > bim_ids.txt
+
+    diff bim_ids.txt pc_ids.txt > bim_pc_diff.txt
+    rm bim_ids.txt
+    rm pc_ids.txt
+
+    if [[ -s bim_pc_diff.txt ]]
     then
-    echo "IDs in .bim file are not the same as the IDs in the PCA files; check that you have the right files and run again."
-    exit 1
+        echo "IDs in .bim file are not the same as the IDs in the PCA files; check that you have the right files and run again." >&2
+        exit 1
     fi
+    rm bim_pc_diff.txt
 
-    ~/flashpca/flashpca \
-      --bfile ~{basename} \
-      --numthreads ~{nthreads} \
-      --project \
-      --inmeansd meansd.txt \
-      --outproj projections.txt \
-      --inload loadings.txt \
-      -v
+
+    ~/flashpca/flashpca            \
+      --verbose                    \
+      --project                    \
+      --numthreads ~{nthreads}     \
+      --bfile      '~{basename}'   \
+      --inmeansd   meansd.txt      \
+      --inload     loadings.txt    \
+      --outproj    projections.txt
   >>>
 
   output {
