@@ -281,3 +281,11 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - ignore-all-tags
+  - name: Scoring
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/Scoring.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
