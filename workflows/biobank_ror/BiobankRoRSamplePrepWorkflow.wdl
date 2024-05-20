@@ -273,7 +273,7 @@ workflow IndividualSamplePrepWorkflow {
     ## Make a collective sample VCF for batch annotation
     call VCFUtils.MakeCollectiveVCFTask as MakeCollectiveVCF {
         input:
-            input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz, select_first([FilterVCFs.output_vcf_gz, dataset_files])[0]]),
+            input_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz, select_first([filtered_files, dataset_files])[0]]),
             docker_image = python_docker_image,
             output_basename = dataset + ".collective"
     }
@@ -282,7 +282,7 @@ workflow IndividualSamplePrepWorkflow {
         # Filtered VCF(s)/BCF(s)
         Array[File]? filtered_dataset_files = filtered_files
         # Concat VCF
-        File concat_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz])
+        File concat_vcf = select_first([ConcatJointVCFs.output_vcf_gz, ConcatIndividualVCFs.output_vcf_gz, select_first([filtered_files, dataset_files])[0]])
         # Individual VCFs
         Array[File] individual_vcfs = flatten(select_first([MakeSampleVCFs.output_vcf_gz]))
         # File to use for batch annotation
