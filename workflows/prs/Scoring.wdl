@@ -5,6 +5,12 @@ import "ScoringTasks.wdl"
 import "TrainAncestryAdjustmentModel.wdl"
 import "Structs.wdl"
 
+struct PcaResults {
+  File loadings
+  File meansd
+  File pc
+}
+
 workflow ScoringImputedDataset {
   input {
 
@@ -29,9 +35,9 @@ workflow ScoringImputedDataset {
     Boolean  redoPCA                = false
     Boolean  adjustScores           = true
 
-    File?    population_loadings
-    File?    population_meansd
-    File?    population_pcs
+    PcaResults?
+             population_pca
+
     File?    pruning_sites_for_pca           # the sites used for PCA
 
     # -------------------------------------------------------------------------
@@ -76,17 +82,15 @@ workflow ScoringImputedDataset {
   # ---------------------------------------------------------------------------
 
   if (adjustScores) {
-    Boolean pcaInputsOk = (   (redoPCA && defined(population_vcf))
-                           || (   defined(population_loadings)
-                               && defined(population_meansd)
-                               && defined(population_pcs)))
+
+    Boolean pcaInputsOk = (   defined(population_pca)
+                           || (defined(population_vcf) && redoPCA))
 
     if (!pcaInputsOk) {
       call ErrorWithMessage as MissingPcaInputs {
         input:
           message =   "If adjustScores is true, then either "
-                    + "population_loadings, population_meansd, and "
-                    + "population_pcs must all be specified, or else "
+                    + "population_pca must be specified, or else "
                     + "population_vcf must be specified and redoPCA "
                     + "must be true."
       }
@@ -123,6 +127,13 @@ workflow ScoringImputedDataset {
   Boolean inputsOk = select_first([fittedInputOk, false]) || ! adjustScores
 
   if (inputsOk) {
+
+    if (defined(population_pca)) {
+      PcaResults just_population_pca = select_first([population_pca])
+      File population_loadings = just_population_pca.loadings
+      File population_meansd   = just_population_pca.meansd
+      File population_pcs      = just_population_pca.pc
+    }
 
     if (adjustScores && defined(population_vcf)) {
       call ScoringTasks.ExtractIDsPlink as ExtractIDsPopulation {
