@@ -75,17 +75,58 @@ workflow ScoringImputedDataset {
 
   # ---------------------------------------------------------------------------
 
+  # if (adjustScores) {
+
+  #   Boolean badInput0 = redoPCA
+  #                       || (   defined(population_loadings)
+  #                           && defined(population_meansd)
+  #                           && defined(population_pcs))
+
+  #   if (badInput0) {
+  #     call ErrorWithMessage as ErrorMissingPopulationPCA {
+  #       input:
+  #         message =   "Inputs population_loadings, population_meansd, and "
+  #                   + "population_pcs must be specified if redoPCA is "
+  #                   + "false."
+  #     }
+  #   }
+
+  #   Boolean badInput1
+  #       = defined(population_vcf) != defined(fitted_model_params_and_sites)
+
+  #   if (!badInput0) {
+  #     Boolean inputsOk0 = true
+  #     if (badInput1) {
+  #       call ErrorWithMessage as ErrorNotPopulationVcfXorModelParams {
+  #         input:
+  #           message =   "Exactly one of population_vcf or "
+  #                     + "fitted_model_params must be specified."
+  #       }
+  #     }
+  #   }
+
+  #   if (select_first([inputsOk0, false]) && !badInput1) {
+  #     Boolean inputsOk = true
+  #   }
+
+  #   if (select_first([inputsOk, false]) {
+  #     call Main
+  #   }
+  # }
+
   if (adjustScores) {
 
-    if (!(redoPCA
+    if (!(   (redoPCA && defined(population_vcf))
           || (   defined(population_loadings)
               && defined(population_meansd)
               && defined(population_pcs)))) {
       call ErrorWithMessage as ErrorMissingPopulationPCA {
         input:
-          message =   "Inputs population_loadings, population_meansd, and "
-                    + "population_pcs must be specified if adjustScores is "
-                    + "true and redoPCA is false."
+          message =   "If adjustScores is true, then either "
+                    + "population_loadings, population_meansd, and "
+                    + "population_pcs must all be specified, or else "
+                    + "population_vcf must be specified and redoPCA "
+                    + "must be true."
       }
     }
 
