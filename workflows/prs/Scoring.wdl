@@ -38,7 +38,7 @@ workflow ScoringImputedDataset {
     PcaResults?
              population_pca
 
-    File?    pruning_sites_for_pca           # the sites used for PCA
+    File?    pca_sites           # the sites used for PCA
 
     # -------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ workflow ScoringImputedDataset {
                                              # the weights file.
 
     AncestryAdjustmentModelParams?
-             fitted_model_params_and_sites   # model parameters from
+             model   # model parameters from
                                              # fitting to reference
                                              # population.  Either
                                              # fitted_model_params or
@@ -97,20 +97,19 @@ workflow ScoringImputedDataset {
     }
 
     if (pcaInputsOk) {
-      Boolean pruningInputOk = defined(pruning_sites_for_pca)
+      Boolean pruningInputOk = defined(pca_sites)
 
       if (!pruningInputOk) {
-        call ErrorWithMessage as MissingPruningSites {
+        call ErrorWithMessage as MissingPcaSites {
           input:
-            message =   "Input pruning_sites_for_pca must be specified if "
+            message =   "Input pca_sites must be specified if "
                       + "adjustScores is true."
         }
       }
     }
 
     if (select_first([pruningInputOk, false])) {
-      Boolean fittedInputOk = (defined(fitted_model_params_and_sites) !=
-                               defined(population_vcf))
+      Boolean fittedInputOk = (defined(model) != defined(population_vcf))
 
       if (!fittedInputOk) {
         call ErrorWithMessage as NotModelXorPopulation {
@@ -142,10 +141,9 @@ workflow ScoringImputedDataset {
       }
     }
 
-    if (defined(fitted_model_params_and_sites)) {
+    if (defined(model)) {
       AncestryAdjustmentModelParams
-           local_params                    = select_first([
-                                                 fitted_model_params_and_sites])
+          local_params                     = select_first([model])
       File sites_used_in_scoring_for_model = local_params.sites_used_in_scoring
       File fitted_params_for_model         = local_params.fitted_model_params
 
@@ -158,8 +156,9 @@ workflow ScoringImputedDataset {
 
     if (   defined(ExtractIDsPopulation.ids)
         || defined(sites_used_in_scoring_for_model)) {
-      File sites_to_use_in_scoring = select_first([ExtractIDsPopulation.ids,
-                                                   sites_used_in_scoring_for_model])
+      File sites_to_use_in_scoring =
+          select_first([ExtractIDsPopulation.ids,
+                        sites_used_in_scoring_for_model])
     } #$#
 
     call ScoringTasks.DetermineChromosomeEncoding {
@@ -183,7 +182,8 @@ workflow ScoringImputedDataset {
         input:
           vcf                  = imputed_array_vcf,
           interaction_weights  = select_first([named_weight_set
-                                               .weight_set.interaction_weights]),
+                                               .weight_set
+                                               .interaction_weights]),
           scores               = ScoreImputedArray.score,
           sites                = sites_to_use_in_scoring,
           basename             = basename,
@@ -213,7 +213,7 @@ workflow ScoringImputedDataset {
             as PopulationArrayVcfToPlinkDataset {
           input:
             vcf             = select_first([population_vcf]),
-            pruning_sites   = select_first([pruning_sites_for_pca]),
+            pruning_sites   = select_first([pca_sites]),
             subset_to_sites = ExtractIDsPlink.ids,
             basename        = "population"
         }
@@ -231,7 +231,7 @@ workflow ScoringImputedDataset {
       call PCATasks.ArrayVcfToPlinkDataset {
         input:
           vcf           = imputed_array_vcf,
-          pruning_sites = select_first([pruning_sites_for_pca]),
+          pruning_sites = select_first([pca_sites]),
           basename      = basename,
           mem           = vcf_to_plink_mem
       }
@@ -260,7 +260,8 @@ workflow ScoringImputedDataset {
         call TrainAncestryAdjustmentModel.TrainAncestryAdjustmentModel {
           input:
             named_weight_set    = named_weight_set,
-            population_pcs      = select_first([PerformPCA.pcs, population_pcs]),
+            population_pcs      = select_first([PerformPCA.pcs,
+                                                population_pcs]),
             population_vcf      = select_first([population_vcf]),
             population_basename = "population_basename",
             sites               = ExtractIDsPlink.ids
@@ -300,7 +301,8 @@ workflow ScoringImputedDataset {
 
       if (CompareScoredSitesToSitesUsedInTraining.n_missing_sites > 0) {
 
-        # if there expected sites are missing, calculate potential effect on scores
+        # if there expected sites are missing, calculate potential
+        # effect on scores
 
         call ScoringTasks.AddShiftToRawScores as ShiftScoresUpForMissingSites {
           input:
@@ -311,7 +313,8 @@ workflow ScoringImputedDataset {
             basename   = "shifted_raw_scores_up_for_missing_sites"
         }
 
-        call ScoringTasks.AddShiftToRawScores as ShiftScoresDownForMissingSites {
+        call ScoringTasks.AddShiftToRawScores
+             as ShiftScoresDownForMissingSites {
           input:
             raw_scores = select_first([AddInteractionTermsToScore
                                        .scores_with_interactions,
@@ -320,7 +323,8 @@ workflow ScoringImputedDataset {
             basename   = "shifted_raw_scores_down_for_missing_sites"
         }
 
-        call ScoringTasks.AdjustScores as AdjustScoresShiftedUpForMissingSites {
+        call ScoringTasks.AdjustScores
+             as AdjustScoresShiftedUpForMissingSites {
           input:
             fitted_model_params = select_first([TrainAncestryAdjustmentModel
                                                 .fitted_params,
@@ -329,7 +333,8 @@ workflow ScoringImputedDataset {
             scores              = ShiftScoresUpForMissingSites.shifted_scores
         }
 
-        call ScoringTasks.AdjustScores as AdjustScoresShiftedDownForMissingSites {
+        call ScoringTasks.AdjustScores
+             as AdjustScoresShiftedDownForMissingSites {
           input:
             fitted_model_params = select_first([TrainAncestryAdjustmentModel
                                                 .fitted_params,
@@ -342,18 +347,21 @@ workflow ScoringImputedDataset {
 
       call ScoringTasks.CombineMissingSitesAdjustedScores {
         input:
-          adjusted_scores_shifted_up   = select_first([
-                                             AdjustScoresShiftedUpForMissingSites
-                                             .adjusted_scores,
-                                             AdjustScores.adjusted_scores]),
-          adjusted_scores_shifted_down = select_first([
-                                             AdjustScoresShiftedDownForMissingSites
-                                             .adjusted_scores,
-                                             AdjustScores.adjusted_scores]),
+
+          condition_name               = named_weight_set.condition_name,
           adjusted_scores              = AdjustScores.adjusted_scores,
-          n_missing_sites              = CompareScoredSitesToSitesUsedInTraining
-                                         .n_missing_sites,
-          condition_name               = named_weight_set.condition_name
+          n_missing_sites              =
+              CompareScoredSitesToSitesUsedInTraining.n_missing_sites,
+          adjusted_scores_shifted_up   =
+              select_first([
+                  AdjustScoresShiftedUpForMissingSites
+                  .adjusted_scores,
+                  AdjustScores.adjusted_scores]),
+          adjusted_scores_shifted_down =
+              select_first([
+                  AdjustScoresShiftedDownForMissingSites
+                  .adjusted_scores,
+                  AdjustScores.adjusted_scores])
       }
 
       if (!select_first([CheckPopulationIdsValid.files_are_valid, true])) {
