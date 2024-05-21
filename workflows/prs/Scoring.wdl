@@ -29,8 +29,8 @@ workflow ScoringImputedDataset {
     Boolean  redoPCA                = false
     Boolean  adjustScores           = true
 
-    String?  population_basename             # for naming the output of
-                                             # population scoring
+    # String?  population_basename             # for naming the output of
+    #                                          # population scoring
 
     File?    population_loadings
     File?    population_meansd
@@ -234,7 +234,7 @@ workflow ScoringImputedDataset {
           named_weight_set    = named_weight_set,
           population_pcs      = select_first([PerformPCA.pcs, population_pcs]),
           population_vcf      = select_first([population_vcf]),
-          population_basename = select_first([population_basename]),
+          population_basename = "population_basename",
           sites               = ExtractIDsPlink.ids
       }
     }
