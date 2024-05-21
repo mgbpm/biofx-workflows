@@ -348,9 +348,9 @@ workflow ScoringImputedDataset {
       if (!select_first([CheckPopulationIdsValid.files_are_valid, true])) {
         call ErrorWithMessage as InvalidPcaIds {
           input:
-            message =   "Population VCF IDs are not a subset of the population "
-                      + "PCA IDs; running with these inputs would give an "
-                      + "incorrect result."
+            message =   "Population VCF IDs are not a superset of the "
+                      + "population PCA IDs; running with these inputs would "
+                      + "lead to incorrect results."
         }
       }
     }
