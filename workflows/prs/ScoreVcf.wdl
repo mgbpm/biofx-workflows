@@ -6,16 +6,10 @@ workflow ScoreVcfWorkflow {
     File weights
   }
 
-  call ChromosomeEncoding {
-    input:
-      weights = weights
-  }
-
   call ScoreVcf {
     input:
-      vcf      = vcf,
-      weights  = weights,
-      encoding = ChromosomeEncoding.value
+      vcf     = vcf,
+      weights = weights
   }
 
   output {
@@ -24,61 +18,15 @@ workflow ScoreVcfWorkflow {
   }
 }
 
-task ChromosomeEncoding {
-  input {
-    File weights
-  }
-
-  String outputdir = "work"
-  String encoding  = outputdir + "/encoding"
-
-  command <<<
-    set -o errexit
-    # set -o pipefail
-    # set -o nounset
-    # set -o xtrace
-    # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-
-    mkdir --verbose --parents '~{outputdir}'
-
-    python3 << "EOF"
-    with open('~{weights}') as reader:
-        next(reader)
-        chromosomes = {line.split('\t')[0].split(':')[0]
-                       for line in reader}
-
-    prefix = 'chr' if any('chr' in chromosome
-                          for chromosome in chromosomes) else ''
-
-    M  = f'{prefix}M'
-    MT = f'{prefix}MT'
-
-    code = M if M in chromosomes else MT
-
-    with open('~{encoding}', 'w') as writer:
-        writer.write(f'{code}\n')
-    EOF
-  >>>
-
-  runtime {
-    docker : "python:3.9.10"
-  }
-
-  output {
-    String value = read_string(encoding)
-  }
-}
-
 
 task ScoreVcf {
   input {
     File   vcf
     File   weights
-    String encoding
     Int    memory   = 8
   }
 
-  String outputdir = "work"
+  String outputdir = "final"
   String prefix    = outputdir + "/data"
 
   Int plink_memory = ceil(memory * 0.75 * 1000)
@@ -88,6 +36,36 @@ task ScoreVcf {
 
   command <<<
   set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+
+  # --------------------------------------------------------------------------
+
+  CHROMOSOMES="$( mktemp )"
+
+  tail --lines=+2 '~{weights}'     \
+    | cut --fields=1 --delimiter=: \
+    | sort --unique                \
+    > "${CHROMOSOMES}"
+
+  if grep --quiet --perl-regex '^chr' "${CHROMOSOMES}"
+  then
+      HEAD='chr'
+  else
+      HEAD=''
+  fi
+
+  if grep --quiet --perl-regex "^${HEAD}M$" "${CHROMOSOMES}"
+  then
+      ENCODING="${HEAD}M"
+  else
+      ENCODING="${HEAD}MT"
+  fi
+
+  rm "${CHROMOSOMES}"
+
+  # --------------------------------------------------------------------------
 
   mkdir --verbose --parents "$( dirname '~{prefix}' )"
 
@@ -101,7 +79,7 @@ task ScoreVcf {
       --out                   \
           '~{prefix}'         \
       --output-chr            \
-          '~{encoding}'       \
+          "${ENCODING}"       \
       --score                 \
           '~{weights}'        \
           header              \
