@@ -289,3 +289,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: ScoreVcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/ScoreVcf.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
