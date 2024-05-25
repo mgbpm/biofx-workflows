@@ -26,20 +26,15 @@ task ScoreVcf {
   String inputsdir  = devdir + '/INPUTS'
   String outputsdir = devdir + '/OUTPUTS'
 
-  Array[String] inputs = if defined(sites)
-                         then [inputsdir + '/vcf',
-                               inputsdir + '/weights',
-                               inputsdir + '/sites']
-                         else [inputsdir + '/vcf',
-                               inputsdir + '/weights']
+  # Array[String] inputs = if defined(sites)
+  #                        then [inputsdir + '/vcf',
+  #                              inputsdir + '/weights',
+  #                              inputsdir + '/sites']
+  #                        else [inputsdir + '/vcf',
+  #                              inputsdir + '/weights']
 
   command <<<
     ### DEV START ###
-    set -o errexit
-    set -o pipefail
-    set -o nounset
-    set -o xtrace
-
     mkdir --parents '~{inputsdir}' '~{outputsdir}'
     cp '~{vcf}'       "~{inputsdir}/vcf"
     cp '~{weights}'   "~{inputsdir}/weights"
@@ -50,6 +45,11 @@ task ScoreVcf {
     fi
     # ------------------------------------------------------------------------
     ### DEV END ###
+    set -o errexit
+    set -o pipefail
+    set -o nounset
+    set -o xtrace
+
     /plink2 --score ~{weights} header ignore-dup-ids list-variants no-mean-imputation \
     cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --set-all-var-ids ~{var_ids_string} --allow-extra-chr ~{extra_args} -vcf ~{vcf} dosage=DS \
     --new-id-max-allele-len 1000 missing ~{"--extract " + sites} --out ~{basename} --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
@@ -59,7 +59,7 @@ task ScoreVcf {
     File score = "~{basename}.sscore"
     File log = "~{basename}.log"
     File sites_scored = "~{basename}.sscore.vars"
-    Array[File] INPUTS = inputs
+    # Array[File] INPUTS = inputs
   }
 
   runtime {
