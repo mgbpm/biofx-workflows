@@ -136,7 +136,33 @@ task ArrayVcfToPlinkDataset {
 
   Int disk_space =  3 * ceil(size(vcf, "GB")) + 20
 
+  String devdir     = 'DEV'
+  String metadir    = devdir  + '/META'
+  String inputsdir  = devdir  + '/INPUTS'
+  String outputsdir = devdir  + '/OUTPUTS'
+
+  String inputslist = metadir + '/inputslist'
+
   command <<<
+    ### DEV START ###
+    set -o errexit
+    set -o pipefail
+    set -o nounset
+    set -o xtrace
+
+    mkdir --parents '~{metadir}' '~{inputsdir}' '~{outputsdir}'
+
+    cp '~{vcf}'           "~{inputsdir}/vcf"
+    cp '~{pruning_sites}' "~{inputsdir}/pruning_sites"
+
+    if '~{if defined(subset_to_sites) then "true" else "false"}'
+    then
+        cp '~{subset_to_sites}' "~{inputsdir}/subset_to_sites"
+    fi
+
+    find "~{inputsdir}" -type f > "~{inputslist}"
+
+    # ------------------------------------------------------------------------
     /plink2 \
       --vcf ~{vcf} \
       --extract-intersect ~{pruning_sites} ~{subset_to_sites} \
@@ -152,6 +178,7 @@ task ArrayVcfToPlinkDataset {
     File bed = "~{basename}.bed"
     File bim = "~{basename}.bim"
     File fam = "~{basename}.fam"
+    Array[File] INPUTS = read_lines(inputslist)
   }
 
   runtime {
