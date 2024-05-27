@@ -29,12 +29,12 @@ task ScoreVcf {
 
   String inputslisting = metadir + '/inputs'
 
-  Array[String] inputs = if defined(sites)
-                         then [inputsdir + '/vcf',
-                               inputsdir + '/weights',
-                               inputsdir + '/sites']
-                         else [inputsdir + '/vcf',
-                               inputsdir + '/weights']
+  # Array[String] inputs = if defined(sites)
+  #                        then [inputsdir + '/vcf',
+  #                              inputsdir + '/weights',
+  #                              inputsdir + '/sites']
+  #                        else [inputsdir + '/vcf',
+  #                              inputsdir + '/weights']
 
   command <<<
     ### DEV START ###
@@ -65,8 +65,8 @@ task ScoreVcf {
     File score = "~{basename}.sscore"
     File log = "~{basename}.log"
     File sites_scored = "~{basename}.sscore.vars"
-    Array[File] INPUTS  = inputs
-    Array[File] INPUTS_ = read_lines(inputslisting)
+    # Array[File] INPUTS_ = inputs
+    Array[File] INPUTS = read_lines(inputslisting)
   }
 
   runtime {
