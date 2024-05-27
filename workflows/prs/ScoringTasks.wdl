@@ -22,9 +22,12 @@ task ScoreVcf {
   Int disk_space =  3*ceil(size(vcf, "GB")) + 20
   String var_ids_string = "@:#:" + if use_ref_alt_for_ids then "\\$r:\\$a" else "\\$1:\\$2"
 
-  String devdir     = 'DEV'
-  String inputsdir  = devdir + '/INPUTS'
-  String outputsdir = devdir + '/OUTPUTS'
+  String devdir        = 'DEV'
+  String metadir       = devdir  + '/META'
+  String inputsdir     = devdir  + '/INPUTS'
+  String outputsdir    = devdir  + '/OUTPUTS'
+
+  String inputslisting = metadir + '/inputs'
 
   Array[String] inputs = if defined(sites)
                          then [inputsdir + '/vcf',
@@ -40,7 +43,7 @@ task ScoreVcf {
     set -o nounset
     set -o xtrace
 
-    mkdir --parents '~{inputsdir}' '~{outputsdir}'
+    mkdir --parents '~{metadir}' '~{inputsdir}' '~{outputsdir}'
     cp '~{vcf}'       "~{inputsdir}/vcf"
     cp '~{weights}'   "~{inputsdir}/weights"
 
@@ -48,6 +51,9 @@ task ScoreVcf {
     then
         cp '~{sites}' "~{inputsdir}/sites"
     fi
+
+    find "~{inputsdir}" -type f > "~{inputslisting}"
+
     # ------------------------------------------------------------------------
     ### DEV END ###
     /plink2 --score ~{weights} header ignore-dup-ids list-variants no-mean-imputation \
@@ -59,7 +65,8 @@ task ScoreVcf {
     File score = "~{basename}.sscore"
     File log = "~{basename}.log"
     File sites_scored = "~{basename}.sscore.vars"
-    Array[File] INPUTS = inputs
+    Array[File] INPUTS  = inputs
+    Array[File] INPUTS_ = read_lines(inputslisting)
   }
 
   runtime {
