@@ -305,3 +305,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: PeformPCA
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/PerformPCA.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
