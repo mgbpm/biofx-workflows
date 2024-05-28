@@ -38,7 +38,7 @@ workflow ScoringImputedDataset {
     PcaResults?
              population_pca
 
-    File?    pca_sites           # the sites used for PCA
+    File?    pca_variants           # the sites used for PCA
 
     # -------------------------------------------------------------------------
 
@@ -97,12 +97,12 @@ workflow ScoringImputedDataset {
     }
 
     if (pcaInputsOk) {
-      Boolean pruningInputOk = defined(pca_sites)
+      Boolean pruningInputOk = defined(pca_variants)
 
       if (!pruningInputOk) {
         call ErrorWithMessage as MissingPcaSites {
           input:
-            message =   "Input pca_sites must be specified if "
+            message =   "Input pca_variants must be specified if "
                       + "adjustScores is true."
         }
       }
@@ -128,14 +128,14 @@ workflow ScoringImputedDataset {
   if (inputsOk) {
 
     if (defined(population_pca)) {
-      PcaResults just_population_pca = select_first([population_pca])
-      File population_loadings = just_population_pca.loadings
-      File population_meansd   = just_population_pca.meansd
-      File population_pcs      = just_population_pca.pc
+      PcaResults just_pca = select_first([population_pca])
+      File loadings = just_pca.loadings
+      File meansd   = just_pca.meansd
+      File pcs      = just_pca.pc
     }
 
     if (adjustScores && defined(population_vcf)) {
-      call ScoringTasks.ExtractIDsPlink as ExtractIDsPopulation {
+      call ScoringTasks.ExtractIDsPlink as PopulationVariants {
         input:
           vcf = select_first([population_vcf])
       }
@@ -154,10 +154,10 @@ workflow ScoringImputedDataset {
       }
     } #$#
 
-    if (   defined(ExtractIDsPopulation.ids)
+    if (   defined(PopulationVariants.ids)
         || defined(sites_used_in_scoring_for_model)) {
       File sites_to_use_in_scoring =
-          select_first([ExtractIDsPopulation.ids,
+          select_first([PopulationVariants.ids,
                         sites_used_in_scoring_for_model])
     } #$#
 
@@ -202,36 +202,35 @@ workflow ScoringImputedDataset {
 
     if (adjustScores) {
 
-      call ScoringTasks.ExtractIDsPlink {
+      call ScoringTasks.ExtractIDsPlink as ImputedVariants {
         input:
           vcf = imputed_array_vcf
       }
 
       if (redoPCA) {
 
-        call PCATasks.ArrayVcfToPlinkDataset
-            as PopulationArrayVcfToPlinkDataset {
+        call PCATasks.ArrayVcfToPlinkDataset as PopulationBed {
           input:
             vcf             = select_first([population_vcf]),
-            pruning_sites   = select_first([pca_sites]),
-            subset_to_sites = ExtractIDsPlink.ids,
+            pruning_sites   = select_first([pca_variants]),
+            subset_to_sites = ImputedVariants.ids,
             basename        = "population"
         }
 
         call PCATasks.PerformPCA {
           input:
-            bim      = PopulationArrayVcfToPlinkDataset.bim,
-            bed      = PopulationArrayVcfToPlinkDataset.bed,
-            fam      = PopulationArrayVcfToPlinkDataset.fam,
+            bim      = PopulationBed.bim,
+            bed      = PopulationBed.bed,
+            fam      = PopulationBed.fam,
             basename = basename
         }
 
       }
 
-      call PCATasks.ArrayVcfToPlinkDataset {
+      call PCATasks.ArrayVcfToPlinkDataset as ImputedBed {
         input:
           vcf           = imputed_array_vcf,
-          pruning_sites = select_first([pca_sites]),
+          pruning_sites = select_first([pca_variants]),
           basename      = basename,
           mem           = vcf_to_plink_mem
       }
@@ -239,20 +238,19 @@ workflow ScoringImputedDataset {
       if (defined(population_vcf)) {
         call CheckPopulationIdsValid {
           input:
-            pop_vcf_ids     = select_first([ExtractIDsPopulation.ids]),
+            pop_vcf_ids     = select_first([PopulationVariants.ids]),
             pop_pc_loadings = select_first([PerformPCA.pc_loadings,
-                                            population_loadings]),
+                                            loadings]),
         }
       }
 
       call PCATasks.ProjectArray {
         input:
-          pc_loadings = select_first([PerformPCA.pc_loadings,
-                                      population_loadings]),
-          pc_meansd   = select_first([PerformPCA.mean_sd, population_meansd]),
-          bed         = ArrayVcfToPlinkDataset.bed,
-          bim         = ArrayVcfToPlinkDataset.bim,
-          fam         = ArrayVcfToPlinkDataset.fam,
+          pc_loadings = select_first([PerformPCA.pc_loadings, loadings]),
+          pc_meansd   = select_first([PerformPCA.mean_sd,     meansd]),
+          bed         = ImputedBed.bed,
+          bim         = ImputedBed.bim,
+          fam         = ImputedBed.fam,
           basename    = basename
       }
 
@@ -260,11 +258,10 @@ workflow ScoringImputedDataset {
         call TrainAncestryAdjustmentModel.TrainAncestryAdjustmentModel {
           input:
             named_weight_set    = named_weight_set,
-            population_pcs      = select_first([PerformPCA.pcs,
-                                                population_pcs]),
+            population_pcs      = select_first([PerformPCA.pcs, pcs]),
             population_vcf      = select_first([population_vcf]),
             population_basename = "population_basename",
-            sites               = ExtractIDsPlink.ids
+            sites               = ImputedVariants.ids
         }
       }
 
@@ -281,7 +278,7 @@ workflow ScoringImputedDataset {
 
       call ScoringTasks.MakePCAPlot {
         input:
-          population_pcs = select_first([PerformPCA.pcs, population_pcs]),
+          population_pcs = select_first([PerformPCA.pcs, pcs]),
           target_pcs     = ProjectArray.projections
       }
 
