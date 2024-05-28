@@ -213,8 +213,9 @@ workflow ScoringImputedDataset {
           input:
             vcf             = select_first([population_vcf]),
             pruning_sites   = select_first([pca_variants]),
-            subset_to_sites = ImputedVariants.ids,
-            basename        = "population"
+            basename        = "population",
+            mem             = vcf_to_plink_mem,
+            subset_to_sites = ImputedVariants.ids
         }
 
         call PCATasks.PerformPCA {
