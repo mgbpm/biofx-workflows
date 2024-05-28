@@ -24,6 +24,7 @@ task ScoreVcf {
     File   vcf
     File   weights
     Int    memory   = 8
+    String docker   = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
   }
 
   String outputdir = "final"
@@ -101,7 +102,7 @@ task ScoreVcf {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
+    docker: docker
     disks:  "local-disk " + storage + " HDD"
     memory: (memory + 2) + " GB"
   }
