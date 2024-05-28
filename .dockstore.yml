@@ -305,3 +305,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: AncestryAdjustment
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/AncestryAdjustment.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
