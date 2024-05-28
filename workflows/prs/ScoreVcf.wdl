@@ -2,14 +2,16 @@ version 1.0
 
 workflow ScoreVcfWorkflow {
   input {
-    File vcf
-    File weights
+    File  vcf
+    File  weights
+    File? variants
   }
 
   call ScoreVcf {
     input:
-      vcf     = vcf,
-      weights = weights
+      vcf      = vcf,
+      weights  = weights,
+      variants = variants
   }
 
   output {
@@ -23,6 +25,7 @@ task ScoreVcf {
   input {
     File   vcf
     File   weights
+    File?  variants
     Int    memory   = 8
     String docker   = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
   }
@@ -70,28 +73,31 @@ task ScoreVcf {
 
   mkdir --verbose --parents "$( dirname '~{prefix}' )"
 
-  /plink2                     \
-      --allow-extra-chr       \
-      --new-id-max-allele-len \
-          1000                \
-          missing             \
-      --memory                \
-          ~{plink_memory}     \
-      --out                   \
-          '~{prefix}'         \
-      --output-chr            \
-          "${ENCODING}"       \
-      --score                 \
-          '~{weights}'        \
-          header              \
-          no-mean-imputation  \
-          ignore-dup-ids      \
-          list-variants       \
-          cols='~{columns}'   \
-      --set-all-var-ids       \
-          '@:#:$1:$2'         \
-      --vcf                   \
-          '~{vcf}'            \
+  EXTRACT=( ~{"--extract " + variants} )
+
+  /plink2                           \
+      --allow-extra-chr             \
+      ${EXTRACT[@]+"${EXTRACT[@]}"} \
+      --new-id-max-allele-len       \
+          1000                      \
+          missing                   \
+      --memory                      \
+          ~{plink_memory}           \
+      --out                         \
+          '~{prefix}'               \
+      --output-chr                  \
+          "${ENCODING}"             \
+      --score                       \
+          '~{weights}'              \
+          header                    \
+          no-mean-imputation        \
+          ignore-dup-ids            \
+          list-variants             \
+          cols='~{columns}'         \
+      --set-all-var-ids             \
+          '@:#:$1:$2'               \
+      --vcf                         \
+          '~{vcf}'                  \
           dosage=DS
   >>>
 
