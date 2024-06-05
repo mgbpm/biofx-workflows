@@ -285,3 +285,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - Glimpse2SplitReference_*
+  - name: CTBHaplotypeCallerGvcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/CTBHaplotypeCallerGvcf.wdl
+    readMePath: /workflows/joint_calling/CTBHaplotypeCallerGvcf.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - CTBHaplotypeCallerGvcf_*
