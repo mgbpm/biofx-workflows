@@ -5,15 +5,17 @@ import "VcfToBed.wdl"
 workflow PCAWorkflow {
   input {
     File vcf
-    File variants
-    Int  memory   = 8
-    Int  nthreads = 16
+    File pca_variants
+    File imputed_variants
+    Int  memory           = 8
+    Int  nthreads         = 16
   }
 
   call VcfToBed.VcfToBed {
     input:
         vcf      = vcf
-      , variants = variants
+      , variants = pca_variants
+      , subset   = imputed_variants
   }
 
   call BedToPca {
