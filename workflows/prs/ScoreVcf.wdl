@@ -73,7 +73,12 @@ task ScoreVcf {
 
   mkdir --verbose --parents "$( dirname '~{prefix}' )"
 
-  EXTRACT=( ~{"--extract " + variants} )
+  if '~{if defined(variants) then "true" else "false"}'
+  then
+      EXTRACT=( --extract '~{variants}' )
+  else
+      EXTRACT=()
+  fi
 
   /plink2                           \
       --allow-extra-chr             \
