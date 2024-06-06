@@ -40,6 +40,12 @@ task VcfToBed {
       EXTRACT=( --extract-intersect '~{variants}' )
   fi
 
+  # NB: The variants in the generated *.bim file will the intersection of the
+  # variants in the VCF and VARIANTS files, and (when defined) the SUBSET file,
+  # AND they will be ordered as they are in the VCF file.  (The ordering of
+  # variants in the VARIANTS and SUBSET files has no observable effect at all
+  # on the following command's results.)
+
   /plink2                           \
       --allow-extra-chr             \
       ${EXTRACT[@]+"${EXTRACT[@]}"} \
