@@ -5,17 +5,17 @@ import "ScoreVcf.wdl"
 
 workflow TrainModelWorkflow {
   input {
-    File  vcf                   # population VCF
-    File  linear_weights
-    File  principal_components
-    # File? scoring_variants      # aka imputed variants
+    File vcf                   # population VCF
+    File linear_weights
+    File principal_components
+    File imputed_variants      # aka "scoring variants"
   }
 
   call ScoreVcf.ScoreVcfWorkflow as Scoring {
     input:
         vcf      = vcf
       , weights  = linear_weights
-      # , variants = scoring_variants  # aka imputed variants
+      , variants = imputed_variants  # aka imputed variants
   }
 
   call ScoringTasks.TrainAncestryModel as TrainModel {
