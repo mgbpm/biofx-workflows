@@ -399,6 +399,16 @@ workflow ScoringImputedDataset {
   
     File?    missing_sites_shifted_scores  = CombineMissingSitesAdjustedScores
                                              .missing_sites_shifted_scores
+
+    File     s_variants                    = select_first([
+                                                 CombineScoringSites.combined_scoring_sites,
+                                                 ScoreImputedArray.sites_scored
+                                             ])
+
+    File     t_variants                    = select_first([
+                                                 TrainAncestryAdjustmentModel.sites_used_in_scoring,
+                                                 sites_used_in_scoring_for_model
+                                             ])
   }
 }
 
