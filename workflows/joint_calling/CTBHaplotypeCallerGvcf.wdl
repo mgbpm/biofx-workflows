@@ -17,6 +17,7 @@ workflow CTBHaplotypeCallerGvcf {
         String subject_id
         String sample_id
         String sample_data_location
+        String gvcf_staging_bucket
         Boolean fetch_cram = true
         Array[String] fetch_cram_filter_keys = [subject_id, sample_id]
         Array[FileMatcher]? fetch_cram_file_matchers
@@ -116,6 +117,21 @@ workflow CTBHaplotypeCallerGvcf {
             ref_dict = ref_dict,
             scattered_calling_intervals_list = select_first([scattered_calling_intervals_list]),
             make_gvcf = true
+    }
+
+    #run transfer to gvcf staging bucket
+    call FileUtils.CopyFilesTask as CopyGVCFToBucket {
+        input:
+            #input_gvcf = HaplotypeCallerGvcf_GATK4.output_vcf,
+            #input_gvcf_index = HaplotypeCallerGvcf_GATK4.all_bases_vcf_idx_file
+            source_location = sample_data_location
+            file_types = []
+            file_match_keys = []
+            file_matchers = [HaplotypeCallerGvcf_GATK4.output_vcf, HaplotypeCallerGvcf_GATK4.all_bases_vcf_idx_file]
+            target_location = gvcf_staging_bucket
+            docker_image = orchutils_docker_image
+            gcp_project_id = gcp_project_id
+            workspace_name = workspace_name
     }
 
     output {
