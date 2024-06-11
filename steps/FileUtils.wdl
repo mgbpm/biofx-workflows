@@ -201,3 +201,37 @@ task DownloadOutputsTask {
         File outputs_manifest = "copy-manifest.json"
     }
 }
+
+task SimpleGCPCopyFileTask {
+    input {
+        String source_file
+        String target_location
+        String docker_image
+        Int disk_size = 75
+    }
+
+    command <<<
+        set -euxo pipefail
+        #run gsutil cp to move file from one bucket to another
+        gsutil -q stat "~{source_file}"
+        PATH_EXIST=$?
+        if [ ${PATH_EXIST} -eq 0 ]; then
+            echo "~{source_file} exists."
+        else
+            echo "~{source_file} does not exist."
+            exit 1
+        fi
+
+        #copy file from one bucket to another
+        gsutil cp "~{source_file}" "~{target_location}"/.
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+
+    output {
+        File outputs_manifest = "copy-manifest.json"
+    }
+}

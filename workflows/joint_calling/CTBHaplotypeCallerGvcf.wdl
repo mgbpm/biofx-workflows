@@ -119,24 +119,28 @@ workflow CTBHaplotypeCallerGvcf {
             make_gvcf = true
     }
 
-    #run transfer to gvcf staging bucket
-    call FileUtils.CopyFilesTask as CopyGVCFToBucket {
+    #transfer gvcf to staging bucket
+    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFToBucket {
         input:
-            #input_gvcf = HaplotypeCallerGvcf_GATK4.output_vcf,
-            #input_gvcf_index = HaplotypeCallerGvcf_GATK4.all_bases_vcf_idx_file
-            source_location = sample_data_location
-            file_types = []
-            file_match_keys = []
-            file_matchers = [HaplotypeCallerGvcf_GATK4.output_vcf, HaplotypeCallerGvcf_GATK4.all_bases_vcf_idx_file]
-            target_location = gvcf_staging_bucket
-            docker_image = orchutils_docker_image
-            gcp_project_id = gcp_project_id
-            workspace_name = workspace_name
+            source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
+            target_location = gvcf_staging_bucket,
+            docker_image = orchutils_docker_image,
+            disk_size = fetch_disk_size
+    }
+
+    #transfer gvcf index to staging bucket
+    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFIndexToBucket {
+        input:
+            source_file = HaplotypeCallerGvcf_GATK4.output_vcf_index,
+            target_location = gvcf_staging_bucket,
+            docker_image = orchutils_docker_image,
+            disk_size = fetch_disk_size
     }
 
     output {
         # haplotype caller output
         File? vcf = HaplotypeCallerGvcf_GATK4.output_vcf
+        File? vcf_index = HaplotypeCallerGvcf_GATK4.output_vcf_index
     }
 }
 
