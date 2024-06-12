@@ -223,7 +223,18 @@ task SimpleGCPCopyFileTask {
         fi
 
         #copy file from one bucket to another
-        gsutil cp "~{source_file}" "~{target_location}"/.
+        FILE_NAME=$(basename "~{source_file}")
+        gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME}
+
+        COPY_STATUS=$?
+        if [ ${COPY_STATUS} -eq 0 ]; then
+            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.'
+            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.' > copy-manifest.log
+        else
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}"
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}" > copy-manifest.log
+            exit ${COPY_STATUS}
+        fi
     >>>
 
     runtime {
@@ -232,6 +243,6 @@ task SimpleGCPCopyFileTask {
     }
 
     output {
-        File outputs_manifest = "copy-manifest.json"
+        File outputs_manifest = "copy-manifest.log"
     }
 }
