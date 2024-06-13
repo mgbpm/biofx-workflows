@@ -57,9 +57,9 @@ workflow JointCalling {
         # ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
         # than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
         Float excess_het_threshold = 54.69
-        Float vqsr_snp_filter_level
-        Float vqsr_indel_filter_level
-        Int snp_vqsr_downsampleFactor
+        Float? vqsr_snp_filter_level
+        Float? vqsr_indel_filter_level
+        Int? snp_vqsr_downsampleFactor
 
         Int? top_level_scatter_count
         Boolean? gather_vcfs
