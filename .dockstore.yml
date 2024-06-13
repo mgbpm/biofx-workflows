@@ -294,3 +294,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - CTBHaplotypeCallerGvcf_*
+  - name: JointCalling
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/JointCalling.wdl
+    readMePath: /workflows/joint_calling/JointCalling.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - JointCalling_*
