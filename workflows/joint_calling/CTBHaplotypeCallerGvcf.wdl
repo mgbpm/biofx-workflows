@@ -19,11 +19,9 @@ workflow CTBHaplotypeCallerGvcf {
         String sample_data_location
         String gvcf_staging_bucket
         Boolean fetch_cram = true
-        Array[String] fetch_cram_filter_keys = [subject_id, sample_id]
+        #Array[String] fetch_cram_filter_keys = [subject_id, sample_id]
+        Array[String] fetch_cram_filter_keys = [subject_id]
         Array[FileMatcher]? fetch_cram_file_matchers
-        Boolean fetch_bam = true
-        Array[String] fetch_bam_filter_keys = [subject_id, sample_id]
-        Array[FileMatcher]? fetch_bam_file_matchers
         Boolean fetch_files_verbose = false
         Int fetch_disk_size = 75
         # reference genome files
@@ -35,57 +33,32 @@ workflow CTBHaplotypeCallerGvcf {
         File? scattered_calling_intervals_list
     }
 
-    # Prefer a BAM file to avoid conversion
-    if (fetch_bam) {
-        call FileUtils.FetchFilesTask as FetchBam {
-            input:
-                data_location = sample_data_location,
-                file_types = if defined(fetch_bam_file_matchers) then [] else ["bam"],
-                recursive = false,
-                file_match_keys = if defined(fetch_bam_file_matchers) then [] else fetch_bam_filter_keys,
-                file_matchers = fetch_bam_file_matchers,
-                verbose = fetch_files_verbose,
-                docker_image = orchutils_docker_image,
-                gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name,
-                disk_size = fetch_disk_size
-        }
-    }
-
-    # no BAM, fallback to CRAM
-    if (fetch_cram && (!defined(FetchBam.bam) || !defined(FetchBam.bai))) {
-        call FileUtils.FetchFilesTask as FetchCram {
-            input:
-                data_location = sample_data_location,
-                file_types = if defined(fetch_cram_file_matchers) then [] else ["cram"],
-                recursive = false,
-                file_match_keys = if defined(fetch_cram_file_matchers) then [] else fetch_cram_filter_keys,
-                file_matchers = fetch_cram_file_matchers,
-                verbose = fetch_files_verbose,
-                docker_image = orchutils_docker_image,
-                gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name,
-                disk_size = fetch_disk_size
-        }
+    # fetch CRAM
+    call FileUtils.FetchFilesTask as FetchCram {
+        input:
+            data_location = sample_data_location,
+            file_types = if defined(fetch_cram_file_matchers) then [] else ["cram"],
+            recursive = false,
+            file_match_keys = if defined(fetch_cram_file_matchers) then [] else fetch_cram_filter_keys,
+            file_matchers = fetch_cram_file_matchers,
+            verbose = fetch_files_verbose,
+            docker_image = orchutils_docker_image,
+            gcp_project_id = gcp_project_id,
+            workspace_name = workspace_name,
+            disk_size = fetch_disk_size
     }
 
     # Validate that we got workable files from the data location
-    if (!defined(FetchBam.bam) && !defined(FetchCram.cram)) {
+    if (!defined(FetchCram.cram)) {
         call Utilities.FailTask as MissingBamOrCramFailure {
             input:
-                error_message = "BAM or CRAM file not found in ~{sample_data_location}"
+                error_message = "CRAM file not found in ~{sample_data_location}"
         }
     }
     if (defined(FetchCram.cram) && !defined(FetchCram.crai)) {
         call Utilities.FailTask as MissingCraiFailure {
             input:
                 error_message = "Index file for CRAM " + basename(select_first([FetchCram.cram])) + " not found"
-        }
-    }
-    if (!defined(FetchCram.cram) && defined(FetchBam.bam) && !defined(FetchBam.bai)) {
-        call Utilities.FailTask as MissingBaiFailure {
-            input:
-                error_message = "Index file for BAM " + basename(select_first([FetchCram.bam])) + " not found"
         }
     }
 
@@ -104,8 +77,8 @@ workflow CTBHaplotypeCallerGvcf {
     }
 
     # final inputs - either CRAM or BAM
-    File sample_bam = select_first([FetchBam.bam, CramToBamTask.output_bam])
-    File sample_bai = select_first([FetchBam.bai, CramToBamTask.output_bai])
+    File sample_bam = select_first([CramToBamTask.output_bam])
+    File sample_bai = select_first([CramToBamTask.output_bai])
 
     # Run haplotype caller
     call HaplotypeCallerGvcfGATK4.HaplotypeCallerGvcf_GATK4 {
