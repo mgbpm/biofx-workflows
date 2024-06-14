@@ -205,6 +205,7 @@ task DownloadOutputsTask {
 task SimpleGCPCopyFileTask {
     input {
         String source_file
+        String sample_id
         String target_location
         String docker_image
         Int disk_size = 75
@@ -224,12 +225,19 @@ task SimpleGCPCopyFileTask {
 
         #copy file from one bucket to another
         FILE_NAME=$(basename "~{source_file}")
-        gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME}
+        #strip off ending 
+        subject_id="${FILE_NAME%.*}"
+        #grab extension
+        extension=$(echo "$FILE_NAME" | sed 's/^[^.]*\.//')
+        #set new filename
+        $FILE_NAME_NEW = '${subject_id}_"~{sample_id}".${extension}'
+        echo "renamed ${FILE_NAME} to ${FILE_NAME_NEW}"
+        gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME_NEW}
 
         COPY_STATUS=$?
         if [ ${COPY_STATUS} -eq 0 ]; then
-            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.'
-            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.' > copy-manifest.log
+            echo 'Successfully copied "~{source_file}" to "~{target_location}"/${FILE_NAME_NEW}.'
+            echo 'Successfully copied "~{source_file}" to "~{target_location}"/${FILE_NAME_NEW}.' > copy-manifest.log
         else
             echo "Unsuccessfull copy. Error code ${COPY_STATUS}"
             echo "Unsuccessfull copy. Error code ${COPY_STATUS}" > copy-manifest.log
