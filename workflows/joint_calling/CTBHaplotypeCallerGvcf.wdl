@@ -139,8 +139,8 @@ workflow CTBHaplotypeCallerGvcf {
 
     output {
         # haplotype caller output
-        File? vcf = HaplotypeCallerGvcf_GATK4.output_vcf
-        File? vcf_index = HaplotypeCallerGvcf_GATK4.output_vcf_index
+        File vcf = HaplotypeCallerGvcf_GATK4.output_vcf
+        File vcf_index = HaplotypeCallerGvcf_GATK4.output_vcf_index
     }
 }
 
