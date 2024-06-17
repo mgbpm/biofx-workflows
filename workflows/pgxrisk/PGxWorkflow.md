@@ -21,7 +21,7 @@ Runs the workflow to automate discovery, annotation, and report creation for PGx
 ## Output Parameters
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| File | FDA_report | Always | PGx FDA Excel report |
-| File | CPIC_report | Always | PGx CPIC Excel report |
+| File | details_report | Always | PGx detailed Excel report with Drug recommendations|
+| File | summary_report | Always | PGx summarized Excel report with links to publications |
 | File | genotype_xlsx | Always | Genotype Excel file |
 | File | genotype_txt | Always | Genotype text-format file |
