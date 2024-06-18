@@ -1,3 +1,5 @@
 **/Cromwell.stdout.txt
 **/Cromwell.stderr.txt
 tanzi_cram_sampletracker_load_batch*
+tanzi_cram_pathnames_batch*
+tanzi_cram_samplenames_batch*

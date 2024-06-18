@@ -18,7 +18,7 @@ workflow JointCalling {
         #define JointGenotyping inputs
         File unpadded_intervals_file
 
-        String callset_name
+        #String callset_name
         #File sample_name_map
 
         File ref_fasta
@@ -85,7 +85,7 @@ workflow JointCalling {
     call JointGenotyping.JointGenotyping {
         input:
             unpadded_intervals_file = unpadded_intervals_file,
-            callset_name = callset_name,
+            callset_name = sample_map_name,
             sample_name_map = GenerateSampleMap.sample_map,
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
