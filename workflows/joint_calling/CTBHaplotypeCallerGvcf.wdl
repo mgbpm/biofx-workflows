@@ -98,7 +98,9 @@ workflow CTBHaplotypeCallerGvcf {
             source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
             target_location = gvcf_staging_bucket,
             docker_image = orchutils_docker_image,
-            disk_size = fetch_disk_size
+            disk_size = fetch_disk_size,
+            sample_id = sample_id,
+            subject_id = subject_id
     }
 
     #transfer gvcf index to staging bucket
@@ -107,7 +109,9 @@ workflow CTBHaplotypeCallerGvcf {
             source_file = HaplotypeCallerGvcf_GATK4.output_vcf_index,
             target_location = gvcf_staging_bucket,
             docker_image = orchutils_docker_image,
-            disk_size = fetch_disk_size
+            disk_size = fetch_disk_size,
+            sample_id = sample_id,
+            subject_id = subject_id
     }
 
     output {

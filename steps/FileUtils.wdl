@@ -206,6 +206,7 @@ task SimpleGCPCopyFileTask {
     input {
         String source_file
         String sample_id
+        String subject_id
         String target_location
         String docker_image
         Int disk_size = 75
@@ -227,13 +228,14 @@ task SimpleGCPCopyFileTask {
         FILE_NAME=$(basename "~{source_file}")
         echo "FILE_NAME variable: ${FILE_NAME}"
         #strip off ending 
-        subject_id="${FILE_NAME%.*}"
-        echo "subject_id variable: ${subject_id}"
+        #subject_id="${FILE_NAME%.*}"
+        echo "subject_id variable: ~{subject_id}~"
         #grab extension
-        extension=$(echo "$FILE_NAME" | sed 's/^[^.]*\.//')
-        echo "extension variable: ${extension}"
+        EXTENSION=$(echo "$FILE_NAME" | sed 's/^[^.]*\.//')
+        echo "EXTENSION variable: ${EXTENSION}"
         #set new filename
-        FILE_NAME_NEW='$subject_id_"~{sample_id}".$extension'
+        SAMPLE_ID_CLEAN=$(sed -e 's/^"//' -e 's/"$//' <<<"~{sample_id}")
+        FILE_NAME_NEW="~{subject_id}~_$SAMPLE_ID_CLEAN.$EXTENSION"
         echo "renamed ${FILE_NAME} to ${FILE_NAME_NEW}"
         gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME_NEW}
 
