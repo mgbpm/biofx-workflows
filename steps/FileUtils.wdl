@@ -229,13 +229,13 @@ task SimpleGCPCopyFileTask {
         echo "FILE_NAME variable: ${FILE_NAME}"
         #strip off ending 
         #subject_id="${FILE_NAME%.*}"
-        echo "subject_id variable: ~{subject_id}~"
+        echo "subject_id variable: ~{subject_id}"
         #grab extension
         EXTENSION=$(echo "$FILE_NAME" | sed 's/^[^.]*\.//')
         echo "EXTENSION variable: ${EXTENSION}"
         #set new filename
         SAMPLE_ID_CLEAN=$(sed -e 's/^"//' -e 's/"$//' <<<"~{sample_id}")
-        FILE_NAME_NEW="~{subject_id}~_$SAMPLE_ID_CLEAN.$EXTENSION"
+        FILE_NAME_NEW="~{subject_id}_$SAMPLE_ID_CLEAN.$EXTENSION"
         echo "renamed ${FILE_NAME} to ${FILE_NAME_NEW}"
         gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME_NEW}
 
