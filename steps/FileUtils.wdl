@@ -225,12 +225,15 @@ task SimpleGCPCopyFileTask {
 
         #copy file from one bucket to another
         FILE_NAME=$(basename "~{source_file}")
+        echo "FILE_NAME variable: ${FILE_NAME}"
         #strip off ending 
         subject_id="${FILE_NAME%.*}"
+        echo "subject_id variable: ${subject_id}"
         #grab extension
         extension=$(echo "$FILE_NAME" | sed 's/^[^.]*\.//')
+        echo "extension variable: ${extension}"
         #set new filename
-        $FILE_NAME_NEW = '${subject_id}_"~{sample_id}".${extension}'
+        FILE_NAME_NEW='${subject_id}_"~{sample_id}".${extension}'
         echo "renamed ${FILE_NAME} to ${FILE_NAME_NEW}"
         gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME_NEW}
 
