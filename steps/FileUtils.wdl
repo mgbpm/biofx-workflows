@@ -202,7 +202,7 @@ task DownloadOutputsTask {
     }
 }
 
-task SimpleGCPCopyFileTask {
+task GCPCopyAndRenameVCF {
     input {
         String source_file
         String sample_id
@@ -238,15 +238,25 @@ task SimpleGCPCopyFileTask {
         FILE_NAME_NEW="~{subject_id}_$SAMPLE_ID_CLEAN.$EXTENSION"
         echo "renamed ${FILE_NAME} to ${FILE_NAME_NEW}"
         gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME_NEW}
+        COPY_STATUS_VCF=$?
+        #download vcf locally
+        gsutil cp "~{source_file}" .
+        #generate index file
+        tabix -p vcf ${FILE_NAME_NEW}
+        #copy index file
+        gsutil cp ${FILE_NAME_NEW}.tbi "~{target_location}/${FILE_NAME_NEW}.tbi"
+        COPY_STATUS_TBI=$?
+        #relocalize renamed vcf
+        gsutil cp "~{target_location}"/${FILE_NAME_NEW} .
 
-        COPY_STATUS=$?
-        if [ ${COPY_STATUS} -eq 0 ]; then
+        #check copy success
+        if [ ${COPY_STATUS_VCF} -eq 0 ] && [ ${COPY_STATUS_TBI} -eq 0 ]; then
             echo 'Successfully copied "~{source_file}" to "~{target_location}"/${FILE_NAME_NEW}.'
             echo 'Successfully copied "~{source_file}" to "~{target_location}"/${FILE_NAME_NEW}.' > copy-manifest.log
         else
             echo "Unsuccessfull copy. Error code ${COPY_STATUS}"
             echo "Unsuccessfull copy. Error code ${COPY_STATUS}" > copy-manifest.log
-            exit ${COPY_STATUS}
+            exit ${COPY_STATUS_VCF}
         fi
     >>>
 
@@ -257,5 +267,7 @@ task SimpleGCPCopyFileTask {
 
     output {
         File outputs_manifest = "copy-manifest.log"
+        File output_vcf = "~{subject_id}_~{sample_id}.vcf.gz"
+        File output_vcf_index = "~{subject_id}_~{sample_id}.vcf.gz.tbi"
     }
 }

@@ -93,7 +93,7 @@ workflow CTBHaplotypeCallerGvcf {
     }
 
     #transfer gvcf to staging bucket
-    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFToBucket {
+    call FileUtils.GCPCopyAndRenameVCF as CopyGVCFToBucket {
         input:
             source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
             target_location = gvcf_staging_bucket,
@@ -103,21 +103,10 @@ workflow CTBHaplotypeCallerGvcf {
             subject_id = subject_id
     }
 
-    #transfer gvcf index to staging bucket
-    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFIndexToBucket {
-        input:
-            source_file = HaplotypeCallerGvcf_GATK4.output_vcf_index,
-            target_location = gvcf_staging_bucket,
-            docker_image = orchutils_docker_image,
-            disk_size = fetch_disk_size,
-            sample_id = sample_id,
-            subject_id = subject_id
-    }
-
     output {
         # haplotype caller output
-        File vcf = HaplotypeCallerGvcf_GATK4.output_vcf
-        File vcf_index = HaplotypeCallerGvcf_GATK4.output_vcf_index
+        File vcf = CopyGVCFToBucket.output_vcf
+        File vcf_index = CopyGVCFToBucket.output_vcf_index
     }
 }
 
