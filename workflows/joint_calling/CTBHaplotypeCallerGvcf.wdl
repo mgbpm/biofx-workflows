@@ -62,27 +62,13 @@ workflow CTBHaplotypeCallerGvcf {
         }
     }
 
-    #After cram has been fetched run cram rename
-    #call RenameCramAndReindex {
-    #    input:
-    #        input_cram = select_first([FetchCram.cram]),
-    #        sample_id = sample_id,
-    #        subject_id = subject_id
-    #        ref_dict = ref_dict,
-    #        ref_fasta = ref_fasta,
-    #        ref_fasta_index = ref_fasta_index,
-    #        docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710",
-    #        samtools_path = "samtools"
-    #}
-
-
     # Convert CRAM to BAM
     if (defined(FetchCram.cram) && defined(FetchCram.crai)) {
         call HaplotypeCallerGvcfGATK4.CramToBamTask {
             input:
                 input_cram = select_first([FetchCram.cram]),
                 #sample_name = basename(select_first([FetchCram.cram]), ".cram"),
-                sample_name = "~{sample_id}_~{subject_id}",
+                sample_name = "~{subject_id}_~{sample_id}",
                 ref_dict = ref_dict,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
@@ -106,17 +92,6 @@ workflow CTBHaplotypeCallerGvcf {
             scattered_calling_intervals_list = select_first([scattered_calling_intervals_list]),
             make_gvcf = true
     }
-
-    #transfer gvcf to staging bucket
-    #call FileUtils.GCPCopyAndRenameVCF as CopyGVCFToBucket {
-    #    input:
-    #        source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
-    #        target_location = gvcf_staging_bucket,
-    #        docker_image = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710",
-    #        disk_size = fetch_disk_size,
-    #        sample_id = sample_id,
-    #        subject_id = subject_id
-    #}
 
     #transfer gvcf to staging bucket
     call FileUtils.SimpleGCPCopyFileTask as CopyGVCFToBucket {

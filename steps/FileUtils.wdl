@@ -318,16 +318,3 @@ task SimpleGCPCopyFileTask {
     }
 }
 
-    #task RenameCramAndReindex {
-    #    input {
-    #        File input_cram
-    #        String sample_id
-    #        String subject_id
-    #        File ref_fasta
-    #        File ref_fasta_index
-    #        File ref_dict
-    #        String docker
-    #        String samtools_path
-    #    }
-    #}
-
