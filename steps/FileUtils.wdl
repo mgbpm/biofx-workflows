@@ -270,6 +270,7 @@ task GCPCopyAndRenameVCF {
         File output_vcf = "~{subject_id}_~{sample_id}.vcf.gz"
         File output_vcf_index = "~{subject_id}_~{sample_id}.vcf.gz.tbi"
     }
+}
 
 
 task SimpleGCPCopyFileTask {
@@ -315,7 +316,7 @@ task SimpleGCPCopyFileTask {
     output {
         File outputs_manifest = "copy-manifest.log"
     }
-
+}
 
     #task RenameCramAndReindex {
     #    input {
@@ -330,4 +331,3 @@ task SimpleGCPCopyFileTask {
     #    }
     #}
 
-}
