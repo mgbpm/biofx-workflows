@@ -62,12 +62,27 @@ workflow CTBHaplotypeCallerGvcf {
         }
     }
 
+    #After cram has been fetched run cram rename
+    #call RenameCramAndReindex {
+    #    input:
+    #        input_cram = select_first([FetchCram.cram]),
+    #        sample_id = sample_id,
+    #        subject_id = subject_id
+    #        ref_dict = ref_dict,
+    #        ref_fasta = ref_fasta,
+    #        ref_fasta_index = ref_fasta_index,
+    #        docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710",
+    #        samtools_path = "samtools"
+    #}
+
+
     # Convert CRAM to BAM
     if (defined(FetchCram.cram) && defined(FetchCram.crai)) {
         call HaplotypeCallerGvcfGATK4.CramToBamTask {
             input:
                 input_cram = select_first([FetchCram.cram]),
-                sample_name = basename(select_first([FetchCram.cram]), ".cram"),
+                #sample_name = basename(select_first([FetchCram.cram]), ".cram"),
+                sample_name = "~{sample_id}_~{subject_id}"
                 ref_dict = ref_dict,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
@@ -93,20 +108,39 @@ workflow CTBHaplotypeCallerGvcf {
     }
 
     #transfer gvcf to staging bucket
-    call FileUtils.GCPCopyAndRenameVCF as CopyGVCFToBucket {
+    #call FileUtils.GCPCopyAndRenameVCF as CopyGVCFToBucket {
+    #    input:
+    #        source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
+    #        target_location = gvcf_staging_bucket,
+    #        docker_image = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710",
+    #        disk_size = fetch_disk_size,
+    #        sample_id = sample_id,
+    #        subject_id = subject_id
+    #}
+
+    #transfer gvcf to staging bucket
+    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFToBucket {
         input:
             source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
             target_location = gvcf_staging_bucket,
             docker_image = orchutils_docker_image,
             disk_size = fetch_disk_size,
-            sample_id = sample_id,
-            subject_id = subject_id
     }
+
+    #transfer gvcf index to staging bucket
+    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFIndexToBucket {
+        input:
+            source_file = HaplotypeCallerGvcf_GATK4.output_vcf_index,
+            target_location = gvcf_staging_bucket,
+            docker_image = orchutils_docker_image,
+            disk_size = fetch_disk_size,
+    }
+
 
     output {
         # haplotype caller output
-        File vcf = CopyGVCFToBucket.output_vcf
-        File vcf_index = CopyGVCFToBucket.output_vcf_index
+        File vcf = HaplotypeCallerGvcf_GATK4.output_vcf
+        File vcf_index = HaplotypeCallerGvcf_GATK4.output_vcf_index
     }
 }
 

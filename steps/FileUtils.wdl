@@ -270,4 +270,64 @@ task GCPCopyAndRenameVCF {
         File output_vcf = "~{subject_id}_~{sample_id}.vcf.gz"
         File output_vcf_index = "~{subject_id}_~{sample_id}.vcf.gz.tbi"
     }
+
+
+task SimpleGCPCopyFileTask {
+    input {
+        String source_file
+        String target_location
+        String docker_image
+        Int disk_size = 75
+    }
+
+    command <<<
+        set -euxo pipefail
+        #run gsutil cp to move file from one bucket to another
+        gsutil -q stat "~{source_file}"
+        PATH_EXIST=$?
+        if [ ${PATH_EXIST} -eq 0 ]; then
+            echo "~{source_file} exists."
+        else
+            echo "~{source_file} does not exist."
+            exit 1
+        fi
+
+        #copy file from one bucket to another
+        FILE_NAME=$(basename "~{source_file}")
+        gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME}
+
+        COPY_STATUS=$?
+        if [ ${COPY_STATUS} -eq 0 ]; then
+            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.'
+            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.' > copy-manifest.log
+        else
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}"
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}" > copy-manifest.log
+            exit ${COPY_STATUS}
+        fi
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+
+    output {
+        File outputs_manifest = "copy-manifest.log"
+    }
+
+
+    #task RenameCramAndReindex {
+    #    input {
+    #        File input_cram
+    #        String sample_id
+    #        String subject_id
+    #        File ref_fasta
+    #        File ref_fasta_index
+    #        File ref_dict
+    #        String docker
+    #        String samtools_path
+    #    }
+    #}
+
 }
