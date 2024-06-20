@@ -82,7 +82,7 @@ workflow CTBHaplotypeCallerGvcf {
             input:
                 input_cram = select_first([FetchCram.cram]),
                 #sample_name = basename(select_first([FetchCram.cram]), ".cram"),
-                sample_name = "~{sample_id}_~{subject_id}"
+                sample_name = "~{sample_id}_~{subject_id}",
                 ref_dict = ref_dict,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
