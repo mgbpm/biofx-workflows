@@ -321,3 +321,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: PRSTemp
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/Temp.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
