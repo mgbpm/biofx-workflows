@@ -3,9 +3,11 @@
 ## Input Parameters
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| Array[String] | sample_ids | Yes | List of sample IDs, e.g. D-981108334-BH-4022-S1-A | |
-| Array[String] | sample_data_locations | Yes | List of Wasabi data locations for each sample, e.g. s3://prod-bgp-1/BGP/Samples/BH-4022 | |
-| String | batch_name | Yes | Prefix for all FAST sample data names, e.g. BGP_BH-4022 | |
+| Array[String] | sample_ids | Yes | List of sample IDs, e.g. SM-MPPD5; are included in the vcf and cram file names in the iCGD Clinical workspace | |
+| Array[String] | collaborator_sample_id  | Yes | List of sample IDs, e.g. D-981108334-BH-4022-S1-A | |
+| Array[String] | vcf_locations | Yes | List of vcf data locations for each sample from iCGD Clinical workspace | |
+| Array[String] | cram_locations | Yes | List of cram data locations for each sample from iCGD Clinical workspace | |
+| String | batch_name | Yes | Prefix for all FAST sample data names, e.g. BGP-BH-4022 or BGP-Batch10 | |
 | File | target_roi_bed | Yes | BED file containing gene regions; the VCFs in the dataset will be filtered to these regions and a new merged vcf will be created | |
 | String | pipeline_to_run | Yes | Either "monogenic" to run the Bahrain Monogenic Pipeline or "screening" to run the Bahrain Screening Pipeline | |
 | String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF manipulation | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
@@ -46,26 +48,20 @@
 | String | alamut_data_load_config_name | No | The FAST load configuration name for the Alamut annotated VCF | "Alamut" |
 | Array[String] | fast_annotated_sample_data_regions | No | The list of regions to include in the FAST annotated sample data; each element is a "name:applyMask" pair | |
 | Array[String] | fast_annotated_sample_data_scripts | No | The list of custom scripts to run on the FAST annotated sample data after creation | |
-| String | fast_annotated_sample_data_saved_filter_name | No | The saved filter to apply to the FAST annotated sample data | |
+| String | fast_annotated_sample_data_saved_filter_name | No | The saved filter to apply to the FAST annotated sample data | "BahrainGenomeProject-v2.0-062222" |
 | String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20240130" |
 | File | gil_transcript_exon_count | Yes | A tab delimited file of transcript id and exon count |
-| String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | "B" |
+| String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | |
 
 ## Output Parameters
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| Array[File] | prepped_sample_vcfs | Always | Sample VCFs that result from filtering to target ROI BED file and normalizing |
-| File | merged_vcf_gz | Always | The resulting VCF from merging all prepped sample VCFs in a batch |
-| File | collective_vcf_gz | When the screening pipeline is run | A VCF with a single "fake" sample but contains all the variants in the merged VCF |
-| Array[File] | pgx_CPIC_report | When screening pipeline is run | CPIC pharmacogenomics report |
-| Array[File] | pgx_FDA_report | When screening pipeline is run | FDA pharmacogenomics report |
-| Array[File] | pgx_genotype_xlsx | When screening pipeline is run | Full list of pharmacogenomics genotypes in XLSX format |
-| Array[File] | pgx_genotype_txt | When screening pipeline is run | Full list of pharmacogenomics genotypes in TSV format |
+| Array[File] | pgx_reports | When screening pipeline is run | An array with all PGx report files |
 | Array[File] | risk_alleles_report | When screening pipeline is run | Risk alleles report |
 | Array[File] | risk_alleles_genotype_xlsx | When screening pipeline is run | Full list of risk allele genotypes in XLSX format |
 | Array[File] | risk_alleles_genotype_txt | When screening pipeline is run | Full list of risk allele genotypes in TSV format |
+| File | collective_vcf_gz | When the screening pipeline is run | A VCF with a single "fake" sample but contains all the variants in the merged VCF |
 | File | alamut_vcf_gz | Always | Target VCF file with Alamut annotations |
 | Array[File] | qceval_vcf_gz | Always | Target VCF file annotated with QC Evaluation |
 | Array[File] | fast_export_file | Always | Tab-delimited export of annotated sample data from FAST |
 | Array[File] | fast_parsed_output | Always | Parsed FAST export |
-| Array[File] | nva_report | Always | NVA report Excel document |

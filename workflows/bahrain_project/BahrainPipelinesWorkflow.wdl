@@ -1,33 +1,32 @@
 version 1.0
 
-import "../../steps/Utilities.wdl" # for testing inputs
-import "../../steps/FileUtils.wdl" # for fetching files
-import "../../steps/VCFUtils.wdl" # for processing input data
-import "../../steps/AlamutBatch.wdl" # for Alamut annotation
-import "../../steps/QCEval.wdl" # for qc of each vcf
-import "../../steps/FASTUtils.wdl" # for loading to FAST
-import "../../steps/FASTOutputParser.wdl" # for output
-import "./PGxWorkflow_v3.wdl" # for running PGx workflow
-import "../pgxrisk/RiskAllelesWorkflow.wdl" # for running Risk workflow
+import "../../steps/Utilities.wdl"
+import "../../steps/FileUtils.wdl"
+import "../../steps/VCFUtils.wdl"
+import "../../steps/AlamutBatch.wdl"
+import "../../steps/QCEval.wdl"
+import "../../steps/FASTUtils.wdl"
+import "../../steps/FASTOutputParser.wdl"
+import "../pgxrisk/PGxWorkflow.wdl"
+import "../pgxrisk/RiskAllelesWorkflow.wdl"
 
 workflow BahrainPipelinesWorkflow {
     input {
-        # Data prep inputs
+        # Sample data inputs
         Array[String] sample_ids
+        Array[String] collaborator_sample_ids
         Array[String] vcf_locations
         Array[String]? cram_locations
         String batch_name
         File target_roi_bed
-        String pipeline_to_run # either "monogenic" or "screening"
-        # Python docker image
+        String pipeline_to_run
+        # Miscellaneous docker images
         String python_docker_image = "python:3.10"
-        # Bcftools docker image
         String bcftools_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # GCP project and Terra workspace for secret retrieval
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
-        # Orchestration utils docker image
-        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
         # Reference genome files
         String reference_build = "GRCh38"
         File ref_fasta
@@ -67,7 +66,7 @@ workflow BahrainPipelinesWorkflow {
         String alamut_data_load_config_name = "Alamut"
         Array[String]? fast_annotated_sample_data_regions
         Array[String]? fast_annotated_sample_data_scripts
-        String fast_annotated_sample_data_saved_filter_name
+        String fast_annotated_sample_data_saved_filter_name = "BahrainGenomeProject-v2.0-062222"
         Int fast_data_load_wait_interval_secs = 300
         Int fast_data_load_wait_max_intervals = 72
         Int fast_adi_wait_interval_secs = 600
@@ -155,13 +154,13 @@ workflow BahrainPipelinesWorkflow {
                         workspace_name = workspace_name
                 }
                 if (!defined(FetchCramFiles.cram)) {
-                    call Utilities.FailTask as CRAMNotFound {
+                    call Utilities.FailTask as CramNotFound {
                         input:
                             error_message = "CRAM for sample " + sample_ids[i] + " not found in " + cram_locations[i]
                     }
                 }
                 if (!defined(FetchCramFiles.crai)) {
-                    call Utilities.FailTask as CRAMIndexNotFound {
+                    call Utilities.FailTask as CramIndexNotFound {
                         input:
                             error_message = "CRAM index for sample " + sample_ids[i] + " not found in " + cram_locations[i]
                     }
@@ -177,12 +176,12 @@ workflow BahrainPipelinesWorkflow {
     ## Run PGx & Risk workflows with fetched CRAMs
     if (pipeline_to_run == "screening") {
         scatter (i in range(length(fetched_crams))) {
-            call PGxWorkflow.PGxWorkflow_v3 as RunPGx {
+            call PGxWorkflow.PGxWorkflow as RunPGx {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
-                    sample_id = sample_ids[i],
-                    accession_id = sample_ids[i],
+                    sample_id = collaborator_sample_ids[i],
+                    accession_id = collaborator_sample_ids[i],
                     test_code = pgx_test_code,
                     reference_fasta = ref_fasta,
                     reference_fasta_fai = ref_fasta_index,
@@ -197,8 +196,8 @@ workflow BahrainPipelinesWorkflow {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
-                    sample_id = sample_ids[i],
-                    accession_id = sample_ids[i],
+                    sample_id = collaborator_sample_ids[i],
+                    accession_id = collaborator_sample_ids[i],
                     test_code = risk_alleles_test_code,
                     reference_fasta = ref_fasta,
                     reference_fasta_fai = ref_fasta_index,
@@ -224,6 +223,7 @@ workflow BahrainPipelinesWorkflow {
                 target_roi_bed = target_roi_bed,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
+                output_basename = collaborator_sample_ids[i] + "_" + batch_name + "_"
                 docker_image = bcftools_docker_image
         }
     }
@@ -303,14 +303,11 @@ workflow BahrainPipelinesWorkflow {
 
     ## Annotate each individual sample VCF with QCEval INFO field and load annotations into FAST
     scatter (file in PrepSampleVCFTask.output_vcf_gz) {
-        String sample_name = sub(sub(basename(file), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", ""), ".filtered.norm", "")
-        String qc_fast_sample_data_name = sample_name + "_" + batch_name
         # Annotate individual VCF with QCEval INFO field
         call QCEval.QCEvalTask {
             input:
                 input_vcf = file,
                 project_type = qceval_project_type,
-                output_basename = sample_name + ".qceval",
                 docker_image = qceval_docker_image
         }
         # Load sample data to FAST
@@ -319,7 +316,7 @@ workflow BahrainPipelinesWorkflow {
                 reference_build = reference_build,
                 vcf_file = QCEvalTask.output_vcf_gz,
                 has_haploid_sites = has_haploid_sites,
-                sample_data_name = qc_fast_sample_data_name,
+                sample_data_name = sub(basename(file), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", ""),
                 data_load_config_name = sample_data_load_config_name,
                 data_load_target = "SAMPLE_DATA",
                 annotation_record_ts = "now",
@@ -373,7 +370,7 @@ workflow BahrainPipelinesWorkflow {
             # Once no variants are pending, create annotated sample data
             call FASTUtils.FASTCreateAnnotatedSampleDataTask {
                 input:
-                    annotated_sample_data_name = batch_name + "_" + fast_annotated_sample_data_saved_filter_name,
+                    annotated_sample_data_name = "annotated_" + batch_name + "_" + fast_annotated_sample_data_saved_filter_name,
                     sample_data_names_and_labels = qc_fast_sample_data_name,
                     region_names_and_masks = fast_annotated_sample_data_regions,
                     scripts = fast_annotated_sample_data_scripts,
@@ -431,26 +428,18 @@ workflow BahrainPipelinesWorkflow {
     }
     
     output {
-        # Filtered VCFs
-        Array[File] prepped_sample_vcfs = PrepSampleVCFTask.output_vcf_gz
-        # Joint VCFs
-        File merged_vcf_gz = MergedVCF.output_vcf_gz
-        File? collective_vcf_gz = CollectiveVCF.output_vcf_gz
-        # PGx output
-        Array[File]? pgx_CPIC_report = RunPGx.CPIC_report
-        Array[File]? pgx_FDA_report = RunPGx.FDA_report
-        Array[File]? pgx_genotype_xlsx = RunPGx.genotype_xlsx
-        Array[File]? pgx_genotype_txt = RunPGx.genotype_txt
-        # Risk alleles output
+        # PGx outputs
+        Array[File]? pgx_reports = RunPGx.outputs
+        # Risk outputs
         Array[File]? risk_alleles_report = RunRisk.risk_report
         Array[File]? risk_alleles_genotype_xlsx = RunRisk.genotype_xlsx
         Array[File]? risk_alleles_genotype_txt = RunRisk.genotype_txt
-        # Annotated VCFs
+        # Sample VCFs and annotations VCFs
+        File? collective_vcf_gz = CollectiveVCF.output_vcf_gz
         File alamut_vcf_gz = AlamutBatchTask.output_vcf_gz
         Array[File] qceval_vcf_gz = QCEvalTask.output_vcf_gz
-        # FAST export file
+        # FAST output files
         File? fast_export_file = FASTExportAnnotatedSampleDataTask.output_file
-        # FAST Parsed output and NVA report
         File? fast_parsed_output = FASTOutputParserTask.parsed_report
     }
 }
@@ -462,7 +451,7 @@ task PrepSampleVCFTask {
         File target_roi_bed
         File ref_fasta
         File ref_fasta_index
-        String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
+        String output_basename
         String docker_image
         Int disk_size = 5 + ceil(size(input_vcf, "GB") * 2.5) + ceil(size(ref_fasta, "GB")) + ceil(size(ref_fasta_index, "GB")) + ceil(size(target_roi_bed, "GB"))
     }
