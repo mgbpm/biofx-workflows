@@ -7,14 +7,15 @@ import "../../steps/AlamutBatch.wdl" # for Alamut annotation
 import "../../steps/QCEval.wdl" # for qc of each vcf
 import "../../steps/FASTUtils.wdl" # for loading to FAST
 import "../../steps/FASTOutputParser.wdl" # for output
-import "../pgxrisk/PGxWorkflow.wdl" # for running PGx workflow
+import "./PGxWorkflow_v3.wdl" # for running PGx workflow
 import "../pgxrisk/RiskAllelesWorkflow.wdl" # for running Risk workflow
 
 workflow BahrainPipelinesWorkflow {
     input {
         # Data prep inputs
         Array[String] sample_ids
-        Array[String] sample_data_locations
+        Array[String] vcf_locations
+        Array[String]? cram_locations
         String batch_name
         File target_roi_bed
         String pipeline_to_run # either "monogenic" or "screening"
@@ -116,72 +117,67 @@ workflow BahrainPipelinesWorkflow {
     ## Fetch all files (CRAM, VCF, and index files)
     if (input_error_message == "") {
         scatter (i in range(length(sample_ids))) {
-            # Fetch sample VCFs and CRAMs for the screening pipeline
-            if (pipeline_to_run == "screening") {
-                call FileUtils.FetchFilesTask as FetchScreeningFiles {
+            # Fetch sample VCFs for both screening and monogenic pipelines
+            call FileUtils.FetchFilesTask as FetchVCFFiles {
+                input:
+                    data_location = vcf_locations[i],
+                    recursive = true,
+                    file_types = [ "vcf" ],
+                    file_match_keys = [ sample_ids[i] ],
+                    docker_image = orchutils_docker_image,
+                    disk_size = 20,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name
+            }
+            if (!defined(FetchVCFFiles.vcf)) {
+                call Utilities.FailTask as VCFFileNotFound {
                     input:
-                        data_location = sample_data_locations[i],
+                        error_message = "VCF file for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
+                }
+            }
+            if (!defined(FetchVCFFiles.vcf_index)) {
+                call Utilities.FailTask as VCFIndexNotFound {
+                    input:
+                        error_message = "VCF index for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
+                }
+            }
+            # Fetch sample CRAMs for the screening pipeline
+            if (pipeline_to_run == "screening") {
+                call FileUtils.FetchFilesTask as FetchCramFiles {
+                    input:
+                        data_location = cram_locations[i],
                         recursive = true,
-                        file_types = [ "vcf", "cram" ],
+                        file_types = [ "cram" ],
                         file_match_keys = [ sample_ids[i] ],
                         docker_image = orchutils_docker_image,
                         disk_size = 50,
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name
                 }
-                if (!defined(FetchScreeningFiles.cram)) {
+                if (!defined(FetchCramFiles.cram)) {
                     call Utilities.FailTask as CRAMNotFound {
                         input:
-                            error_message = "CRAM for sample " + sample_ids[i] + " not found in " + sample_data_locations[i]
+                            error_message = "CRAM for sample " + sample_ids[i] + " not found in " + cram_locations[i]
                     }
                 }
-                if (!defined(FetchScreeningFiles.crai)) {
+                if (!defined(FetchCramFiles.crai)) {
                     call Utilities.FailTask as CRAMIndexNotFound {
                         input:
-                            error_message = "CRAM index for sample " + sample_ids[i] + " not found in " + sample_data_locations[i]
+                            error_message = "CRAM index for sample " + sample_ids[i] + " not found in " + cram_locations[i]
                     }
                 }
             }
-            # Fetch only VCFs for the monogenic pipeline
-            if (pipeline_to_run == "monogenic") {
-                call FileUtils.FetchFilesTask as FetchMonogenicFiles {
-                    input:
-                        data_location = sample_data_locations[i],
-                        recursive = true,
-                        file_types = [ "vcf" ],
-                        file_match_keys = [ sample_ids[i] ],
-                        docker_image = orchutils_docker_image,
-                        disk_size = 20,
-                        gcp_project_id = gcp_project_id,
-                        workspace_name = workspace_name
-                }
-            }
-            if (!defined(select_first([FetchScreeningFiles.vcf, FetchMonogenicFiles.vcf]))) {
-                call Utilities.FailTask as VCFFileNotFound {
-                    input:
-                        error_message = "VCF file for sample " + sample_ids[i] + " not found in " + sample_data_locations[i]
-                }
-            }
-            if (!defined(select_first([FetchScreeningFiles.vcf_index, FetchMonogenicFiles.vcf_index]))) {
-                call Utilities.FailTask as VCFIndexNotFound {
-                    input:
-                        error_message = "VCF index for sample " + sample_ids[i] + " not found in " + sample_data_locations[i]
-                }
-            }
-            File found_vcf = select_first([FetchScreeningFiles.vcf, FetchMonogenicFiles.vcf])
-            File found_vcf_idx = select_first([FetchScreeningFiles.vcf_index, FetchMonogenicFiles.vcf_index])
+
         }
     }
     # Coerce object types to Array[File] for future tasks
-    Array[File] fetched_vcfs = select_first([found_vcf])
-    Array[File] fetched_vcfs_idx = select_first([found_vcf_idx])
-    Array[File] fetched_crams = select_all(select_first([FetchScreeningFiles.cram]))
-    Array[File] fetched_crams_idx = select_all(select_first([FetchScreeningFiles.crai]))
+    Array[File] fetched_crams = select_all(select_first([FetchCramFiles.cram]))
+    Array[File] fetched_crams_idx = select_all(select_first([FetchCramFiles.crai]))
 
     ## Run PGx & Risk workflows with fetched CRAMs
     if (pipeline_to_run == "screening") {
         scatter (i in range(length(fetched_crams))) {
-            call PGxWorkflow.PGxWorkflow as PGxWorkflowAlias {
+            call PGxWorkflow.PGxWorkflow_v3 as RunPGx {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
@@ -197,7 +193,7 @@ workflow BahrainPipelinesWorkflow {
                     workflow_fileset = pgx_workflow_fileset,
                     mgbpmbiofx_docker_image = pgx_docker_image
             }
-            call RiskAllelesWorkflow.RiskAllelesWorkflow as RiskAllelesWorkflowAlias {
+            call RiskAllelesWorkflow.RiskAllelesWorkflow as RunRisk {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
@@ -220,11 +216,11 @@ workflow BahrainPipelinesWorkflow {
 
     ## Prep data -- filter vcfs, merge them, and create collective vcf (if necessary)
     # If a target ROI bed file is given, filter the single vcfs to the bed file
-    scatter (i in range(length(fetched_vcfs))) {
+    scatter (i in range(length(FetchVCFFiles.vcf))) {
         call PrepSampleVCFTask {
             input:
-                input_vcf = fetched_vcfs[i],
-                input_vcf_idx = fetched_vcfs_idx[i],
+                input_vcf = FetchVCFFiles.vcf[i],
+                input_vcf_idx = FetchVCFFiles.vcf_idx[i],
                 target_roi_bed = target_roi_bed,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
@@ -441,14 +437,14 @@ workflow BahrainPipelinesWorkflow {
         File merged_vcf_gz = MergedVCF.output_vcf_gz
         File? collective_vcf_gz = CollectiveVCF.output_vcf_gz
         # PGx output
-        Array[File]? pgx_CPIC_report = PGxWorkflowAlias.CPIC_report
-        Array[File]? pgx_FDA_report = PGxWorkflowAlias.FDA_report
-        Array[File]? pgx_genotype_xlsx = PGxWorkflowAlias.genotype_xlsx
-        Array[File]? pgx_genotype_txt = PGxWorkflowAlias.genotype_txt
+        Array[File]? pgx_CPIC_report = RunPGx.CPIC_report
+        Array[File]? pgx_FDA_report = RunPGx.FDA_report
+        Array[File]? pgx_genotype_xlsx = RunPGx.genotype_xlsx
+        Array[File]? pgx_genotype_txt = RunPGx.genotype_txt
         # Risk alleles output
-        Array[File]? risk_alleles_report = RiskAllelesWorkflowAlias.risk_report
-        Array[File]? risk_alleles_genotype_xlsx = RiskAllelesWorkflowAlias.genotype_xlsx
-        Array[File]? risk_alleles_genotype_txt = RiskAllelesWorkflowAlias.genotype_txt
+        Array[File]? risk_alleles_report = RunRisk.risk_report
+        Array[File]? risk_alleles_genotype_xlsx = RunRisk.genotype_xlsx
+        Array[File]? risk_alleles_genotype_txt = RunRisk.genotype_txt
         # Annotated VCFs
         File alamut_vcf_gz = AlamutBatchTask.output_vcf_gz
         Array[File] qceval_vcf_gz = QCEvalTask.output_vcf_gz
