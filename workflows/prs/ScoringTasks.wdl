@@ -51,7 +51,7 @@ task ScoreVcf {
     # ------------------------------------------------------------------------
     ### DEV END ###
     /plink2 --score ~{weights} header ignore-dup-ids list-variants no-mean-imputation \
-    cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --set-all-var-ids ~{var_ids_string} --allow-extra-chr ~{extra_args} -vcf ~{vcf} dosage=DS \
+    cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --set-all-var-ids ~{var_ids_string} --allow-extra-chr ~{extra_args} -vcf ~{vcf} \
     --new-id-max-allele-len 1000 missing ~{"--extract " + sites} --out ~{basename} --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
   >>>
 

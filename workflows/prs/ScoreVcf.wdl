@@ -102,14 +102,13 @@ task ScoreVcf {
       --set-all-var-ids             \
           '@:#:$1:$2'               \
       --vcf                         \
-          '~{vcf}'                  \
-          dosage=DS
+          '~{vcf}'
   >>>
 
   output {
     File scores   = "~{prefix}.sscore"
     File variants = "~{prefix}.sscore.vars"
-    File log    =   "~{prefix}.log"
+    File log      = "~{prefix}.log"
   }
 
   runtime {
