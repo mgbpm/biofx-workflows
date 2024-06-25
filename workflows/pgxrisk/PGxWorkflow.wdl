@@ -52,7 +52,10 @@ workflow PGxWorkflow {
     }
 
     output {
-        Array[File] outputs = PGxTask.outputs
+        File summary_report = PGxTask.summary_report
+        File details_report = PGxTask.details_report
+        File genotype_xlsx = PGxTask.genotype_xlsx
+        File genotype_txt = PGxTask.genotype_txt
     }
 }
 
@@ -98,6 +101,9 @@ task PGxTask {
     }
 
     output {
-        Array[File] outputs = glob("~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.*")
+        File summary_report = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.summary_report.xlsx"
+        File details_report = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.details_report.xlsx"
+        File genotype_xlsx = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.genotype.xlsx"
+        File genotype_txt = "~{out_path}/~{accession_id}_~{sample_id}_~{test_code}.genotype.txt"
     }
 }

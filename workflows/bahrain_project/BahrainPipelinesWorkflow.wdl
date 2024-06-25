@@ -7,8 +7,8 @@ import "../../steps/AlamutBatch.wdl"
 import "../../steps/QCEval.wdl"
 import "../../steps/FASTUtils.wdl"
 import "../../steps/FASTOutputParser.wdl"
-import "../pgxrisk/PGxWorkflow.wdl"
-import "../pgxrisk/RiskAllelesWorkflow.wdl"
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/PGX_3.0.0/workflows/pgxrisk/PGxWorkflow.wdl" as PGx_v3
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/RISK_3.0.0/workflows/pgxrisk/RiskAllelesWorkflow.wdl" as Risk_v3
 
 workflow BahrainPipelinesWorkflow {
     input {
@@ -176,7 +176,7 @@ workflow BahrainPipelinesWorkflow {
     ## Run PGx & Risk workflows with fetched CRAMs
     if (pipeline_to_run == "screening") {
         scatter (i in range(length(fetched_crams))) {
-            call PGxWorkflow.PGxWorkflow as RunPGx {
+            call PGxWorkflow.PGx_v3 as RunPGx {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
@@ -192,7 +192,7 @@ workflow BahrainPipelinesWorkflow {
                     workflow_fileset = pgx_workflow_fileset,
                     mgbpmbiofx_docker_image = pgx_docker_image
             }
-            call RiskAllelesWorkflow.RiskAllelesWorkflow as RunRisk {
+            call RiskAllelesWorkflow.Risk_v3 as RunRisk {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
@@ -429,7 +429,10 @@ workflow BahrainPipelinesWorkflow {
     
     output {
         # PGx outputs
-        Array[File]? pgx_reports = RunPGx.outputs
+        Array[File]? pgx_CPIC_report = RunPGx.CPIC_report
+        Array[File]? pgx_FDA_report = RunPGx.FDA_report
+        Array[File]? pgx_genotype_xlsx = RunPGx.genotype_xlsx
+        Array[File]? pgx_genotype_txt = RunPGx.genotype_txt
         # Risk outputs
         Array[File]? risk_alleles_report = RunRisk.risk_report
         Array[File]? risk_alleles_genotype_xlsx = RunRisk.genotype_xlsx

@@ -56,7 +56,10 @@
 ## Output Parameters
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| Array[File] | pgx_reports | When screening pipeline is run | An array with all PGx report files |
+| Array[File] | pgx_CPIC_report | When screening pipeline is run | CPIC pharmacogenomics report |
+| Array[File] | pgx_FDA_report | When screening pipeline is run | FDA pharmacogenomics report |
+| Array[File] | pgx_genotype_xlsx | When screening pipeline is run | Full list of pharmacogenomics genotypes in XLSX format |
+| Array[File] | pgx_genotype_txt | When screening pipeline is run | Full list of pharmacogenomics genotypes in TSV format |
 | Array[File] | risk_alleles_report | When screening pipeline is run | Risk alleles report |
 | Array[File] | risk_alleles_genotype_xlsx | When screening pipeline is run | Full list of risk allele genotypes in XLSX format |
 | Array[File] | risk_alleles_genotype_txt | When screening pipeline is run | Full list of risk allele genotypes in TSV format |
