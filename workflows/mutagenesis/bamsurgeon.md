@@ -34,10 +34,10 @@ Note that BWA makes assumptions that all genome reference files are conventional
 | String | igvreport_docker_image | No | Name of IGV report docker image | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
 | Boolean | run_pgx | No | Whether or not to run the PGx pipeline with the mutated BAM | true |
 | Boolean run_risk | No | Whether or not to run the Risk pipeline with the mutated BAM | true |
-| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlC_L" |
-| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129" |
-| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar" |
-| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed" |
+| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlD_L" |
+| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240614" |
+| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20240606.tar" |
+| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed" |
 | String | risk_alleles_test_code | No | Test code that defines which risk alleles report to generate | "lmRISK-pnlB_L" |
 | String | risk_alleles_docker_image | No | The name of the Docker image to generate the risk alleles report | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129" |
 | File | risk_alleles_workflow_fileset | No | Tar file containing the risk alleles reference data to generate the report | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar" |
@@ -174,8 +174,8 @@ Additional information in sv_input for duplications:
 | File | mutated_bai | Always | Index file corresponding to the final sorted BAM file |
 | File | mutated_vcf | Always | VCF containing mutations from bamsurgeon |
 | File | igv_report | Always | IGV report detailing desired mutations in final BAM |
-| File | pgx_CPIC_report | If PGx is enabled | CPIC pharmacogenomics report |
-| File | pgx_FDA_report | If PGx is enabled | FDA pharmacogenomics report |
+| File | pgx_details_report | Always | PGx detailed Excel report with Drug recommendations|
+| File | pgx_summary_report | Always | PGx summarized Excel report with links to publications |
 | File | pgx_genotype_xlsx | If PGx is enabled | Full list of pharmacogenomics genotypes in XLSX format |
 | File | pgx_genotype_txt | If PGx is enabled | Full list of pharmacogenomics genotypes in TSV format |
 | File | risk_alleles_report | If Risk is enabled | Risk alleles report |

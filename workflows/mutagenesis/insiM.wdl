@@ -7,7 +7,7 @@ import "../pgxrisk/RiskAllelesWorkflow.wdl"
 
 workflow insiMWorkflow {
     input {
-        ## insiM inputs
+        ## INSIM INPUTS
         # Input BAM files
         File input_bam
         File input_bai
@@ -46,15 +46,15 @@ workflow insiMWorkflow {
         # IGV docker image
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
 
-        ## PGX/RISK
+        ## PGX/RISK INPUTS
         # Toggle PGx/Risk
         Boolean run_pgx = true
         Boolean run_risk = true
         # PGx inputs
-        String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
-        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
+        String pgx_test_code = "lmPGX-pnlD_L"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240614"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20240606.tar"
+        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # Risk inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
@@ -212,12 +212,6 @@ workflow insiMWorkflow {
     }
 
     output {
-        File output_fastq1 = select_first([MutateCapture.output_fastq1, MutateAmplicon.output_fastq1])
-        File output_fastq2 = select_first([MutateCapture.output_fastq2, MutateAmplicon.output_fastq2])
-        # insiM output VCF
-        File output_vcf = select_first([MutateCapture.output_vcf, MutateAmplicon.output_vcf])
-        # Files from converting to SAM
-        File output_mutated_sam = ConvertToSAM.output_sam
         # Files from converting to BAM
         File output_dedup_bam = ConvertToBAM.output_dedup_bam
         File output_dedup_metrics = ConvertToBAM.metrics_file
@@ -225,8 +219,8 @@ workflow insiMWorkflow {
         # IGV report
         File mut_igv_report = MutIGVReport.igv_report
         # PGx output
-        File? pgx_CPIC_report = MutBamPGx.CPIC_report
-        File? pgx_FDA_report = MutBamPGx.FDA_report
+        File? pgx_summary_report = MutBamPGx.summary_report
+        File? pgx_details_report = MutBamPGx.details_report
         File? pgx_genotype_xlsx = MutBamPGx.genotype_xlsx
         File? pgx_genotype_txt = MutBamPGx.genotype_txt
         # Risk output

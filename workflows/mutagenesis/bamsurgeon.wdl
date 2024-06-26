@@ -7,7 +7,7 @@ import "../pgxrisk/RiskAllelesWorkflow.wdl"
 
 workflow BamsurgeonWorkflow {
     input {
-        ## INPUTS FOR BAMSURGEON
+        ## BAMSURGEON INPUTS
         # File naming inputs
         String output_files_base
         # Mutation to run
@@ -70,15 +70,15 @@ workflow BamsurgeonWorkflow {
         # IGV docker image
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
 
-        ## INPUTS FOR PGX/RISK
+        ## PGX/RISK INPUTS
         # Toggle PGx/Risk
         Boolean run_pgx = true
         Boolean run_risk = true
         # PGx inputs
-        String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
-        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
+        String pgx_test_code = "lmPGX-pnlD_L"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240614"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20240606.tar"
+        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # Risk inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
@@ -233,8 +233,8 @@ workflow BamsurgeonWorkflow {
         # IGV report
         File igv_report = MutIGVReport.igv_report
         # PGx output
-        File? pgx_CPIC_report = RunPGx.CPIC_report
-        File? pgx_FDA_report = RunPGx.FDA_report
+        File? pgx_summary_report = RunPGx.summary_report
+        File? pgx_details_report = RunPGx.details_report
         File? pgx_genotype_xlsx = RunPGx.genotype_xlsx
         File? pgx_genotype_txt = RunPGx.genotype_txt
         # Risk output
