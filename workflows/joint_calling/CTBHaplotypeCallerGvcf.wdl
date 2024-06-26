@@ -112,10 +112,10 @@ workflow CTBHaplotypeCallerGvcf {
     #}
 
     #Test transfer gvcf to staging bucket
-    call FileUtilsCopyFilesTask as CopyGVCFToBucket {
+    call FileUtils.CopyFilesTask as CopyGVCFToBucket {
     input:
         source_location = HaplotypeCallerGvcf_GATK4.output_vcf,
-        Array[String] file_types = ["g.vcf.gz", "g.vcf.gz.tbi"],
+        file_types = ["g.vcf"],
         file_match_keys = [],
         file_matchers = [],
         target_location = gvcf_staging_bucket,
