@@ -103,7 +103,7 @@ workflow JointCalling {
             haplotype_database = haplotype_database,
             eval_interval_list = eval_interval_list,
             hapmap_resource_vcf = hapmap_resource_vcf,
-            hapmap_resource_vcf_index = hapmap_resource_vcf,
+            hapmap_resource_vcf_index = hapmap_resource_vcf_index,
             omni_resource_vcf = omni_resource_vcf,
             omni_resource_vcf_index = omni_resource_vcf_index,
             one_thousand_genomes_resource_vcf = one_thousand_genomes_resource_vcf,
