@@ -223,7 +223,7 @@ workflow BahrainPipelinesWorkflow {
                 target_roi_bed = target_roi_bed,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
-                output_basename = collaborator_sample_ids[i] + "_" + batch_name + "_"
+                output_basename = collaborator_sample_ids[i] + "_" + batch_name + "_",
                 docker_image = bcftools_docker_image
         }
     }
