@@ -115,7 +115,24 @@ workflow CTBHaplotypeCallerGvcf {
     call FileUtils.CopyFilesTask as CopyGVCFToBucket {
     input:
         source_location = HaplotypeCallerGvcf_GATK4.output_vcf,
-        file_types = ["g.vcf"],
+        file_types = ["g.vcf.gz"],
+        file_match_keys = [],
+        file_matchers = [],
+        target_location = gvcf_staging_bucket,
+        flatten = false,
+        recursive = true,
+        verbose = true,
+        docker_image = orchutils_docker_image,
+        disk_size = 75,
+        gcp_project_id = gcp_project_id,
+        workspace_name = workspace_name,
+    }
+
+   #Test transfer gvcf to staging bucket
+    call FileUtils.CopyFilesTask as CopyGVCFIndexToBucket {
+    input:
+        source_location = HaplotypeCallerGvcf_GATK4.output_vcf_index,
+        file_types = ["g.vcf.gz.tbi"],
         file_match_keys = [],
         file_matchers = [],
         target_location = gvcf_staging_bucket,
