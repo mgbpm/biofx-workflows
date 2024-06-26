@@ -10,7 +10,7 @@ workflow CTBHaplotypeCallerGvcf {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker
-        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
         # bcftools docker image
         String bcftools_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # subject, sample id and data location
@@ -94,23 +94,39 @@ workflow CTBHaplotypeCallerGvcf {
     }
 
     #transfer gvcf to staging bucket
-    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFToBucket {
-        input:
-            source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
-            target_location = gvcf_staging_bucket,
-            docker_image = orchutils_docker_image,
-            disk_size = fetch_disk_size,
-    }
+    #call FileUtils.SimpleGCPCopyFileTask as CopyGVCFToBucket {
+    #    input:
+    #        source_file = HaplotypeCallerGvcf_GATK4.output_vcf,
+    #        target_location = gvcf_staging_bucket,
+    #        docker_image = orchutils_docker_image,
+    #        disk_size = fetch_disk_size,
+    #}
 
     #transfer gvcf index to staging bucket
-    call FileUtils.SimpleGCPCopyFileTask as CopyGVCFIndexToBucket {
-        input:
-            source_file = HaplotypeCallerGvcf_GATK4.output_vcf_index,
-            target_location = gvcf_staging_bucket,
-            docker_image = orchutils_docker_image,
-            disk_size = fetch_disk_size,
-    }
+    #call FileUtils.SimpleGCPCopyFileTask as CopyGVCFIndexToBucket {
+    #    input:
+    #        source_file = HaplotypeCallerGvcf_GATK4.output_vcf_index,
+    #        target_location = gvcf_staging_bucket,
+    #        docker_image = orchutils_docker_image,
+    #        disk_size = fetch_disk_size,
+    #}
 
+    #Test transfer gvcf to staging bucket
+    call FileUtilsCopyFilesTask as CopyGVCFToBucket {
+    input:
+        source_location = HaplotypeCallerGvcf_GATK4.output_vcf,
+        Array[String] file_types = ["g.vcf.gz", "g.vcf.gz.tbi"],
+        file_match_keys = [],
+        file_matchers = [],
+        target_location = gvcf_staging_bucket,
+        flatten = false,
+        recursive = true,
+        verbose = true,
+        docker_image = orchutils_docker_image,
+        disk_size = 75,
+        gcp_project_id = gcp_project_id,
+        workspace_name = workspace_name,
+    }
 
     output {
         # haplotype caller output
