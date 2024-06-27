@@ -222,6 +222,7 @@ workflow BahrainPipelinesWorkflow {
     ## Prep data -- filter vcfs, merge them, and create collective vcf (if necessary)
     # If a target ROI bed file is given, filter the single vcfs to the bed file
     scatter (i in range(length(FetchVCFFiles.vcf))) {
+        String sample_output_name = collaborator_sample_ids[i] + "_" + batch_name + "_"
         call PrepSampleVCFTask {
             input:
                 input_vcf = FetchVCFFiles.vcf[i],
@@ -229,7 +230,7 @@ workflow BahrainPipelinesWorkflow {
                 target_roi_bed = target_roi_bed,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
-                output_basename = collaborator_sample_ids[i] + "_" + batch_name + "_",
+                output_basename = sample_output_name,
                 docker_image = bcftools_docker_image
         }
     }
@@ -377,7 +378,7 @@ workflow BahrainPipelinesWorkflow {
             call FASTUtils.FASTCreateAnnotatedSampleDataTask {
                 input:
                     annotated_sample_data_name = "annotated_" + batch_name + "_" + fast_annotated_sample_data_saved_filter_name,
-                    sample_data_names_and_labels = qc_fast_sample_data_name,
+                    sample_data_names_and_labels = sample_output_name,
                     region_names_and_masks = fast_annotated_sample_data_regions,
                     scripts = fast_annotated_sample_data_scripts,
                     saved_filter_name = fast_annotated_sample_data_saved_filter_name,
