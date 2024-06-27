@@ -176,7 +176,7 @@ workflow BahrainPipelinesWorkflow {
     ## Run PGx & Risk workflows with fetched CRAMs
     if (pipeline_to_run == "screening") {
         scatter (i in range(length(fetched_crams))) {
-            call PGxWorkflow.PGx_v3 as RunPGx {
+            call PGx_v3.PGxWorkflow as RunPGx {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
@@ -192,7 +192,7 @@ workflow BahrainPipelinesWorkflow {
                     workflow_fileset = pgx_workflow_fileset,
                     mgbpmbiofx_docker_image = pgx_docker_image
             }
-            call RiskAllelesWorkflow.Risk_v3 as RunRisk {
+            call Risk_v3.RiskAllelesWorkflow as RunRisk {
                 input:
                     input_cram = fetched_crams[i],
                     input_crai = fetched_crams_idx[i],
