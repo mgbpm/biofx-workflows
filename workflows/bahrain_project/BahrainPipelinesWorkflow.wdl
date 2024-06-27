@@ -226,7 +226,7 @@ workflow BahrainPipelinesWorkflow {
         call PrepSampleVCFTask {
             input:
                 input_vcf = FetchVCFFiles.vcf[i],
-                input_vcf_idx = FetchVCFFiles.vcf_idx[i],
+                input_vcf_idx = FetchVCFFiles.vcf_index[i],
                 target_roi_bed = target_roi_bed,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
