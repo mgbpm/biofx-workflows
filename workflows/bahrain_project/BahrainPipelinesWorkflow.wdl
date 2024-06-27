@@ -95,7 +95,7 @@ workflow BahrainPipelinesWorkflow {
             String MissingCRAMsFail = "When running the screening pipeline, include locations for CRAMs."
         }
         if (defined(cram_locations)){
-            if (length(sample_ids) != length(cram_locations)) {
+            if (length(sample_ids) != length(select_first([cram_locations]))) {
                 String CRAMLocationsFail = "The length of cram_locations does not match the length of sample_ids."
             }
         }
