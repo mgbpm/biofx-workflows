@@ -76,51 +76,66 @@ workflow BahrainPipelinesWorkflow {
         String fast_parser_sample_type
     }
 
-    ## Test that inputs match the pipeline being run
-    # Test pipeline to run -- should be monogenic or screening
+    ## Test general inputs for either the monogenic pipeline
     if ((pipeline_to_run != "monogenic") && (pipeline_to_run != "screening")) {
         String PipelineNameFail = "Pipeline to run should be either 'monogenic' or 'screening.'"
     }
-    # Test that the number of sample data inputs are all the same length
     if (length(sample_ids) != length(collaborator_sample_ids)) {
-        String CollaboratorIDsFail = "The length of collaborator_sample_ids does not match the length of sample_ids."
+        String CollaboratorIDsLengthFail = "The length of collaborator_sample_ids does not match the length of sample_ids."
     }
     if (length(sample_ids) != length(vcf_locations)) {
-        String VCFLocationsFail = "The length of vcf_locations does not match the length of sample_ids."
+        String VCFLengthFail = "The length of vcf_locations does not match the length of sample_ids."
     }
-    if (defined(cram_locations) && (length(sample_ids) != length(cram_locations))) {
-        String CRAMLocationsFail = "The length of cram_locations does not match the length of sample_ids."
-    }
-    if (pipeline_to_run == "monogenic") {
-        # Test that there is not a large number of samples run for the monogenic pipeline
-        if (length(sample_ids) > 50) {
-            String MonogenicFileNumberFail = "To run the monogenic pipeline, the number of input files must be less than 50."
-        }
-        # Test that the FAST parser sample type matches the pipeline being run
-        if (fast_parser_sample_type != "M") {
-            String MonogenicParserSampleTypeFail = "When running the monogenic pipeline, the FAST parser sample type should be 'M'."
-        }
-    }
-    if (pipeline_to_run == "screening") {
-        # Test that the FAST parser sample type matches the pipeline being run
-        if (fast_parser_sample_type != "B") {
-            String ScreeningParserSampleTypeFail = "When running the screening pipeline, the FAST parser sample type should be 'B'."
-        }
-        # Test that there are all inputs for the PGx/Risk workflows
-        if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
-            String ScreeningRefInputFail = "When running the screening pipeline, include inputs for ref_dict, dbsnp_vcf, and dbsnp_vcf_index."
-        }
-    }
-    String input_error_message = select_first([PipelineNameFail, MonogenicFileNumberFail, CollaboratorIDsFail, VCFLocationsFail, CRAMLocationsFail, MonogenicParserSampleTypeFail, ScreeningParserSampleTypeFail, ScreeningRefInputFail, ""])
-    if (input_error_message != "") {
-        call Utilities.FailTask as InputParameterError {
+    String general_error = select_first([PipelineNameFail, CollaboratorIDsLengthFail, VCFLengthFail, ""])
+    if (general_error != "") {
+        call Utilities.FailTask as GeneralInputError {
             input:
-                error_message = input_error_message
+                error_message = general_error
+        }
+    }
+
+    ## Test inputs for the monogenic pipeline
+    if (pipeline_to_run == "monogenic") {
+        if (length(sample_ids) > 50) {
+            String MonoSampleFail = "To run the monogenic pipeline, the number of input files must be less than 50."
+        }
+        if (fast_parser_sample_type != "M") {
+            String MParserTypeFail = "When running the monogenic pipeline, the FAST parser sample type should be 'M'."
+        }
+        String monogenic_error = select_first([MonogenicSampleFail, MTypeFail, ""])
+        if (monogenic_error != "") {
+            call Utilities.FailTask as MonogenicInputError {
+                input:
+                    error_message = monogenic_error
+            }
+        }
+    }
+    
+    ## Test the inputs for the screening pipeline
+    if (pipeline_to_run == "screening") {
+        if (fast_parser_sample_type != "B") {
+            String ScreeningParserTypeFail = "When running the screening pipeline, the FAST parser sample type should be 'B'."
+        }
+        if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
+            String ScreeningRefInputFail = "When running the screening pipeline, include PGx/Risk all inputs (ref_dict, dbsnp_vcf, and dbsnp_vcf_index)."
+        }
+        if (!defined(cram_locations)) {
+            String NoCramLocationsFail = "When running the screening pipeline, include locations for CRAMs."
+        }
+        if (length(sample_ids) != length(cram_locations)) {
+            String CRAMLocationsFail = "The length of cram_locations does not match the length of sample_ids."
+        }
+        String screening_error = select_first([CRAMLocationsFail, ScreeningParserTypeFail, ScreeningRefInputFail, ""])
+        if (screening_error != "") {
+            call Utilities.FailTask as ScreeningInputError {
+                input:
+                    error_message = screening_error
+            }
         }
     }
     
     ## Fetch CRAM, VCF, and index files
-    if (input_error_message == "") {
+    if ((general_error == "") && (select_first([monogenic_error, screening_error]) == "")) {
         scatter (i in range(length(sample_ids))) {
             # Fetch sample VCFs for both screening and monogenic pipelines
             call FileUtils.FetchFilesTask as FetchVCFFiles {
@@ -175,7 +190,7 @@ workflow BahrainPipelinesWorkflow {
 
         }
     }
-    # Coerce object types to Array[File] for future tasks
+    # Coerce object types to Array[File] for future use
     Array[File] fetched_crams = select_all(select_first([FetchCramFiles.cram]))
     Array[File] fetched_crams_idx = select_all(select_first([FetchCramFiles.crai]))
 
@@ -219,8 +234,7 @@ workflow BahrainPipelinesWorkflow {
         }
     }
 
-    ## Prep data -- filter vcfs, merge them, and create collective vcf (if necessary)
-    # If a target ROI bed file is given, filter the single vcfs to the bed file
+    ## Prep data -- filter vcfs, merge them, and create collective vcf
     scatter (i in range(length(FetchVCFFiles.vcf))) {
         String sample_output_name = collaborator_sample_ids[i] + "_" + batch_name + "_"
         call PrepSampleVCFTask {
@@ -266,7 +280,6 @@ workflow BahrainPipelinesWorkflow {
             workspace_name = workspace_name,
             docker_image = orchutils_docker_image
     }
-    # Annotate collective or merged VCF with Alamut
     call AlamutBatch.AlamutBatchTask {
         input:
             input_vcf = FASTRemoveAlreadyAnnotatedFromVCFTask.output_vcf_gz,
@@ -284,7 +297,6 @@ workflow BahrainPipelinesWorkflow {
             docker_image = alamut_docker_image,
             output_working_files = alamut_save_working_files
     }
-    # Load Alamut annotations to FAST
     call FASTUtils.FASTDataLoadTask as AlamutLoadTask {
         input:
             reference_build = reference_build,
@@ -310,14 +322,12 @@ workflow BahrainPipelinesWorkflow {
 
     ## Annotate each individual sample VCF with QCEval INFO field and load annotations into FAST
     scatter (file in PrepSampleVCFTask.output_vcf_gz) {
-        # Annotate individual VCF with QCEval INFO field
         call QCEval.QCEvalTask {
             input:
                 input_vcf = file,
                 project_type = qceval_project_type,
                 docker_image = qceval_docker_image
         }
-        # Load sample data to FAST
         call FASTUtils.FASTDataLoadTask as QCEvalLoadTask {
             input:
                 reference_build = reference_build,
@@ -332,8 +342,6 @@ workflow BahrainPipelinesWorkflow {
                 docker_image = orchutils_docker_image
         }
     }
-
-    ## Wait for both data loads to complete
     call FASTUtils.FASTWaitForDataLoadsTask as WaitForQCLoads {
         input:
             data_load_ids = QCEvalLoadTask.data_load_id,
@@ -343,6 +351,8 @@ workflow BahrainPipelinesWorkflow {
             workspace_name = workspace_name,
             docker_image = orchutils_docker_image
     }
+
+    ## Wait for both data loads to complete
     if ((WaitForQCLoads.wait_result.total != WaitForQCLoads.wait_result.completed) || (WaitForAlamutLoad.wait_result.total != WaitForAlamutLoad.wait_result.completed)) {
         call Utilities.FailTask as DataLoadTimeout {
             input:
