@@ -81,9 +81,15 @@ workflow BahrainPipelinesWorkflow {
     if ((pipeline_to_run != "monogenic") && (pipeline_to_run != "screening")) {
         String PipelineNameFail = "Pipeline to run should be either 'monogenic' or 'screening.'"
     }
-    # Test that the number of sample IDs matches the number of sample data locations
-    if (length(sample_ids) != length(sample_data_locations)) {
-        String SampleArraysLengthFail = "The number of sample IDs does not match the number of sample data locations."
+    # Test that the number of sample data inputs are all the same length
+    if (length(sample_ids) != length(collaborator_sample_ids)) {
+        String CollaboratorIDsFail = "The length of collaborator_sample_ids does not match the length of sample_ids."
+    }
+    if (length(sample_ids) != length(vcf_locations)) {
+        String VCFLocationsFail = "The length of vcf_locations does not match the length of sample_ids."
+    }
+    if (defined(cram_locations) && (length(sample_ids) != length(cram_locations))) {
+        String CRAMLocationsFail = "The length of cram_locations does not match the length of sample_ids."
     }
     if (pipeline_to_run == "monogenic") {
         # Test that there is not a large number of samples run for the monogenic pipeline
@@ -105,7 +111,7 @@ workflow BahrainPipelinesWorkflow {
             String ScreeningRefInputFail = "When running the screening pipeline, include inputs for ref_dict, dbsnp_vcf, and dbsnp_vcf_index."
         }
     }
-    String input_error_message = select_first([PipelineNameFail, MonogenicFileNumberFail, SampleArraysLengthFail, MonogenicParserSampleTypeFail, ScreeningParserSampleTypeFail, ScreeningRefInputFail, ""])
+    String input_error_message = select_first([PipelineNameFail, MonogenicFileNumberFail, CollaboratorIDsFail, VCFLocationsFail, CRAMLocationsFail, MonogenicParserSampleTypeFail, ScreeningParserSampleTypeFail, ScreeningRefInputFail, ""])
     if (input_error_message != "") {
         call Utilities.FailTask as InputParameterError {
             input:
@@ -113,7 +119,7 @@ workflow BahrainPipelinesWorkflow {
         }
     }
     
-    ## Fetch all files (CRAM, VCF, and index files)
+    ## Fetch CRAM, VCF, and index files
     if (input_error_message == "") {
         scatter (i in range(length(sample_ids))) {
             # Fetch sample VCFs for both screening and monogenic pipelines
