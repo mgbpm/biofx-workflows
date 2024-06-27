@@ -143,7 +143,7 @@ workflow BahrainPipelinesWorkflow {
             if (pipeline_to_run == "screening") {
                 call FileUtils.FetchFilesTask as FetchCramFiles {
                     input:
-                        data_location = cram_locations[i],
+                        data_location = select_first([cram_locations])[i],
                         recursive = true,
                         file_types = [ "cram" ],
                         file_match_keys = [ sample_ids[i] ],
@@ -155,7 +155,7 @@ workflow BahrainPipelinesWorkflow {
                 if (!defined(FetchCramFiles.cram) || !defined(FetchCramFiles.crai)) {
                     call Utilities.FailTask as CramNotFound {
                         input:
-                            error_message = "CRAM for sample " + sample_ids[i] + " not found in " + cram_locations[i]
+                            error_message = "CRAM for sample " + sample_ids[i] + " not found in " + select_first([cram_locations])[i]
                     }
                 }
             }
