@@ -100,7 +100,7 @@ workflow BahrainPipelinesWorkflow {
             String MonoSampleFail = "To run the monogenic pipeline, the number of input files must be less than 50."
         }
         if (fast_parser_sample_type != "M") {
-            String MParserTypeFail = "When running the monogenic pipeline, the FAST parser sample type should be 'M'."
+            String MTypeFail = "When running the monogenic pipeline, the FAST parser sample type should be 'M'."
         }
         String monogenic_error = select_first([MonogenicSampleFail, MTypeFail, ""])
         if (monogenic_error != "") {
