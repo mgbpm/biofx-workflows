@@ -110,10 +110,10 @@ workflow BahrainPipelinesWorkflow {
     # Define the FAST parser sample type based on desired pipeline
     if (!defined(fast_parser_sample_type)) {
         if (pipeline_to_run == "monogenic") {
-            monogenic_parser_type = "M"
+            String monogenic_parser_type = "M"
         }
         if (pipeline_to_run == "screening") {
-            screening_parser_type = "B"
+            String screening_parser_type = "B"
         }
     }
     String fast_parser_type = select_first([fast_parser_sample_type, monogenic_parser_type, screening_parser_type])
