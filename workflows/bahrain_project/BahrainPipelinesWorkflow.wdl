@@ -163,6 +163,8 @@ workflow BahrainPipelinesWorkflow {
         }
     }
     # Coerce object types to Array[File] for future use
+    Array[File] fetched_vcfs = select_all(select_first([FetchVCFFiles.vcf]))
+    Array[File] fetched_vcf_idx = select_all(select_first([FetchVCFFiles.vcf_index]))
     Array[File] fetched_crams = select_all(select_first([FetchCramFiles.cram]))
     Array[File] fetched_crai = select_all(select_first([FetchCramFiles.crai]))
 
@@ -207,12 +209,12 @@ workflow BahrainPipelinesWorkflow {
     }
 
     # Prep data -- filter vcfs, merge them, and create collective vcf
-    scatter (i in range(length(FetchVCFFiles.vcf))) {
+    scatter (i in range(length(fetched_vcfs))) {
         String sample_output_name = collaborator_sample_ids[i] + "_" + batch_name + "_"
         call PrepSampleVCFTask {
             input:
-                input_vcf = FetchVCFFiles.vcf[i],
-                input_vcf_idx = FetchVCFFiles.vcf_index[i],
+                input_vcf = fetched_vcfs[i],
+                input_vcf_idx = fetched_vcf_idx[i],
                 target_roi_bed = target_roi_bed,
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
