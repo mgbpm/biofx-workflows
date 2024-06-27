@@ -73,10 +73,10 @@ workflow BahrainPipelinesWorkflow {
         Int fast_adi_wait_max_intervals = 144
         String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20240130"
         File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
-        String fast_parser_sample_type
+        String? fast_parser_sample_type
     }
 
-    ## Test general inputs for either the monogenic pipeline
+    # Test general inputs for either pipeline
     if ((pipeline_to_run != "monogenic") && (pipeline_to_run != "screening")) {
         String PipelineNameFail = "Pipeline to run should be either 'monogenic' or 'screening.'"
     }
@@ -86,58 +86,41 @@ workflow BahrainPipelinesWorkflow {
     if (length(sample_ids) != length(vcf_locations)) {
         String VCFLengthFail = "The length of vcf_locations does not match the length of sample_ids."
     }
-    String general_error = select_first([PipelineNameFail, CollaboratorIDsLengthFail, VCFLengthFail, ""])
-    if (general_error != "") {
-        call Utilities.FailTask as GeneralInputError {
-            input:
-                error_message = general_error
-        }
-    }
-
-    ## Test inputs for the monogenic pipeline
-    if (pipeline_to_run == "monogenic") {
-        if (length(sample_ids) > 50) {
-            String MonoSampleFail = "To run the monogenic pipeline, the number of input files must be less than 50."
-        }
-        if (fast_parser_sample_type != "M") {
-            String MTypeFail = "When running the monogenic pipeline, the FAST parser sample type should be 'M'."
-        }
-        String monogenic_error = select_first([MonogenicSampleFail, MTypeFail, ""])
-        if (monogenic_error != "") {
-            call Utilities.FailTask as MonogenicInputError {
-                input:
-                    error_message = monogenic_error
-            }
-        }
-    }
-    
-    ## Test the inputs for the screening pipeline
+    # Test the inputs for the screening pipeline
     if (pipeline_to_run == "screening") {
-        if (fast_parser_sample_type != "B") {
-            String ScreeningParserTypeFail = "When running the screening pipeline, the FAST parser sample type should be 'B'."
-        }
         if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
             String ScreeningRefInputFail = "When running the screening pipeline, include PGx/Risk all inputs (ref_dict, dbsnp_vcf, and dbsnp_vcf_index)."
         }
         if (!defined(cram_locations)) {
-            String NoCramLocationsFail = "When running the screening pipeline, include locations for CRAMs."
+            String MissingCRAMsFail = "When running the screening pipeline, include locations for CRAMs."
         }
         if (length(sample_ids) != length(cram_locations)) {
             String CRAMLocationsFail = "The length of cram_locations does not match the length of sample_ids."
         }
-        String screening_error = select_first([CRAMLocationsFail, ScreeningParserTypeFail, ScreeningRefInputFail, ""])
-        if (screening_error != "") {
-            call Utilities.FailTask as ScreeningInputError {
-                input:
-                    error_message = screening_error
-            }
+    }
+    # Fail the pipeline if inputs are incorrect
+    String input_error_message = select_first([PipelineNameFail, CollaboratorIDsLengthFail, VCFLengthFail, ScreeningRefInputFail, MissingCRAMsFail, CRAMLocationsFail, ""])
+    if (input_error_message != "") {
+        call Utilities.FailTask as InputError {
+            input:
+                error_message = input_error_message
         }
     }
+
+    # Define the FAST parser sample type based on desired pipeline
+    if (!defined(fast_parser_sample_type)) {
+        if (pipeline_to_run == "monogenic") {
+            monogenic_parser_type = "M"
+        }
+        if (pipeline_to_run == "screening") {
+            screening_parser_type = "B"
+        }
+    }
+    String fast_parser_type = select_first([fast_parser_sample_type, monogenic_parser_type, screening_parser_type])
     
-    ## Fetch CRAM, VCF, and index files
-    if ((general_error == "") && (select_first([monogenic_error, screening_error]) == "")) {
+    # Fetch CRAM, VCF, and index files
+    if (input_error_message == "") {
         scatter (i in range(length(sample_ids))) {
-            # Fetch sample VCFs for both screening and monogenic pipelines
             call FileUtils.FetchFilesTask as FetchVCFFiles {
                 input:
                     data_location = vcf_locations[i],
@@ -149,19 +132,12 @@ workflow BahrainPipelinesWorkflow {
                     gcp_project_id = gcp_project_id,
                     workspace_name = workspace_name
             }
-            if (!defined(FetchVCFFiles.vcf)) {
+            if (!defined(FetchVCFFiles.vcf) || !defined(FetchVCFFiles.vcf_index)) {
                 call Utilities.FailTask as VCFFileNotFound {
                     input:
-                        error_message = "VCF file for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
+                        error_message = "VCF or index file for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
                 }
             }
-            if (!defined(FetchVCFFiles.vcf_index)) {
-                call Utilities.FailTask as VCFIndexNotFound {
-                    input:
-                        error_message = "VCF index for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
-                }
-            }
-            # Fetch sample CRAMs for the screening pipeline
             if (pipeline_to_run == "screening") {
                 call FileUtils.FetchFilesTask as FetchCramFiles {
                     input:
@@ -174,16 +150,10 @@ workflow BahrainPipelinesWorkflow {
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name
                 }
-                if (!defined(FetchCramFiles.cram)) {
+                if (!defined(FetchCramFiles.cram) || !defined(FetchCramFiles.crai)) {
                     call Utilities.FailTask as CramNotFound {
                         input:
                             error_message = "CRAM for sample " + sample_ids[i] + " not found in " + cram_locations[i]
-                    }
-                }
-                if (!defined(FetchCramFiles.crai)) {
-                    call Utilities.FailTask as CramIndexNotFound {
-                        input:
-                            error_message = "CRAM index for sample " + sample_ids[i] + " not found in " + cram_locations[i]
                     }
                 }
             }
@@ -192,15 +162,15 @@ workflow BahrainPipelinesWorkflow {
     }
     # Coerce object types to Array[File] for future use
     Array[File] fetched_crams = select_all(select_first([FetchCramFiles.cram]))
-    Array[File] fetched_crams_idx = select_all(select_first([FetchCramFiles.crai]))
+    Array[File] fetched_crai = select_all(select_first([FetchCramFiles.crai]))
 
-    ## Run PGx & Risk workflows with fetched CRAMs
+    # Run PGx & Risk workflows with fetched CRAMs
     if (pipeline_to_run == "screening") {
         scatter (i in range(length(fetched_crams))) {
             call PGx_v3.PGxWorkflow as RunPGx {
                 input:
                     input_cram = fetched_crams[i],
-                    input_crai = fetched_crams_idx[i],
+                    input_crai = fetched_crai[i],
                     sample_id = collaborator_sample_ids[i],
                     accession_id = collaborator_sample_ids[i],
                     test_code = pgx_test_code,
@@ -216,7 +186,7 @@ workflow BahrainPipelinesWorkflow {
             call Risk_v3.RiskAllelesWorkflow as RunRisk {
                 input:
                     input_cram = fetched_crams[i],
-                    input_crai = fetched_crams_idx[i],
+                    input_crai = fetched_crai[i],
                     sample_id = collaborator_sample_ids[i],
                     accession_id = collaborator_sample_ids[i],
                     test_code = risk_alleles_test_code,
@@ -234,7 +204,7 @@ workflow BahrainPipelinesWorkflow {
         }
     }
 
-    ## Prep data -- filter vcfs, merge them, and create collective vcf
+    # Prep data -- filter vcfs, merge them, and create collective vcf
     scatter (i in range(length(FetchVCFFiles.vcf))) {
         String sample_output_name = collaborator_sample_ids[i] + "_" + batch_name + "_"
         call PrepSampleVCFTask {
@@ -248,7 +218,6 @@ workflow BahrainPipelinesWorkflow {
                 docker_image = bcftools_docker_image
         }
     }
-    # Create merged VCF from filtered sample files
     call VCFUtils.MergeVCFsTask as MergedVCF {
         input:
             input_vcfs = PrepSampleVCFTask.output_vcf_gz,
@@ -257,7 +226,6 @@ workflow BahrainPipelinesWorkflow {
             output_basename = batch_name + ".merged",
             docker_image = bcftools_docker_image
     }
-    # If running the screening pipeline, create a collective VCF
     if (pipeline_to_run == "screening") {
         call VCFUtils.MakeCollectiveVCFTask as CollectiveVCF {
             input:
@@ -266,7 +234,6 @@ workflow BahrainPipelinesWorkflow {
         }
     }
 
-    ## Annotate with Alamut and load Alamut annotations to FAST
     # Pre-filter the collective/merged VCF to input to Alamut to remove
     #  variants that already have Alamut annotations
     call FASTUtils.FASTRemoveAlreadyAnnotatedFromVCFTask {
@@ -280,6 +247,7 @@ workflow BahrainPipelinesWorkflow {
             workspace_name = workspace_name,
             docker_image = orchutils_docker_image
     }
+    # Annotate with Alamut
     call AlamutBatch.AlamutBatchTask {
         input:
             input_vcf = FASTRemoveAlreadyAnnotatedFromVCFTask.output_vcf_gz,
@@ -297,6 +265,7 @@ workflow BahrainPipelinesWorkflow {
             docker_image = alamut_docker_image,
             output_working_files = alamut_save_working_files
     }
+    # Load Alamut annotations
     call FASTUtils.FASTDataLoadTask as AlamutLoadTask {
         input:
             reference_build = reference_build,
@@ -320,7 +289,7 @@ workflow BahrainPipelinesWorkflow {
             docker_image = orchutils_docker_image
     }
 
-    ## Annotate each individual sample VCF with QCEval INFO field and load annotations into FAST
+    # Annotate sample VCFs with QCEval INFO field and load annotations into FAST
     scatter (file in PrepSampleVCFTask.output_vcf_gz) {
         call QCEval.QCEvalTask {
             input:
@@ -352,7 +321,7 @@ workflow BahrainPipelinesWorkflow {
             docker_image = orchutils_docker_image
     }
 
-    ## Wait for both data loads to complete
+    # Wait for both data loads to complete
     if ((WaitForQCLoads.wait_result.total != WaitForQCLoads.wait_result.completed) || (WaitForAlamutLoad.wait_result.total != WaitForAlamutLoad.wait_result.completed)) {
         call Utilities.FailTask as DataLoadTimeout {
             input:
@@ -366,9 +335,8 @@ workflow BahrainPipelinesWorkflow {
         }
     }
 
-    ## Create annotated sample data after both Alamut and QCEval data loads are complete
+    # Create annotated sample data after both Alamut and QCEval data loads are complete
     if ((WaitForQCLoads.wait_result.total == WaitForQCLoads.wait_result.succeeded) && (WaitForAlamutLoad.wait_result.total == WaitForAlamutLoad.wait_result.succeeded)) {
-        # Wait up to 24 hours for annotation data initialization to complete
         call FASTUtils.FASTWaitForADITask {
             input:
                 check_interval_secs = fast_adi_wait_interval_secs,
@@ -432,7 +400,7 @@ workflow BahrainPipelinesWorkflow {
                 call FASTOutputParser.FASTOutputParserTask {
                     input:
                         fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
-                        sample_type = fast_parser_sample_type,
+                        sample_type = fast_parser_type,
                         reference_build = reference_build,
                         oms_query = "Y",
                         transcript_exonNum = gil_transcript_exon_count,
