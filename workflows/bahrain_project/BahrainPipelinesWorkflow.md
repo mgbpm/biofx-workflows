@@ -6,7 +6,9 @@
 | Array[String] | sample_ids | Yes | List of sample IDs, e.g. SM-MPPD5; are included in the vcf and cram file names in the iCGD Clinical workspace | |
 | Array[String] | collaborator_sample_id  | Yes | List of sample IDs, e.g. D-981108334-BH-4022-S1-A | |
 | Array[String] | vcf_locations | Yes | List of vcf data locations for each sample from iCGD Clinical workspace | |
+| Array[String] | vcf_idx_locations | Yes | List of vcf index data locations for each sample from iCGD Clinical workspace | |
 | Array[String] | cram_locations | Yes | List of cram data locations for each sample from iCGD Clinical workspace | |
+| Array[String] | crai_locations | Yes | List of crai data locations for each sample from iCGD Clinical workspace | |
 | String | batch_name | Yes | Prefix for all FAST sample data names, e.g. BGP-BH-4022 or BGP-Batch10 | |
 | File | target_roi_bed | Yes | BED file containing gene regions; the VCFs in the dataset will be filtered to these regions and a new merged vcf will be created | |
 | String | pipeline_to_run | Yes | Either "monogenic" to run the Bahrain Monogenic Pipeline or "screening" to run the Bahrain Screening Pipeline | |

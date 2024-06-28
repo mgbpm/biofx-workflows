@@ -16,7 +16,9 @@ workflow BahrainPipelinesWorkflow {
         Array[String] sample_ids
         Array[String] collaborator_sample_ids
         Array[String] vcf_locations
+        Array[String] vcf_idx_locations
         Array[String]? cram_locations
+        Array[String]? crai_locations
         String batch_name
         File target_roi_bed
         String pipeline_to_run
@@ -134,10 +136,26 @@ workflow BahrainPipelinesWorkflow {
                     gcp_project_id = gcp_project_id,
                     workspace_name = workspace_name
             }
-            if (!defined(FetchVCFFiles.vcf) || !defined(FetchVCFFiles.vcf_index)) {
+            call FileUtils.FetchFilesTask as FetchTBIFiles {
+                input:
+                    data_location = vcf_idx_locations[i],
+                    recursive = true,
+                    file_match_keys = [ sample_ids[i] ],
+                    docker_image = orchutils_docker_image,
+                    disk_size = 20,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name
+            }
+            if (!defined(FetchVCFFiles.vcf)) {
                 call Utilities.FailTask as VCFFileNotFound {
                     input:
-                        error_message = "VCF or index file for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
+                        error_message = "VCF file for sample " + sample_ids[i] + " not found in " + vcf_locations[i]
+                }
+            }
+            if (!defined(FetchTBIFiles.vcf_index)) {
+                call Utilities.FailTask as TBIFileNotFound {
+                    input:
+                        error_message = "VCF index file for sample " + sample_ids[i] + " not found in " + vcf_idx_locations[i]
                 }
             }
             if (pipeline_to_run == "screening") {
@@ -152,10 +170,26 @@ workflow BahrainPipelinesWorkflow {
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name
                 }
-                if (!defined(FetchCramFiles.cram) || !defined(FetchCramFiles.crai)) {
+                call FileUtils.FetchFilesTask as FetchCraiFiles {
+                    input:
+                        data_location = select_first([crai_locations])[i],
+                        recursive = true,
+                        file_match_keys = [ sample_ids[i] ],
+                        docker_image = orchutils_docker_image,
+                        disk_size = 50,
+                        gcp_project_id = gcp_project_id,
+                        workspace_name = workspace_name
+                }
+                if (!defined(FetchCramFiles.cram)) {
                     call Utilities.FailTask as CramNotFound {
                         input:
                             error_message = "CRAM for sample " + sample_ids[i] + " not found in " + select_first([cram_locations])[i]
+                    }
+                }
+                if (!defined(FetchCraiFiles.crai)) {
+                    call Utilities.FailTask as CramNotFound {
+                        input:
+                            error_message = "CRAI for sample " + sample_ids[i] + " not found in " + select_first([crai_locations])[i]
                     }
                 }
             }
@@ -164,9 +198,9 @@ workflow BahrainPipelinesWorkflow {
     }
     # Coerce object types to Array[File] for future use
     Array[File] fetched_vcfs = select_all(select_first([FetchVCFFiles.vcf]))
-    Array[File] fetched_vcf_idx = select_all(select_first([FetchVCFFiles.vcf_index]))
+    Array[File] fetched_vcf_idx = select_all(select_first([FetchTBIFiles.vcf_index]))
     Array[File] fetched_crams = select_all(select_first([FetchCramFiles.cram]))
-    Array[File] fetched_crai = select_all(select_first([FetchCramFiles.crai]))
+    Array[File] fetched_crai = select_all(select_first([FetchCraiFiles.crai]))
 
     # Run PGx & Risk workflows with fetched CRAMs
     if (pipeline_to_run == "screening") {
@@ -208,7 +242,7 @@ workflow BahrainPipelinesWorkflow {
         }
     }
 
-    # Prep data -- filter vcfs, merge them, and create collective vcf
+    # Filter vcfs, merge them, and create collective vcf
     scatter (i in range(length(fetched_vcfs))) {
         String sample_output_name = collaborator_sample_ids[i] + "_" + batch_name + "_"
         call PrepSampleVCFTask {
