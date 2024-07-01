@@ -150,4 +150,7 @@ workflow JointCalling {
         # Output the metrics from crosschecking fingerprints.
         File? crosscheck_fingerprint_check = JointGenotyping.crosscheck_fingerprint_check
     }
+    meta {
+        allowNestedInputs: true
+    }
 }
