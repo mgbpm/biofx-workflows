@@ -402,11 +402,11 @@ workflow ScoringImputedDataset {
 
     File     s_variants                    = select_first([
                                                  CombineScoringSites.combined_scoring_sites,
-                                                 ScoreImputedArray.sites_scored
+                                                 ScoreImputedArray.sites_scored # == IMPUTEDSET ∩ POPULATIONSET ∩ WEIGHTSET
                                              ])
 
     File     t_variants                    = select_first([
-                                                 TrainAncestryAdjustmentModel.sites_used_in_scoring,
+                                                 TrainAncestryAdjustmentModel.sites_used_in_scoring, # == IMPUTEDSET ∩ POPULATIONSET ∩ WEIGHTSET
                                                  sites_used_in_scoring_for_model
                                              ])
   }
