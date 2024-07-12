@@ -100,7 +100,7 @@ task ScoreVcf {
           list-variants             \
           cols='~{columns}'         \
       --set-all-var-ids             \
-          '@:#:$1:$2'               \
+          '@:#:$r:$a'               \
       --vcf                         \
           '~{vcf}'
   >>>

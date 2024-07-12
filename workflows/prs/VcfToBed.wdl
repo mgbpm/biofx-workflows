@@ -59,7 +59,7 @@ task VcfToBed {
       --rm-dup                      \
           force-first               \
       --set-all-var-ids             \
-          '@:#:$1:$2'               \
+          '@:#:$r:$a'               \
       --vcf                         \
           '~{vcf}'
   >>>

@@ -167,7 +167,7 @@ task ArrayVcfToPlinkDataset {
       --vcf ~{vcf} \
       --extract-intersect ~{pruning_sites} ~{subset_to_sites} \
       --allow-extra-chr \
-      --set-all-var-ids @:#:\$1:\$2 \
+      --set-all-var-ids '@:#:$r:$a' \
       --new-id-max-allele-len 1000 missing \
       --out ~{basename} \
       --make-bed \
