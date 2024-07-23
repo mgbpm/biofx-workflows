@@ -303,3 +303,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - JointCalling_*
+  - name: MergeCrams
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/MergeCrams.wdl
+    readMePath: /workflows/joint_calling/MergeCrams.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - MergeCrams_*
