@@ -25,10 +25,10 @@ workflow MergeCrams {
     Array[FileMatcher]? fetch_cram_file_matchers
 
     # Merge files Inputs
-    File input_cram_1
-    File input_cram_1_index
-    File input_cram_2
-    File input_cram_2_index
+    String input_cram_1
+    String input_cram_1_index
+    String input_cram_2
+    String input_cram_2_index
 
     # reference genome files
     String reference_build = "GRCh38"
@@ -109,7 +109,6 @@ workflow MergeCrams {
         }
     }
 
-
     #call CramToBamTask as CtbCramOne{
     #    input:
     #    input_cram = input_bam,
@@ -134,15 +133,15 @@ workflow MergeCrams {
 
     call MergeCramsTask{
         input:
-        input_cram_one = FetchCramOne.cram,
-        input_cram_two = FetchCramTwo.cram,
-        #sample_name = basename(input_cram_one),
-        sample_name = sample_basename,
-        ref_dict = ref_dict,
-        ref_fasta = ref_fasta,
-        ref_fasta_index = ref_fasta_index,
-        docker = gitc_docker,
-        samtools_path = samtools_path
+          input_cram_one = FetchCramOne.cram,
+          input_cram_two = FetchCramTwo.cram,
+          #sample_name = basename(input_cram_one),
+          sample_name = sample_basename,
+          ref_dict = ref_dict,
+          ref_fasta = ref_fasta,
+          ref_fasta_index = ref_fasta_index,
+          docker = gitc_docker,
+          samtools_path = samtools_path
     }
 
   # Outputs that will be retained when execution is complete
