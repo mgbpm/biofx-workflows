@@ -312,3 +312,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - MergeCrams_*
+  - name: ReblockGVCFandPush
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/ReblockGVCFandPush.wdl
+    readMePath: /workflows/joint_calling/ReblockGVCFandPush.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ReblockGVCFandPush_*
