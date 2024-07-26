@@ -37,8 +37,8 @@ workflow MergeCrams {
     File ref_fasta_index
     String basename_1 = basename(input_cram_1)
     String basename_2 = basename(input_cram_2)
-    String sample_data_location_1 = basename(input_cram_1, "~{basename_1}")
-    String sample_data_location_2 = basename(input_cram_2, "~{basename_2}")
+    String sample_data_location_1 = sub(input_cram_1, "~{basename_1}", "")
+    String sample_data_location_2 = sub(input_cram_2, "~{basename_2}", "")
 
     String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
     String gatk_path = "/gatk/gatk"
