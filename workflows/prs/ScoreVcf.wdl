@@ -99,8 +99,6 @@ task ScoreVcf {
           ignore-dup-ids            \
           list-variants             \
           cols='~{columns}'         \
-      --set-all-var-ids             \
-          '@:#:$1:$2'               \
       --vcf                         \
           '~{vcf}'
   >>>

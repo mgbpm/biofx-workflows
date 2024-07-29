@@ -133,7 +133,6 @@ task SelectSitesOriginalArray {
 
 	command <<<
 		/plink2 --vcf ~{vcf} \
-		--set-all-var-ids @:#:\$1:\$2 \
 		--rm-dup force-first \
 		--geno 0.001 \
 		--snps-only \
