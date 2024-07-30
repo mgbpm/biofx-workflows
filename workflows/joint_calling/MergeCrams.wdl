@@ -85,7 +85,7 @@ workflow MergeCrams {
 # fetch CRAM Two
     call FileUtils.FetchFilesTask as FetchCramTwo {
         input:
-            data_location = basename(input_cram_2),
+            data_location = sample_data_location_1,
             file_types = if defined(fetch_cram_file_matchers) then [] else ["cram"],
             recursive = false,
             file_match_keys = if defined(fetch_cram_file_matchers) then [] else fetch_cram_filter_keys,
