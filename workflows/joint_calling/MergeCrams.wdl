@@ -177,7 +177,7 @@ task MergeCramsTask {
     Float output_bam_one_size = size(input_cram_one, "GB") / 0.40
     Float output_bam_two_size = size(input_cram_two, "GB") / 0.40
     Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB")
-    Int ceil(disk_size = size(input_cram_one, "GB") + size(input_cram_two, "GB") + output_bam_one_size + output_bam_two_size + ref_size + 20)
+    Int disk_size = size(input_cram_one, "GB") + size(input_cram_two, "GB") + ceil(output_bam_one_size) + ceil(output_bam_two_size) + ceil(ref_size) + 20
   
   command {
     set -e
