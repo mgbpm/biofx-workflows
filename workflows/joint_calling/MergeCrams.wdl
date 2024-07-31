@@ -211,7 +211,7 @@ task MergeCramsTask {
     #convert merged BAMS back to CRAM and generate index
     echo "[`TZ="EST" date`] converting merged bam to cram"
     ~{samtools_path} view -C -T ~{ref_fasta} -o ~{sample_name}.cram ~{sample_name}.bam
-    ~{samtools_path} index --threads 4 -c ~{sample_name}.cram
+    ~{samtools_path} index -@ 4 -c ~{sample_name}.cram
     mv ~{sample_name}.cram.crai ~{sample_name}.crai
     echo "[`TZ="EST" date`] ran merged bam to cram"
 
