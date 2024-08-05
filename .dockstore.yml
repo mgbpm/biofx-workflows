@@ -162,10 +162,55 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - RISK_*
-  - name: BahrainPipelinesWorkflow
+  - name: BahrainSamplePrepWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bahrain_project/BahrainPipelinesWorkflow.wdl
-    readMePath: /workflows/bahrain_project/BahrainPipelinesWorkflow.md
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainSamplePrep.wdl
+    readMePath: /workflows/bahrain_project/BahrainSamplePrep.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainSampleLoadingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainSampleLoading.wdl
+    readMePath: /workflows/bahrain_project/BahrainSampleLoading.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainPGxRiskWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainPGxRisk.wdl
+    readMePath: /workflows/bahrain_project/BahrainPGxRisk.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainMergeFASTExportsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainMergeFASTExports.wdl
+    readMePath: /workflows/bahrain_project/BahrainMergeFASTExports.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainAnnotationsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainAnnotations.wdl
+    readMePath: /workflows/bahrain_project/BahrainAnnotations.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainAlamutWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainAlamut.wdl
+    readMePath: /workflows/bahrain_project/BahrainAlamut.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/

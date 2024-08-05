@@ -26,7 +26,7 @@ workflow PGxWorkflow {
         input:
             input_cram = input_cram,
             input_crai = input_crai,
-            sample_id =sample_id,
+            sample_id = sample_id,
             accession_id = accession_id,
             test_code = test_code,
             reference_fasta = reference_fasta,

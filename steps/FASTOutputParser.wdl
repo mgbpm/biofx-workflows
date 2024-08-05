@@ -75,3 +75,35 @@ task FASTOutputParserTask {
         File nva_report = select_first([nva_report_xlsm, nva_report_xlsx])
     }
 }
+
+task MergeFASTExportsTask {
+    input {
+        Array[File] fast_export_files
+        String sourcename
+        String output_basename
+        String docker_image
+        Int disk_size = ceil(size(fast_export_files, "GB") * 2.2) + 10
+    }
+
+    command <<<
+        set -euxo pipefail
+
+        # List all unzipped FAST export files in a file
+        for c in '~{sep="' '" fast_export_files}'; do
+            echo $c >> merge_these_files.txt
+        done
+
+        # Merge all FAST export files
+        $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/merge_export_files.py \
+            --files-to-merge merge_these_files.txt --sourcename "~{sourcename}" --output-filename "~{output_basename}.txt"
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+    }
+
+    output {
+        File merged_fast_export = "~{output_basename}.txt"
+    }
+}
