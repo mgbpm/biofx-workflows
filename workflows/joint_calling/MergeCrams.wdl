@@ -181,6 +181,7 @@ task MergeCramsTask {
     File? input_cram_one
     File? input_cram_two
     String sample_name
+    String output_sample_name
 
     # Runtime parameters
     String docker
