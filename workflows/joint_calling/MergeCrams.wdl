@@ -29,6 +29,8 @@ workflow MergeCrams {
     String input_cram_1_index
     String input_cram_2
     String input_cram_2_index
+    String output_staging_bucket
+    String output_sample_name
 
     # reference genome files
     String reference_build = "GRCh38"
@@ -111,40 +113,54 @@ workflow MergeCrams {
         }
     }
 
-    #call CramToBamTask as CtbCramOne{
-    #    input:
-    #    input_cram = input_bam,
-    #    sample_name = sample_basename,
-    #    ref_dict = ref_dict,
-    #    ref_fasta = ref_fasta,
-    #    ref_fasta_index = ref_fasta_index,
-    #    docker = gitc_docker,
-    #    samtools_path = samtools_path
-    #}
-
-    #call CramToBamTask as CtbCramTwo{
-    #    input:
-    #    input_cram = input_bam,
-    #    sample_name = sample_basename,
-    #    ref_dict = ref_dict,
-    #    ref_fasta = ref_fasta,
-    #    ref_fasta_index = ref_fasta_index,
-    #    docker = gitc_docker,
-    #    samtools_path = samtools_path
-    #}
-
     call MergeCramsTask{
         input:
           input_cram_one = FetchCramOne.cram,
           input_cram_two = FetchCramTwo.cram,
           #sample_name = basename(input_cram_one),
           sample_name = sample_basename,
+          output_sample_name = output_sample_name,
           ref_dict = ref_dict,
           ref_fasta = ref_fasta,
           ref_fasta_index = ref_fasta_index,
           docker = gitc_docker,
           samtools_path = samtools_path
     }
+
+#push cram and index to gcp staging bucket
+  #Transfer cram to staging bucket
+  call FileUtils.CopyFilesTask as CopyCRAMToBucket {
+  input:
+      source_location = MergeCramsTask.output_cram,
+      file_types = [".cram"],
+      file_match_keys = [],
+      file_matchers = [],
+      target_location = output_staging_bucket,
+      flatten = false,
+      recursive = true,
+      verbose = true,
+      docker_image = orchutils_docker_image,
+      disk_size = 75,
+      gcp_project_id = gcp_project_id,
+      workspace_name = workspace_name,
+  }
+
+  #Transfer gvcf index to staging bucket
+  call FileUtils.CopyFilesTask as CopyCRAMIndexToBucket {
+  input:
+      source_location = MergeCramsTask.output_cram_index,
+      file_types = [".cram.crai"],
+      file_match_keys = [],
+      file_matchers = [],
+      target_location = output_staging_bucket,
+      flatten = false,
+      recursive = true,
+      verbose = true,
+      docker_image = orchutils_docker_image,
+      disk_size = 75,
+      gcp_project_id = gcp_project_id,
+      workspace_name = workspace_name,
+  }
 
   # Outputs that will be retained when execution is complete
   output {
@@ -204,15 +220,15 @@ task MergeCramsTask {
     #merge bams together
     echo "[`TZ="EST" date`] Merging bam 1: ~{sample_name}_one.bam"
     echo "[`TZ="EST" date`] With bam 2: ~{sample_name}_two.bam"
-    echo "[`TZ="EST" date`] Writing merged output to: ~{sample_name}.bam"
-    ~{samtools_path} merge --threads 4 -f ~{sample_name}.bam ~{sample_name}_one.bam ~{sample_name}_two.bam 
+    echo "[`TZ="EST" date`] Writing merged output to: ~{output_sample_name}.bam"
+    ~{samtools_path} merge --threads 4 -f ~{output_sample_name}.bam ~{sample_name}_one.bam ~{sample_name}_two.bam 
     echo "[`TZ="EST" date`] bam merge complete"
 
     #convert merged BAMS back to CRAM and generate index
     echo "[`TZ="EST" date`] converting merged bam to cram"
-    ~{samtools_path} view -C -T ~{ref_fasta} -o ~{sample_name}.cram ~{sample_name}.bam
-    ~{samtools_path} index -@ 4 -c ~{sample_name}.cram
-    mv ~{sample_name}.cram.crai ~{sample_name}.crai
+    ~{samtools_path} view -C -T ~{ref_fasta} -o ~{output_sample_name}.cram ~{output_sample_name}.bam
+    ~{samtools_path} index -@ 4 -c ~{output_sample_name}.cram
+    #mv ~{output_sample_name}.cram.crai ~{output_sample_name}.crai
     echo "[`TZ="EST" date`] ran merged bam to cram"
 
   }
