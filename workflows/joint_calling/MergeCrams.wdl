@@ -240,7 +240,7 @@ task MergeCramsTask {
     preemptible: select_first([preemptible_attempts, 2])
  }
   output {
-    File output_cram = "~{sample_name}.cram"
-    File output_cram_index = "~{sample_name}.crai"
+    File output_cram = "~{output_sample_name}.cram"
+    File output_cram_index = "~{output_sample_name}.crai"
   }
 }
