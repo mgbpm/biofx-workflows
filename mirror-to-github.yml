@@ -6,8 +6,17 @@ trigger:
     include:
     - '*'
 
+parameters:
+  - name: GitHubCredsVarGroup
+    displayName: Variable group containing the GitHubUser and GitHubPat
+    type: string
+    default: GITHUB_MIRROR_CREDENTIALS
+
 pool:
   vmImage: ubuntu-latest
+
+variables:
+  - group: "${{ parameters.GitHubCredsVarGroup }}"
 
 steps:
 - checkout: self
