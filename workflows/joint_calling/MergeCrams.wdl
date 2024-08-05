@@ -241,6 +241,6 @@ task MergeCramsTask {
  }
   output {
     File output_cram = "~{output_sample_name}.cram"
-    File output_cram_index = "~{output_sample_name}.crai"
+    File output_cram_index = "~{output_sample_name}.cram.crai"
   }
 }
