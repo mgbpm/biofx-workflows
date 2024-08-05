@@ -132,7 +132,7 @@ workflow MergeCrams {
   call FileUtils.CopyFilesTask as CopyCRAMToBucket {
   input:
       source_location = MergeCramsTask.output_cram,
-      file_types = [".cram"],
+      file_types = ["cram"],
       file_match_keys = [],
       file_matchers = [],
       target_location = output_staging_bucket,
@@ -149,7 +149,7 @@ workflow MergeCrams {
   call FileUtils.CopyFilesTask as CopyCRAMIndexToBucket {
   input:
       source_location = MergeCramsTask.output_cram_index,
-      file_types = [".cram.crai"],
+      file_types = ["cram.crai"],
       file_match_keys = [],
       file_matchers = [],
       target_location = output_staging_bucket,
