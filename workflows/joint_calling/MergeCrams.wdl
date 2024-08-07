@@ -194,7 +194,7 @@ task MergeCramsTask {
     Float output_bam_one_size = size(input_cram_one, "GB") / 0.40
     Float output_bam_two_size = size(input_cram_two, "GB") / 0.40
     Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB")
-    Int disk_size = ceil(size(input_cram_one, "GB") + size(input_cram_two, "GB") + output_bam_one_size + output_bam_two_size + ref_size + 20)
+    Int disk_size = ceil(size(input_cram_one, "GB") + size(input_cram_two, "GB") + output_bam_one_size + output_bam_two_size + ref_size + 100)
   
   command {
     set -e
@@ -235,7 +235,7 @@ task MergeCramsTask {
   }
   runtime {
     docker: docker
-    memory: select_first([machine_mem_gb, 15]) + " GB"
+    memory: select_first([machine_mem_gb, 30]) + " GB"
     disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
     preemptible: select_first([preemptible_attempts, 0])
  }
