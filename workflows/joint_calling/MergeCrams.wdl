@@ -200,37 +200,37 @@ task MergeCramsTask {
     set -e
     set -o pipefail
 
-    echo "[`TZ="EST" date`] PWD: $PWD"
+    echo "[`TZ="EDT" date`] PWD: $PWD"
 
     #run cram one to bam conversion
-    echo "[`TZ="EST" date`] converting cram 1 to bam"
+    echo "[`TZ="EDT" date`] converting cram 1 to bam"
     ~{samtools_path} view -h -T ~{ref_fasta} ~{input_cram_one} |
     ~{samtools_path} view -b -o ~{sample_name}_one.bam
     ~{samtools_path} index -b ~{sample_name}_one.bam
     mv ~{sample_name}_one.bam.bai ~{sample_name}_one.bai
-    echo "[`TZ="EST" date`] cram 1 to bam complete"
+    echo "[`TZ="EDT" date`] cram 1 to bam complete"
 
     #run cram two to bam conversion
-    echo "[`TZ="EST" date`] converting cram 2 to bam"
+    echo "[`TZ="EDT" date`] converting cram 2 to bam"
     ~{samtools_path} view -h -T ~{ref_fasta} ~{input_cram_two} |
     ~{samtools_path} view -b -o ~{sample_name}_two.bam
     ~{samtools_path} index -b ~{sample_name}_two.bam
     mv ~{sample_name}_two.bam.bai ~{sample_name}_two.bai
-    echo "[`TZ="EST" date`] cram 2 to bam complete"
+    echo "[`TZ="EDT" date`] cram 2 to bam complete"
 
     #merge bams together
-    echo "[`TZ="EST" date`] Merging bam 1: ~{sample_name}_one.bam"
-    echo "[`TZ="EST" date`] With bam 2: ~{sample_name}_two.bam"
-    echo "[`TZ="EST" date`] Writing merged output to: ~{output_sample_name}.bam"
+    echo "[`TZ="EDT" date`] Merging bam 1: ~{sample_name}_one.bam"
+    echo "[`TZ="EDT" date`] With bam 2: ~{sample_name}_two.bam"
+    echo "[`TZ="EDT" date`] Writing merged output to: ~{output_sample_name}.bam"
     ~{samtools_path} merge --threads 4 -f ~{output_sample_name}.bam ~{sample_name}_one.bam ~{sample_name}_two.bam 
-    echo "[`TZ="EST" date`] bam merge complete"
+    echo "[`TZ="EDT" date`] bam merge complete"
 
     #convert merged BAMS back to CRAM and generate index
-    echo "[`TZ="EST" date`] converting merged bam to cram"
+    echo "[`TZ="EDT" date`] converting merged bam to cram"
     ~{samtools_path} view -C -T ~{ref_fasta} -o ~{output_sample_name}.cram ~{output_sample_name}.bam
     ~{samtools_path} index -@ 4 -c ~{output_sample_name}.cram
     #mv ~{output_sample_name}.cram.crai ~{output_sample_name}.crai
-    echo "[`TZ="EST" date`] ran merged bam to cram"
+    echo "[`TZ="EDT" date`] ran merged bam to cram"
 
   }
   runtime {
