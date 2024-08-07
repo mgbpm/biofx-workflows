@@ -237,7 +237,7 @@ task MergeCramsTask {
     docker: docker
     memory: select_first([machine_mem_gb, 15]) + " GB"
     disks: "local-disk " + select_first([disk_space_gb, disk_size]) + if use_ssd then " SSD" else " HDD"
-    preemptible: select_first([preemptible_attempts, 2])
+    preemptible: select_first([preemptible_attempts, 0])
  }
   output {
     File output_cram = "~{output_sample_name}.cram"
