@@ -81,5 +81,9 @@ workflow ReblockGVCFandPush {
         File rb_vcf = Reblock.output_vcf
         File rb_vcf_index = Reblock.output_vcf_index
     }
+
+    meta {
+        allowNestedInputs: true
+    }
 }
 
