@@ -321,3 +321,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: EtcTemp
+    subclass: WDL
+    primaryDescriptorPath: /workflows/etc/Temp.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
