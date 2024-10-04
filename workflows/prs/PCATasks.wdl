@@ -4,37 +4,40 @@ version 1.0
 
 task PerformPCA {
   input {
-    File bim
-    File bed
-    File fam
+    File   bed
+    File   bim
+    File   fam
     String basename
-    Int mem = 8
-    Int nthreads = 16
+    Int    mem      = 8
+    Int    nthreads = 16
   }
 
   # again, based on Wallace commands
   command <<<
-    cp ~{bim} ~{basename}.bim
-    cp ~{bed} ~{basename}.bed
-    cp ~{fam} ~{basename}.fam
+    WORKDIR="$( mktemp --directory )"
+    PREFIX="${WORKDIR}/data"
 
-    ~/flashpca/flashpca \
-      --bfile ~{basename} \
-      -n ~{nthreads} \
-      -d 20 \
-      --outpc ~{basename}.pc \
-      --outpve ~{basename}.pc.variance \
-      --outload ~{basename}.pc.loadings \
-      --outmeansd ~{basename}.pc.meansd
+    ln --symbolic '~{bed}' "${PREFIX}.bed"
+    ln --symbolic '~{bim}' "${PREFIX}.bim"
+    ln --symbolic '~{fam}' "${PREFIX}.fam"
+
+    ~/flashpca/flashpca                      \
+      --bfile      "${PREFIX}"               \
+      --outpc      '~{basename}.pc'          \
+      --outpve     '~{basename}.pc.variance' \
+      --outload    '~{basename}.pc.loadings' \
+      --outmeansd  '~{basename}.pc.meansd'   \
+      --numthreads ~{nthreads}               \
+      --ndim       20
   >>>
 
   output {
-    File pcs = "~{basename}.pc"
-    File pc_variance = "~{basename}.pc.variance"
-    File pc_loadings = "~{basename}.pc.loadings"
-    File mean_sd = "~{basename}.pc.meansd"
+    File pcs          = "~{basename}.pc"
+    File pc_loadings  = "~{basename}.pc.loadings"
+    File mean_sd      = "~{basename}.pc.meansd"
+    File pc_variance  = "~{basename}.pc.variance"
     File eigenvectors = "eigenvectors.txt"
-    File eigenvalues = "eigenvalues.txt"
+    File eigenvalues  = "eigenvalues.txt"
   }
 
   runtime {

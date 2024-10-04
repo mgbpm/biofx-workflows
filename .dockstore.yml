@@ -337,3 +337,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: PRSMakeAdjustmentModel
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/MakeAdjustmentModel.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
