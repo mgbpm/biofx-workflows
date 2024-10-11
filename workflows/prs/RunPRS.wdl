@@ -6,9 +6,10 @@ import "Structs.wdl"
 workflow RunPRSWorkflow {
 
   input { 
+    File             query_vcf
+
     File             weights
     File             pca_variants
-    File             imputed_vcf
     File             reference_vcf
                      
     String           name
@@ -18,9 +19,9 @@ workflow RunPRSWorkflow {
 
   call Baseline
 
-  call ExtractVariants as ExtractImputedVariants {
+  call ExtractVariants as ExtractQueryVariants {
     input:
-      vcf = imputed_vcf
+      vcf = query_vcf
   }
 
   call ExtractVariants as ExtractReferenceVariants {
@@ -30,27 +31,27 @@ workflow RunPRSWorkflow {
 
   call GetRegions {
     input:
-      weights      = weights,
-      pca_variants = pca_variants,
-      imputed      = ExtractImputedVariants.variants,
-      reference    = ExtractReferenceVariants.variants
+        weights      = weights
+      , pca_variants = pca_variants
+      , query        = ExtractQueryVariants.variants
+      , reference    = ExtractReferenceVariants.variants
   }
 
-  if (defined(GetRegions.imputed_regions)) {
-    call SubsetVcf as SubsetImputedVcf {
+  if (defined(GetRegions.query_regions)) {
+    call SubsetVcf as SubsetQueryVcf {
       input:
-        inputvcf = imputed_vcf,
-        regions  = select_first([GetRegions.imputed_regions]),
-        label    = "imputed"
+          inputvcf = query_vcf
+        , regions  = select_first([GetRegions.query_regions])
+        , label    = "query"
     }
   }
 
   if (defined(GetRegions.reference_regions)) {
     call SubsetVcf as SubsetReferenceVcf {
       input:
-        inputvcf = reference_vcf,
-        regions  = select_first([GetRegions.reference_regions]),
-        label    = "reference"
+          inputvcf = reference_vcf
+        , regions  = select_first([GetRegions.reference_regions])
+        , label    = "reference"
     }
   }
 
@@ -59,8 +60,8 @@ workflow RunPRSWorkflow {
   }
 
   NamedWeightSet named_weight_set = object {
-    condition_name : name,
-    weight_set     : weight_set
+      condition_name : name
+    , weight_set     : weight_set
   }
 
   # Map[String, Int] memory_specs_default = {
@@ -72,40 +73,40 @@ workflow RunPRSWorkflow {
   #                                           "r_vcf_to_plink" : 64
   #                                         }
 
-  call ScoringPart.ScoringImputedDataset {
+  call ScoringPart.ScoringImputedDataset as ScoreQueryVcf {
     input:
 
-      named_weight_set                     = named_weight_set,
-      pruning_sites_for_pca                = pca_variants,
-      imputed_array_vcf                    = select_first([SubsetImputedVcf.result  , imputed_vcf  ]),
-      population_vcf                       = select_first([SubsetReferenceVcf.result, reference_vcf]),
-      redoPCA                              = true,
-      adjustScores                         = true,
+        named_weight_set                     = named_weight_set
+      , pruning_sites_for_pca                = pca_variants
+      , imputed_array_vcf                    = select_first([SubsetQueryVcf.result    , query_vcf    ])
+      , population_vcf                       = select_first([SubsetReferenceVcf.result, reference_vcf])
+      , redoPCA                              = true
+      , adjustScores                         = true
 
-      basename                             = name,
-      population_basename                  = "1kg",
+      , basename                             = name
+      , population_basename                  = "1kg"
 
-      # ExtractIDsPlink.mem                  = select_first([memory_specs        ["i_extract"],
-      #                                                      memory_specs_default["i_extract"]])
-      # scoring_mem                          = 16,
-      # vcf_to_plink_mem                     = 16,
-      # 
-      # ExtractIDsPopulation.mem             = 64,
-      # population_scoring_mem               = 64,
-      # PopulationArrayVcfToPlinkDataset.mem = 64
+      # , ExtractIDsPlink.mem                  = select_first([memory_specs        ["i_extract"]
+      #                                                        memory_specs_default["i_extract"]])
+      # , scoring_mem                          = 16
+      # , vcf_to_plink_mem                     = 16
+      #
+      # , ExtractIDsPopulation.mem             = 64
+      # , population_scoring_mem               = 64
+      # , PopulationArrayVcfToPlinkDataset.mem = 64
 
-      population_loadings                  = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE",
-      population_pcs                       = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE",
-      population_meansd                    = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
+      , population_loadings                  = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
+      , population_pcs                       = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
+      , population_meansd                    = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
   }
 
   output {
-    File    raw_scores                    = ScoringImputedDataset.raw_scores
-    Boolean fit_converged                 = select_first([ScoringImputedDataset.fit_converged])
-    File    adjusted_array_scores         = select_first([ScoringImputedDataset.adjusted_array_scores])
-    File    adjusted_population_scores    = select_first([ScoringImputedDataset.adjusted_population_scores])
-    File    pc_projection                 = select_first([ScoringImputedDataset.pc_projection])
-    File    pc_plot                       = select_first([ScoringImputedDataset.pc_plot])
+    File    raw_scores                    = ScoreQueryVcf.raw_scores
+    Boolean fit_converged                 = select_first([ScoreQueryVcf.fit_converged])
+    File    adjusted_array_scores         = select_first([ScoreQueryVcf.adjusted_array_scores])
+    File    adjusted_population_scores    = select_first([ScoreQueryVcf.adjusted_population_scores])
+    File    pc_projection                 = select_first([ScoreQueryVcf.pc_projection])
+    File    pc_plot                       = select_first([ScoreQueryVcf.pc_plot])
 
     # Int?    n_missing_sites_from_training = CompareScoredSitesToSitesUsedInTraining.n_missing_sites
     # File?   missing_sites_shifted_scores  = CombineMissingSitesAdjustedScores.missing_sites_shifted_scores
@@ -199,20 +200,46 @@ task ExtractVariants {
 
 task GetRegions {
   input {
-    File weights
-    File pca_variants
-    File imputed
-    File reference
+    File    weights
+    File    pca_variants
+    File    query
+    File    reference
+    Boolean debug        = false
   }
 
-  String OUTPUTDIR         = "OUTPUT"
-  String IMPUTED_REGIONS   = OUTPUTDIR + "/imputed_regions.tsv"
-  String REFERENCE_REGIONS = OUTPUTDIR + "/reference_regions.tsv"
-  String WARNINGS          = OUTPUTDIR + "/WARNINGS"
-  Int    storage           = 20 + 10 * ceil(  size(weights     , "GB")
-                                            + size(pca_variants, "GB")
-                                            + size(imputed     , "GB")
-                                            + size(reference   , "GB"))
+  String        WORKDIR           = "WORK"
+  String        ARCHIVE           = WORKDIR + ".tgz"
+  String        OUTPUTDIR         = "OUTPUT"
+  String        QUERY_REGIONS     = OUTPUTDIR + "/query_regions.tsv"
+  String        REFERENCE_REGIONS = OUTPUTDIR + "/reference_regions.tsv"
+  String        WARNINGS          = OUTPUTDIR + "/WARNINGS"
+  Array[String] WORKFILES         = [
+                                        WORKDIR + "/WEIGHTS"
+                                      , WORKDIR + "/PCA"
+                                      , WORKDIR + "/REFERENCE"
+                                      , WORKDIR + "/QUERY"
+                                      , WORKDIR + "/PQ"
+                                      , WORKDIR + "/PR"
+                                      , WORKDIR + "/NIXQ"
+                                      , WORKDIR + "/NIXR"
+                                      , WORKDIR + "/NIX"
+                                      , WORKDIR + "/WR"
+                                      , WORKDIR + "/WQ"
+                                      , WORKDIR + "/WR_U_WQ"
+                                      , WORKDIR + "/EXTRA"
+                                      , WORKDIR + "/PRQ"
+                                      , WORKDIR + "/WANTED"
+                                      , WORKDIR + "/QS"
+                                      , WORKDIR + "/RS"
+                                      , WORKDIR + "/QSP"
+                                      , WORKDIR + "/RSP"
+                                      , WORKDIR + "/REGIONS"
+                                    ]
+  Int           multiplier        = if debug then 20 else 10
+  Int           storage           = 20 + multiplier * ceil(  size(weights     , "GB")
+                                                           + size(pca_variants, "GB")
+                                                           + size(query       , "GB")
+                                                           + size(reference   , "GB"))
 
   command <<<
   set -o pipefail
@@ -230,17 +257,18 @@ task GetRegions {
 
   # ---------------------------------------------------------------------------
 
+  WORKDIR='~{WORKDIR}'
   OUTPUTDIR='~{OUTPUTDIR}'
   UNSORTEDWEIGHTS='~{weights}'     # weights file (with headers row)
   UNSORTEDPCA='~{pca_variants}'    # pca_variants file (no header row)
   UNSORTEDREFERENCE='~{reference}' # CHROM:POS:REF:ALT from reference vcf
-  UNSORTEDIMPUTED='~{imputed}'     # CHROM:POS:REF:ALT from imputed vcf
+  UNSORTEDQUERY='~{query}'         # CHROM:POS:REF:ALT from query vcf
 
   # ---------------------------------------------------------------------------
 
+  mkdir --verbose --parents "${WORKDIR}"
   mkdir --verbose --parents "${OUTPUTDIR}"
 
-  WORKDIR="$( mktemp --directory )"
   WIDTH=$(( ${#WORKDIR} + 10 ))
   TEMPLATE="Creating %-${WIDTH}s ... "
   unset WIDTH
@@ -248,7 +276,7 @@ task GetRegions {
   WEIGHTS="${WORKDIR}/WEIGHTS"
   PCA="${WORKDIR}/PCA"
   REFERENCE="${WORKDIR}/REFERENCE"
-  IMPUTED="${WORKDIR}/IMPUTED"
+  QUERY="${WORKDIR}/QUERY"
 
   printf -- "${TEMPLATE}" "${WEIGHTS}"
   # The perl segment of the following pipeline prints the first line only if
@@ -272,18 +300,18 @@ task GetRegions {
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${REFERENCE}"
-  sort --unique  "${UNSORTEDREFERENCE}" > "${REFERENCE}"
+  sort --unique "${UNSORTEDREFERENCE}" > "${REFERENCE}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${IMPUTED}"
-  sort --unique  "${UNSORTEDIMPUTED}"   > "${IMPUTED}"
+  printf -- "${TEMPLATE}" "${QUERY}"
+  sort --unique "${UNSORTEDQUERY}" > "${QUERY}"
   printf -- 'done\n'
 
   # ---------------------------------------------------------------------------
 
-  PI="${WORKDIR}/PI"
-  printf -- "${TEMPLATE}" "${PI}"
-  comm -1 -2 "${IMPUTED}" "${PCA}" > "${PI}"
+  PQ="${WORKDIR}/PQ"
+  printf -- "${TEMPLATE}" "${PQ}"
+  comm -1 -2 "${QUERY}" "${PCA}" > "${PQ}"
   printf -- 'done\n'
 
   PR="${WORKDIR}/PR"
@@ -291,24 +319,25 @@ task GetRegions {
   comm -1 -2 "${REFERENCE}" "${PCA}" > "${PR}"
   printf -- 'done\n'
 
-  NIXI="${WORKDIR}/NIXI"
-  printf -- "${TEMPLATE}" "${NIXI}"
-  comm -2 -3 "${PI}" "${PR}" > "${NIXI}"
+
+  NIXQ="${WORKDIR}/NIXQ"
+  printf -- "${TEMPLATE}" "${NIXQ}"
+  comm -2 -3 "${PQ}" "${PR}" > "${NIXQ}"
   printf -- 'done\n'
 
   NIXR="${WORKDIR}/NIXR"
   printf -- "${TEMPLATE}" "${NIXR}"
-  comm -2 -3 "${PR}" "${PI}" > "${NIXR}"
+  comm -2 -3 "${PR}" "${PQ}" > "${NIXR}"
   printf -- 'done\n'
 
-  # if ! [[ -s ${NIXI} ]] && ! [[ -s ${NIXR} ]]
+  # if ! [[ -s ${NIXQ} ]] && ! [[ -s ${NIXR} ]]
   # then
   #     exit 0
   # fi
 
   NIX="${WORKDIR}/NIX"
   printf -- "${TEMPLATE}" "${NIX}"
-  sort "${NIXI}" "${NIXR}" > "${NIX}"
+  sort "${NIXQ}" "${NIXR}" > "${NIX}"
   printf -- 'done\n'
 
   if [[ -s ${NIX} ]]
@@ -331,11 +360,11 @@ task GetRegions {
               local nixx="${1}"
               local label0="${2}"
               local label1
-              if [[ ${label0} == imputed ]]
+              if [[ ${label0} == query ]]
               then
                   label1=reference
               else
-                  label1=imputed
+                  label1=query
               fi
               if [[ -s ${nixx} ]]
               then
@@ -355,7 +384,7 @@ task GetRegions {
           }
 
           exec >>'~{WARNINGS}'
-          maybewarn "${NIXI}" imputed
+          maybewarn "${NIXQ}" query
           maybewarn "${NIXR}" reference
       )
   fi
@@ -363,64 +392,64 @@ task GetRegions {
   # ---------------------------------------------------------------------------
 
   WR="${WORKDIR}/WR"
-  WI="${WORKDIR}/WI"
-  WR_U_WI="${WORKDIR}/WR_U_WI"
+  WQ="${WORKDIR}/WQ"
+  WR_U_WQ="${WORKDIR}/WR_U_WQ"
   EXTRA="${WORKDIR}/EXTRA"
-  PRI="${WORKDIR}/PRI"
+  PRQ="${WORKDIR}/PRQ"
   WANTED="${WORKDIR}/WANTED"
 
   printf -- "${TEMPLATE}" "${WR}"
   comm -1 -2 "${REFERENCE}" "${WEIGHTS}" > "${WR}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${WI}"
-  comm -1 -2 "${IMPUTED}"   "${WEIGHTS}" > "${WI}"
+  printf -- "${TEMPLATE}" "${WQ}"
+  comm -1 -2 "${QUERY}" "${WEIGHTS}" > "${WQ}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${WR_U_WI}"
-  sort --unique "${WR}" "${WI}" > "${WR_U_WI}"
+  printf -- "${TEMPLATE}" "${WR_U_WQ}"
+  sort --unique "${WR}" "${WQ}" > "${WR_U_WQ}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${EXTRA}"
-  comm -2 -3 "${WR_U_WI}" "${NIX}" > "${EXTRA}"
+  comm -2 -3 "${WR_U_WQ}" "${NIX}" > "${EXTRA}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${PRI}"
-  comm -1 -2 "${PR}" "${PI}" > "${PRI}"
+  printf -- "${TEMPLATE}" "${PRQ}"
+  comm -1 -2 "${PR}" "${PQ}" > "${PRQ}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${WANTED}"
-  sort --unique "${PRI}" "${EXTRA}" > "${WANTED}"
+  sort --unique "${PRQ}" "${EXTRA}" > "${WANTED}"
   printf -- 'done\n'
 
   # ---------------------------------------------------------------------------
 
-  IS="${WORKDIR}/IS"
+  QS="${WORKDIR}/QS"
   RS="${WORKDIR}/RS"
-  ISP="${WORKDIR}/ISP"
+  QSP="${WORKDIR}/QSP"
   RSP="${WORKDIR}/RSP"
 
-  printf -- "${TEMPLATE}" "${IS}"
-  comm -1 -2 "${IMPUTED}"   "${WANTED}" > "${IS}"
+  printf -- "${TEMPLATE}" "${QS}"
+  comm -1 -2 "${QUERY}" "${WANTED}" > "${QS}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${RS}"
   comm -1 -2 "${REFERENCE}" "${WANTED}" > "${RS}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${ISP}"
-  comm -1 -2 "${PCA}" "${IS}" > "${ISP}"
+  printf -- "${TEMPLATE}" "${QSP}"
+  comm -1 -2 "${PCA}" "${QS}" > "${QSP}"
   printf -- 'done\n'
   printf -- "${TEMPLATE}" "${RSP}"
   comm -1 -2 "${PCA}" "${RS}" > "${RSP}"
   printf -- 'done\n'
 
-  if ! diff "${ISP}" "${RSP}" > /dev/null
+  if ! diff "${QSP}" "${RSP}" > /dev/null
   then
       (
           exec >&2
           printf -- 'INTERNAL ERROR: UNEXPECTED MISMATCHES:'
-          diff "${ISP}" "${RSP}" || true
+          diff "${QSP}" "${RSP}" || true
       )
       exit 1
   fi
@@ -440,15 +469,28 @@ task GetRegions {
     > "${REGIONS}"
   printf -- 'done\n'
 
-  # if [[ -s ${NIXI} ]]
+  # if [[ -s ${NIXQ} ]]
   # then
-  #     cp "${REGIONS}" '~{IMPUTED_REGIONS}'
+  #     cp "${REGIONS}" '~{QUERY_REGIONS}'
   # fi
-  cp "${REGIONS}" '~{IMPUTED_REGIONS}'
+  cp "${REGIONS}" '~{QUERY_REGIONS}'
 
   if [[ -s ${NIXR} ]]
   then
       cp "${REGIONS}" '~{REFERENCE_REGIONS}'
+  fi
+
+  printf -- '\n\n## WORKDIR:\n'
+  find '~{WORKDIR}' -type f | xargs ls -ltr
+
+  if ~{if debug then "true" else "false"}
+  then
+      tar -cvzf '~{ARCHIVE}' '~{WORKDIR}'
+      (
+          exec >&2
+          printf -- '\n\n### LINE COUNTS:\n'
+          find '~{WORKDIR}' -type f | xargs ls -1tr | xargs wc --lines
+      )
   fi
 
   # ---------------------------------------------------------------------------
@@ -457,13 +499,23 @@ task GetRegions {
   df --human
 
   # ---------------------------------------------------------------------------
+
+  if ~{if !debug then "true" else "false"}
+  then
+      rm -rf '~{WORKDIR}'
+  fi
+
+  # ---------------------------------------------------------------------------
   >>>
 
   output {
-    # File? IMPUTED_REGIONS
-    File  imputed_regions   = IMPUTED_REGIONS
-    File? reference_regions = REFERENCE_REGIONS
-    File? warnings          = WARNINGS
+    # File? QUERY_REGIONS
+    File         query_regions     = QUERY_REGIONS
+    File?        reference_regions = REFERENCE_REGIONS
+    File?        warnings          = WARNINGS
+
+    Array[File?] workfiles         = WORKFILES
+    File?        workfiles_tgz     = ARCHIVE
   }
 
   runtime {
