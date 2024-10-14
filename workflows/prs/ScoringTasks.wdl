@@ -49,7 +49,7 @@ task ScoreVcf {
     # ------------------------------------------------------------------------
     ### DEV END ###
     /plink2 --score ~{weights} header ignore-dup-ids list-variants no-mean-imputation \
-    cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --allow-extra-chr ~{extra_args} -vcf ~{vcf} \
+    cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --set-all-var-ids '@:#:$r:$a' --allow-extra-chr ~{extra_args} -vcf ~{vcf} \
     --new-id-max-allele-len 1000 missing ~{"--extract " + sites} --out ~{basename} --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
   >>>
 
@@ -667,6 +667,7 @@ task ExtractIDsPlink {
   command <<<
     /plink2 \
       --vcf ~{vcf} \
+      --set-all-var-ids '@:#:$r:$a' \
       --new-id-max-allele-len 1000 missing \
       --rm-dup exclude-all \
       --allow-extra-chr \
