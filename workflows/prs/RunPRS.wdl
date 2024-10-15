@@ -1,6 +1,7 @@
 version 1.0
 
 import "ScoringPart.wdl"
+import "ScoringTasks.wdl"
 import "Structs.wdl"
 
 workflow RunPRSWorkflow {
@@ -19,12 +20,12 @@ workflow RunPRSWorkflow {
 
   call Baseline
 
-  call ExtractVariants as ExtractQueryVariants {
+  call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
     input:
       vcf = query_vcf
   }
 
-  call ExtractVariants as ExtractReferenceVariants {
+  call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
     input:
       vcf = reference_vcf
   }
@@ -33,8 +34,8 @@ workflow RunPRSWorkflow {
     input:
         weights      = weights
       , pca_variants = pca_variants
-      , query        = ExtractQueryVariants.variants
-      , reference    = ExtractReferenceVariants.variants
+      , query        = ExtractQueryVariants.ids
+      , reference    = ExtractReferenceVariants.ids
   }
 
   if (defined(GetRegions.query_regions)) {
@@ -142,61 +143,6 @@ task Baseline {
 }
 
 # -------------------------------------------------------------------------------
-
-task ExtractVariants {
-  input {
-    File vcf
-  }
-
-  String OUTPUTDIR = "OUTPUT"
-  String OUTPUT    = OUTPUTDIR + "/variants.txt"
-  Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
-
-  command <<<
-  set -o pipefail
-  set -o errexit
-  set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
-
-  # ---------------------------------------------------------------------------
-
-  printf -- 'SPECIFIED STORAGE: %d GB\n\n' '~{storage}'
-  printf -- 'INITIAL STORAGE UTILIZATION:\n'
-  df --human
-  printf -- '\n'
-
-  # ---------------------------------------------------------------------------
-
-  mkdir --verbose --parents '~{OUTPUTDIR}'
-
-  zcat --force '~{vcf}'    \
-    | grep                 \
-          --invert-match   \
-          --perl-regexp    \
-          '^#'             \
-    | cut --fields=1,2,4,5 \
-    | tr $'\t' :           \
-    > '~{OUTPUT}'
-
-  # ---------------------------------------------------------------------------
-
-  printf -- 'FINAL STORAGE UTILIZATION:\n'
-  df --human
-
-  # ---------------------------------------------------------------------------
-  >>>
-
-  output {
-    File variants = OUTPUT
-  }
-
-  runtime {
-    docker: "ubuntu:21.10"
-    disks : "local-disk ~{storage} HDD"
-  }
-}
-
 
 task GetRegions {
   input {
