@@ -345,3 +345,11 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: PRSPerformPopulationPCA
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/PerformPopulationPCA.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - ignore-all-tags
