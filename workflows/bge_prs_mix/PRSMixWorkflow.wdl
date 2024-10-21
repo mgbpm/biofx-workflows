@@ -99,7 +99,7 @@ workflow PRSMixWorkflow {
 			population_pcs = PerformPCA.pcs,
 			target_pcs = ProjectArray.projections
 	}
-	if (!select_first([CheckPopulationIdsValid.files_are_valid, true])) {
+	if (!select_first([CheckPopulationIds.files_are_valid, true])) {
 		call ErrorWithMessage {
 			input:
 			message = "Population VCF IDs are not a subset of the population PCA IDs; running with these inputs would give an incorrect result."
