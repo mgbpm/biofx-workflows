@@ -1,7 +1,7 @@
 version 1.0
 
 import "../lowpassimputation/Glimpse2Imputation.wdl"
-#import "PRSWDL"
+import "PRSMixWorkflow.wdl"
 
 workflow BGEPRSWorkflow {
 	input {
@@ -26,10 +26,10 @@ workflow BGEPRSWorkflow {
 		File? glimpse_monitoring_script
 
 		# PRS inputs
-		#Array[File] var_weights
-		#File score_weights
-		#File adjustment_model
-		#String disease
+		Array[File] var_weights
+		File score_weight
+		File population_vcf
+		File pruning_sites_for_pca
 	}
 
 	# Run GLIMPSE to get imputed low-pass variants
@@ -57,24 +57,16 @@ workflow BGEPRSWorkflow {
 			monitoring_script = glimpse_monitoring_script
 	}
 
-	# Run PRS for each variant weights file
-	scatter (i in range(length(var_weights))) {
-		# call PRSWDL as RunPRS {}
+	# Run PRS Mix Workflow
+	call PRSMixWorkflow as RunPRSMix {
+		input:
+			imputed_vcf = RunGlimpse.imputed_vcf,
+			imputed_vcf_index = RunGlimpse.imputed_vcf_index
+			var_weights = var_weights,
+			score_weight = score_weight,
+			population_vcf = population_vcf,
+			pruning_sites_for_pca = pruning_sites_for_pca
 	}
-
-	# Find weighted average of PRS raw scores
-	#call AverageScores {
-		#input:
-			#score_weights_file = score_weights,
-			#prs_raw_scores = RunPRS.raw_score
-	#}
-
-	# Adjust raw score with Ancestry Adjustment Model
-	#call AdjustScores {
-		#input:
-			#prs_raw_scores = AverageScores.weighted_avg_score
-	#}
-
 
 	# For each disease...
 		# Bin individuals based on thresholds
@@ -89,8 +81,9 @@ workflow BGEPRSWorkflow {
         File? glimpse_ligate_monitoring = RunGlimpse.glimpse_ligate_monitoring
 
 		# PRS Outputs
-		# File raw_scores = AverageScores.weighted_avg_score
-		# File adjusted_scores = AdjustScores.adjusted_score
+		File prs_mix_adjusted_score = RunPRSMix.adjusted_scores
+		File pc_projection = RunPRSMix.pc_projection
+		File pc_plot = RunPRSMix.pc_plot
 
 		# Individual Outputs
 		#Int/String individual_bin
