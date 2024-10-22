@@ -6,27 +6,30 @@ import "https://raw.githubusercontent.com/broadinstitute/palantir-workflows/refs
 workflow PRSMixWorkflow {
 	input {
 		# Scoring inputs
-		File imputed_vcf
-		File imputed_vcf_idx
+		File input_vcf
+		File input_vcf_idx
 		Array[File] var_weights
+		String population_basename
 		# PRS Mix inputs
 		File score_weight
 		# Adjustment inputs
-		File population_vcf
+		File population_loadings
+		File population_meansd
+		File population_pcs
 		File pruning_sites_for_pca
 		String ubuntu_docker_image = "ubuntu:21.10"
 	}
 
 	# Scatter over the files within the zipped file and run scoring on each
 	scatter (i in range(length(var_weights))) {
-		String output_basename = sub(basename(var_weights[i]), "txt", "")
+		String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + population_basename
 		call ScoringTasks.DetermineChromosomeEncoding as DetermineChrEncoding {
 			input:
 				weights = var_weights[i]
 		}
 		call ScoringTasks.ScoreVcf as ScoreImputedVCF {
 			input:
-				vcf = imputed_vcf,
+				vcf = input_vcf,
 				basename = output_basename,
 				weights = var_weights[i],
 				base_mem = 16,
@@ -44,25 +47,9 @@ workflow PRSMixWorkflow {
 	# Adjust raw PRS Mix score
 	call ScoringTasks.ExtractIDsPlink {
 		input:
-			vcf = imputed_vcf,
+			vcf = input_vcf,
 			chromosome_encoding = DetermineChrEncoding.chromosome_encoding,
 			mem = 8
-	}
-	call PCATasks.ArrayVcfToPlinkDataset as PopulationArrayVcfToPlinkDataset {
-		input:
-			vcf = population_vcf,
-			pruning_sites = pruning_sites_for_pca,
-			subset_to_sites = ExtractIDsPlink.ids,
-			basename = "population",
-			use_ref_alt_for_ids = use_ref_alt_for_ids,
-			chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding
-	}
-	call PCATasks.PerformPCA {
-	  input:
-		bim = PopulationArrayVcfToPlinkDataset.bim,
-		bed = PopulationArrayVcfToPlinkDataset.bed,
-		fam = PopulationArrayVcfToPlinkDataset.fam,
-		basename = basename
 	}
 	call PCATasks.ArrayVcfToPlinkDataset {
 		input:
@@ -73,16 +60,10 @@ workflow PRSMixWorkflow {
 		use_ref_alt_for_ids = use_ref_alt_for_ids,
 		chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding
 	}
-	call CheckPopulationIds {
-		input:
-			pop_vcf_ids = ExtractIDsPopulation.ids,
-			pop_pc_loadings = PerformPCA.pc_loadings,
-			docker_image = ubuntu_docker_image
-	}
 	call PCATasks.ProjectArray {
 		input:
-			pc_loadings = PerformPCA.pc_loadings
-			pc_meansd = PerformPCA.mean_sd,
+			pc_loadings = population_loadings
+			pc_meansd = population_meansd,
 			bed = ArrayVcfToPlinkDataset.bed,
 			bim = ArrayVcfToPlinkDataset.bim,
 			fam = ArrayVcfToPlinkDataset.fam,
@@ -96,18 +77,12 @@ workflow PRSMixWorkflow {
 	}
 	call ScoringTasks.MakePCAPlot {
 		input:
-			population_pcs = PerformPCA.pcs,
+			population_pcs = population_pcs,
 			target_pcs = ProjectArray.projections
-	}
-	if (!select_first([CheckPopulationIds.files_are_valid, true])) {
-		call ErrorWithMessage {
-			input:
-			message = "Population VCF IDs are not a subset of the population PCA IDs; running with these inputs would give an incorrect result."
-		}
 	}
 
 	output {
-		# Scores
+		# PRS Scores
 		Array[File] prs_raw_scores = ScoreImputedVCF.score
 		Array[File] prs_raw_scores_log = ScoreImputedVCF.log
     	Array[File] prs_raw_sites_scored = ScoreImputedVCF.sites_scored
