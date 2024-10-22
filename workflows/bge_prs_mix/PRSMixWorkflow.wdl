@@ -120,32 +120,3 @@ task CalculateMixScore {
 		File prs_mix_raw_score = "temp"
 	}
 }
-
-task CheckPopulationIds {
-	input {
-		File pop_vcf_ids
-		File pop_pc_loadings
-		String docker_image
-	}
-	command <<<
-		# check if population VCF file contains a subset of population PC loading ids
-
-		# 1. extract IDs, removing first rows of the pc files
-		awk '{print $1}' ~{pop_pc_loadings} | tail -n +2 > pop__pc_ids.txt
-
-		comm -23 <(sort pop_pc_ids.txt | uniq) <(sort ~{pop_vcf_ids} | uniq) > array_specific_ids.txt
-		if [[ -s array_specific_ids.txt ]]
-		then
-		echo false
-		else
-		echo true
-		fi
-
-	>>>
-	output {
-		Boolean files_are_valid = read_boolean(stdout())
-	}
-	runtime {
-		docker: "~{docker_image}"
-	}
-}
