@@ -227,7 +227,7 @@ task GetRegions {
   printf -- "${TEMPLATE}" "${WEIGHTS}"
   # The perl segment of the following pipeline prints the first line only if
   # it ends in a numeric expression (i.e. the file does not have a headers row)
-  cut --fields=1 "${UNSORTEDWEIGHTS}"       \
+  cut --fields=1 "${UNSORTEDWEIGHTS}"        \
     | perl -lne '
         BEGIN {
           $::WEIGHT = qr/
@@ -236,13 +236,18 @@ task GetRegions {
              (?:[eE][+-]?\d+)?\b
           /x;
         }
-        print if $. > 1 || /$::WEIGHT\s*$/' \
-    | sort --unique                         \
+        next if $. == 1 && !/$::WEIGHT\s*$/;
+        s/^chr//i;
+        print'                               \
+    | sort --unique                          \
     > "${WEIGHTS}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${PCA}"
-  cut --fields=1 "${UNSORTEDPCA}" | sort --unique > "${PCA}"
+  cut --fields=1 "${UNSORTEDPCA}" \
+    | perl -lpe 's/^chr//i'       \
+    | sort --unique               \
+    > "${PCA}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${REFERENCE}"
