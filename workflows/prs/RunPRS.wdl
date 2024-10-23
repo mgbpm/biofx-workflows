@@ -227,7 +227,7 @@ task GetRegions {
   printf -- "${TEMPLATE}" "${WEIGHTS}"
   # The perl segment of the following pipeline prints the first line only if
   # it ends in a numeric expression (i.e. the file does not have a headers row)
-  cut --fields=1 "${UNSORTEDWEIGHTS}"       \
+  cut --fields=1 "${UNSORTEDWEIGHTS}"        \
     | perl -lne '
         BEGIN {
           $::WEIGHT = qr/
@@ -236,13 +236,18 @@ task GetRegions {
              (?:[eE][+-]?\d+)?\b
           /x;
         }
-        print if $. > 1 || /$::WEIGHT\s*$/' \
-    | sort --unique                         \
+        next if $. == 1 && !/$::WEIGHT\s*$/;
+        s/^chr//i;
+        print'                               \
+    | sort --unique                          \
     > "${WEIGHTS}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${PCA}"
-  cut --fields=1 "${UNSORTEDPCA}" | sort --unique > "${PCA}"
+  cut --fields=1 "${UNSORTEDPCA}" \
+    | perl -lpe 's/^chr//i'       \
+    | sort --unique               \
+    > "${PCA}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${REFERENCE}"
@@ -421,10 +426,11 @@ task GetRegions {
   # fi
   cp "${REGIONS}" '~{QUERY_REGIONS}'
 
-  if [[ -s ${NIXR} ]]
-  then
-      cp "${REGIONS}" '~{REFERENCE_REGIONS}'
-  fi
+  # if [[ -s ${NIXR} ]]
+  # then
+  #     cp "${REGIONS}" '~{REFERENCE_REGIONS}'
+  # fi
+  cp "${REGIONS}" '~{REFERENCE_REGIONS}'
 
   printf -- '\n\n## WORKDIR:\n'
   find '~{WORKDIR}' -type f | xargs ls -ltr
@@ -542,6 +548,7 @@ task SubsetVcf {
             q(:),
             @::F[ 0, 1, 3, 4 ]
           );
+          $::F[ 2 ] =~ s/^chr//i;
           print @::F;
         }
       '
