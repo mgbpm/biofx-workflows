@@ -227,7 +227,7 @@ task GetRegions {
   printf -- "${TEMPLATE}" "${WEIGHTS}"
   # The perl segment of the following pipeline prints the first line only if
   # it ends in a numeric expression (i.e. the file does not have a headers row)
-  cut --fields=1 "${UNSORTEDWEIGHTS}"       \
+  cut --fields=1 "${UNSORTEDWEIGHTS}"        \
     | perl -lne '
         BEGIN {
           $::WEIGHT = qr/
@@ -236,13 +236,18 @@ task GetRegions {
              (?:[eE][+-]?\d+)?\b
           /x;
         }
-        print if $. > 1 || /$::WEIGHT\s*$/' \
-    | sort --unique                         \
+        next if $. == 1 && !/$::WEIGHT\s*$/;
+        s/^chr//i;
+        print'                               \
+    | sort --unique                          \
     > "${WEIGHTS}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${PCA}"
-  cut --fields=1 "${UNSORTEDPCA}" | sort --unique > "${PCA}"
+  cut --fields=1 "${UNSORTEDPCA}" \
+    | perl -lpe 's/^chr//i'       \
+    | sort --unique               \
+    > "${PCA}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${REFERENCE}"
@@ -554,11 +559,50 @@ task SubsetVcf {
       POSTPROCESS=cleanup
   fi
 
+  # --------------------------------------------------------------------------
+
+  # WARNING: the code in the section below will adjust the regions to be used
+  # by the first `bcftools view` command IF the value in the first column of
+  # inputvcf's first row begins with a prefix like chr, or CHR, etc.  This
+  # heuristic will yield an incorrect subset VCF if inputvcf does not use a
+  # consistent convention for the CHROM column across all its rows.
+
+  setprefix() {
+      local candidate="$(
+          zcat --force '~{inputvcf}' \
+            | grep                   \
+                  --max-count=1      \
+                  --after-context=1  \
+                  '^#CHROM'          \
+            | tail --lines=1         \
+            | cut --characters=1-3
+      )"
+      if [[ ${candidate,,} == 'chr' ]]
+      then
+          export PREFIX="${candidate}"
+      else
+          export PREFIX=''
+      fi
+  }
+
+  setprefix
+  if [[ -n ${PREFIX} ]]
+  then
+      REGIONS="${WORKDIR}/regions_with_prefix.txt"
+      perl -lpe 's/^/'"${PREFIX}"'/' '~{regions}' > "${REGIONS}"
+  else
+      REGIONS='~{regions}'
+  fi
+  unset PREFIX
+
+  # --------------------------------------------------------------------------
+
+
   bcftools                             \
       view                             \
       --no-version                     \
       --output-type v                  \
-      --regions-file '~{regions}'      \
+      --regions-file "${REGIONS}"      \
       "${INPUTVCF}"                    \
     | "${POSTPROCESS}"                 \
     | bcftools                         \
