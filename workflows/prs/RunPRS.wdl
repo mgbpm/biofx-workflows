@@ -162,18 +162,18 @@ task GetRegions {
   Array[String] WORKFILES         = [
                                         WORKDIR + "/WEIGHTS"
                                       , WORKDIR + "/PCA"
-                                      , WORKDIR + "/REFERENCE"
                                       , WORKDIR + "/QUERY"
+                                      , WORKDIR + "/REFERENCE"
                                       , WORKDIR + "/PQ"
                                       , WORKDIR + "/PR"
                                       , WORKDIR + "/NIXQ"
                                       , WORKDIR + "/NIXR"
                                       , WORKDIR + "/NIX"
-                                      , WORKDIR + "/WR"
                                       , WORKDIR + "/WQ"
-                                      , WORKDIR + "/WR_U_WQ"
+                                      , WORKDIR + "/WR"
+                                      , WORKDIR + "/WQ_U_WR"
                                       , WORKDIR + "/EXTRA"
-                                      , WORKDIR + "/PRQ"
+                                      , WORKDIR + "/PQR"
                                       , WORKDIR + "/WANTED"
                                       , WORKDIR + "/QS"
                                       , WORKDIR + "/RS"
@@ -339,9 +339,9 @@ task GetRegions {
 
   WR="${WORKDIR}/WR"
   WQ="${WORKDIR}/WQ"
-  WR_U_WQ="${WORKDIR}/WR_U_WQ"
+  WQ_U_WR="${WORKDIR}/WQ_U_WR"
   EXTRA="${WORKDIR}/EXTRA"
-  PRQ="${WORKDIR}/PRQ"
+  PQR="${WORKDIR}/PQR"
   WANTED="${WORKDIR}/WANTED"
 
   printf -- "${TEMPLATE}" "${WR}"
@@ -352,20 +352,20 @@ task GetRegions {
   comm -1 -2 "${QUERY}" "${WEIGHTS}" > "${WQ}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${WR_U_WQ}"
-  sort --unique "${WR}" "${WQ}" > "${WR_U_WQ}"
+  printf -- "${TEMPLATE}" "${WQ_U_WR}"
+  sort --unique "${WQ}" "${WR}" > "${WQ_U_WR}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${EXTRA}"
-  comm -2 -3 "${WR_U_WQ}" "${NIX}" > "${EXTRA}"
+  comm -2 -3 "${WQ_U_WR}" "${NIX}" > "${EXTRA}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${PRQ}"
-  comm -1 -2 "${PR}" "${PQ}" > "${PRQ}"
+  printf -- "${TEMPLATE}" "${PQR}"
+  comm -1 -2 "${PQ}" "${PR}" > "${PQR}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${WANTED}"
-  sort --unique "${PRQ}" "${EXTRA}" > "${WANTED}"
+  sort --unique "${PQR}" "${EXTRA}" > "${WANTED}"
   printf -- 'done\n'
 
   # ---------------------------------------------------------------------------
