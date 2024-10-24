@@ -11,7 +11,7 @@ workflow PRSMixWorkflow {
 		Array[File] var_weights
 		String population_basename
 		# PRS Mix inputs
-		File score_weight
+		File score_weights
 		# Adjustment inputs
 		File population_loadings
 		File population_meansd
@@ -21,8 +21,9 @@ workflow PRSMixWorkflow {
 	}
 
 	# Scatter over the files within the zipped file and run scoring on each
+	String sample_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
 	scatter (i in range(length(var_weights))) {
-		String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + population_basename
+		String var_weight_basename = sub(basename(var_weights), ".txt", "")
 		call ScoringTasks.DetermineChromosomeEncoding as DetermineChrEncoding {
 			input:
 				weights = var_weights[i]
@@ -30,7 +31,7 @@ workflow PRSMixWorkflow {
 		call ScoringTasks.ScoreVcf as ScoreImputedVCF {
 			input:
 				vcf = input_vcf,
-				basename = output_basename,
+				basename = var_weight_basename + "_" + sample_basename,
 				weights = var_weights[i],
 				base_mem = 16,
 				chromosome_encoding = DetermineChrEncoding.chromosome_encoding,
@@ -41,10 +42,11 @@ workflow PRSMixWorkflow {
 	call CalculateMixScore {
 		input:
 			raw_scores = ScoreImputedVCF.score,
-			score_weight = score_weight
+			score_weights = score_weights,
+			output_basename = sample_basename
 	}
 
-	# Adjust raw PRS Mix score
+	# Calculate PCA for individual
 	call ScoringTasks.ExtractIDsPlink {
 		input:
 			vcf = input_vcf,
@@ -69,18 +71,20 @@ workflow PRSMixWorkflow {
 			fam = ArrayVcfToPlinkDataset.fam,
 			basename = "pca"
 	}
-	call ScoringTasks.AdjustScores {
-		input:
-			fitted_model_params = fitted_params_for_model,
-			pcs = ProjectArray.projections,
-			scores = CalculateMixScore.prs_mix_raw_score
-	}
 	call ScoringTasks.MakePCAPlot {
 		input:
 			population_pcs = population_pcs,
 			target_pcs = ProjectArray.projections
 	}
 
+	# Adjust score with model and PCA
+	call ScoringTasks.AdjustScores {
+		input:
+			fitted_model_params = fitted_params_for_model,
+			pcs = ProjectArray.projections,
+			scores = CalculateMixScore.prs_mix_raw_score
+	}
+	
 	output {
 		# PRS Scores
 		Array[File] prs_raw_scores = ScoreImputedVCF.score
@@ -97,15 +101,48 @@ workflow PRSMixWorkflow {
 task CalculateMixScore {
 	input {
 		Array[File] raw_scores
-		File score_weight
+		Int raw_scores_len = length(raw_scores)
+		File score_weights
+		String output_basename
 		String docker_image
-		Int disk_size = ceil(size(score_weights_file, "GB")) + 10
+		Int disk_size = ceil(size(score_weightss_file, "GB")) + 10
 		Int mem_size = 2
 		Int preemptible = 1
 	}
 
 	command <<<
 
+		sum_of_ad_sum_col=0
+		sum_of_score_avg_col=0
+		sum_of_score_sum_col=0
+
+		for c in '~{sep="' '" raw_scores}'
+		do
+			# Get the PGS ID and "IID" column from the var weight file
+			pgs_id=$(basename $c .txt | cut -d "_" -f 1)
+			iid=$(head -n 2 $c | tail -1 | cute -d "\t" -f 1)
+			# Get the weight for the PGS ID in the score weight file
+			score_weight=$(grep ${pgs_id} "~{score_weights}" | cut -d "\t" -f 1)
+			# Extract the "NAMED_ALLELE_DOSAGE_SUM"/2nd column from the raw score file
+			ad_sum=$(head -n 2 $c | tail -1 | cute -d "\t" -f 2)
+			# Extract the "SCORE1_AVG"/3rd column from raw score file
+			score_avg=$(head -n 2 $c | tail -1 | cute -d "\t" -f 3)
+			# Extract the "SCORE1_SUM"/4th column from raw score file
+			score_sum=$(head -n 2 $c | tail -1 | cute -d "\t" -f 4)
+			# Multiply each column by weight and add to corresponding sum counters
+			sum_of_ad_sum_col=$((($ad_sum * $score_weight) + $sum_of_ad_sum_col))
+			sum_of_score_avg_col=$((($score_avg * $score_weight) + $sum_of_score_avg_col))
+			sum_of_score_sum_col=$((($score_sum * $score_weight) + $sum_of_score_sum_col))
+		done
+
+		# Get weighted average for both score_avg and score_sum columns
+		weighted_ad_sum=$(($sum_of_ad_sum_col / "~{raw_scores_len}"))
+		weighted_score_avg=$(($sum_of_score_avg_col / "~{raw_scores_len}"))
+		weighted_score_sum=$(($sum_of_score_sum_col / "~{raw_scores_len}"))
+
+		# Report the weighted averages in a format similar to raw scores files
+		printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}_prs_mix_score.sscore"
+		printf "${iid}\t$weighted_ad_sum\t$weighted_score_avg\t$weighted_score_sum\n" >> "~{output_basename}_prs_mix_score.sscore"
 
 	>>>
 
@@ -117,6 +154,6 @@ task CalculateMixScore {
 	}
 
 	output {
-		File prs_mix_raw_score = "temp"
+		File prs_mix_raw_score = "~{output_basename}_prs_mix_score.sscore"
 	}
 }
