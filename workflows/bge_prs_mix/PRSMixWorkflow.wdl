@@ -112,15 +112,13 @@ task CalculateMixScore {
 
 	command <<<
 
-		sum_of_ad_sum_col=0
-		sum_of_score_avg_col=0
 		sum_of_score_sum_col=0
 
 		for c in '~{sep="' '" raw_scores}'
 		do
 			# Get the PGS ID and "IID" column from the var weight file
 			pgs_id=$(basename $c .txt | cut -d "_" -f 1)
-			iid=$(head -n 2 $c | tail -1 | cute -d "\t" -f 1)
+			iid=$(head -n 2 $c | tail -1 | cut -d "\t" -f 1)
 			# Get the weight for the PGS ID in the score weight file
 			score_weight=$(grep ${pgs_id} "~{score_weights}" | cut -d "\t" -f 1)
 			# Extract the "NAMED_ALLELE_DOSAGE_SUM"/2nd column from the raw score file
@@ -129,20 +127,16 @@ task CalculateMixScore {
 			score_avg=$(head -n 2 $c | tail -1 | cute -d "\t" -f 3)
 			# Extract the "SCORE1_SUM"/4th column from raw score file
 			score_sum=$(head -n 2 $c | tail -1 | cute -d "\t" -f 4)
-			# Multiply each column by weight and add to corresponding sum counters
-			sum_of_ad_sum_col=$((($ad_sum * $score_weight) + $sum_of_ad_sum_col))
-			sum_of_score_avg_col=$((($score_avg * $score_weight) + $sum_of_score_avg_col))
+			# Multiply the PRS raw score by weight and add sum counter
 			sum_of_score_sum_col=$((($score_sum * $score_weight) + $sum_of_score_sum_col))
 		done
 
-		# Get weighted average for both score_avg and score_sum columns
-		weighted_ad_sum=$(($sum_of_ad_sum_col / "~{raw_scores_len}"))
-		weighted_score_avg=$(($sum_of_score_avg_col / "~{raw_scores_len}"))
+		# Get weighted average for score_sum columns
 		weighted_score_sum=$(($sum_of_score_sum_col / "~{raw_scores_len}"))
 
 		# Report the weighted averages in a format similar to raw scores files
 		printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}_prs_mix_score.sscore"
-		printf "${iid}\t$weighted_ad_sum\t$weighted_score_avg\t$weighted_score_sum\n" >> "~{output_basename}_prs_mix_score.sscore"
+		printf "${iid}\t${ad_sum}\t${score_avg}\t${weighted_score_sum}\n" >> "~{output_basename}_prs_mix_score.sscore"
 
 	>>>
 
