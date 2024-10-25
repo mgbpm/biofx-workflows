@@ -122,11 +122,11 @@ task CalculateMixScore {
 			# Get the weight for the PGS ID in the score weight file
 			score_weight=$(grep ${pgs_id} "~{score_weights}" | cut -d "\t" -f 1)
 			# Extract the "NAMED_ALLELE_DOSAGE_SUM"/2nd column from the raw score file
-			ad_sum=$(head -n 2 $c | tail -1 | cute -d "\t" -f 2)
+			ad_sum=$(head -n 2 $c | tail -1 | cut -d "\t" -f 2)
 			# Extract the "SCORE1_AVG"/3rd column from raw score file
-			score_avg=$(head -n 2 $c | tail -1 | cute -d "\t" -f 3)
+			score_avg=$(head -n 2 $c | tail -1 | cut -d "\t" -f 3)
 			# Extract the "SCORE1_SUM"/4th column from raw score file
-			score_sum=$(head -n 2 $c | tail -1 | cute -d "\t" -f 4)
+			score_sum=$(head -n 2 $c | tail -1 | cut -d "\t" -f 4)
 			# Multiply the PRS raw score by weight and add sum counter
 			sum_of_score_sum_col=$((($score_sum * $score_weight) + $sum_of_score_sum_col))
 		done
