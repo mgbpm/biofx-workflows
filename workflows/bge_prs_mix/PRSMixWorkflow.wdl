@@ -100,44 +100,49 @@ workflow PRSMixWorkflow {
 
 task CalculateMixScore {
 	input {
-		Array[File] raw_scores
-		Int raw_scores_len = length(raw_scores)
-		File score_weights
+		Array[File] raw_scores_files
+		Int raw_scores_len = length(raw_scores_files)
+		File score_weights_file
 		String output_basename
 		String docker_image
-		Int disk_size = ceil(size(score_weightss_file, "GB")) + 10
+		Int disk_size = ceil(size(score_weights_file, "GB") * 2) + 10
 		Int mem_size = 2
 		Int preemptible = 1
 	}
 
 	command <<<
+		set -euxo pipefail
 
-		sum_of_score_sum_col=0
+		mkdir -p OUTPUT
+		mkdir -p WORK
 
-		for c in '~{sep="' '" raw_scores}'
-		do
-			# Get the PGS ID and "IID" column from the var weight file
-			pgs_id=$(basename $c .txt | cut -d "_" -f 1)
-			iid=$(head -n 2 $c | tail -1 | cut -d "\t" -f 1)
-			# Get the weight for the PGS ID in the score weight file
-			score_weight=$(grep ${pgs_id} "~{score_weights}" | cut -d "\t" -f 1)
-			# Extract the "NAMED_ALLELE_DOSAGE_SUM"/2nd column from the raw score file
-			ad_sum=$(head -n 2 $c | tail -1 | cut -d "\t" -f 2)
-			# Extract the "SCORE1_AVG"/3rd column from raw score file
-			score_avg=$(head -n 2 $c | tail -1 | cut -d "\t" -f 3)
-			# Extract the "SCORE1_SUM"/4th column from raw score file
-			score_sum=$(head -n 2 $c | tail -1 | cut -d "\t" -f 4)
-			# Multiply the PRS raw score by weight and add sum counter
-			sum_of_score_sum_col=$((($score_sum * $score_weight) + $sum_of_score_sum_col))
-		done
+		# Extract all sample IDs from a raw score file
+		score_file_array=('~{sep="' '" raw_scores_files}')
+		sed '1d;' ${score_file_array[0]} | awk '{ print $1 }' > WORK/sample_ids.txt
 
-		# Get weighted average for score_sum columns
-		weighted_score_sum=$(($sum_of_score_sum_col / "~{raw_scores_len}"))
+		# Set up score file headers
+		printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "OUTPUT/~{output_basename}_prs_mix_score.sscore"
 
-		# Report the weighted averages in a format similar to raw scores files
-		printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}_prs_mix_score.sscore"
-		printf "${iid}\t${ad_sum}\t${score_avg}\t${weighted_score_sum}\n" >> "~{output_basename}_prs_mix_score.sscore"
+		while read line; do
+			# Initialize sum of sample's raw scores
+			score_sum=0
 
+			# Add the raw score from each file to the sum of raw scores
+			for c in '~{sep="' '" raw_scores_files}'; do
+				pgs_id=$(basename $c .txt | cut -d "_" -f 1)
+				score_weight=$(grep "${pgs_id}" "~{score_weights_file}" | cut -f 2)
+				raw_score=$(grep "${line}" $c | cut -f 4)
+				weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
+				score_sum=$(awk -v x=${weighted_score} -v y=${score_sum} 'BEGIN {print x+y}')
+			done
+
+			# Get the weighted average for raw scores (the PRS mix score)
+			weighted_avg=$(awk -v x=${score_sum} -v y="~{raw_scores_len}" 'BEGIN {print x/y}')
+
+			# Print info for the sample
+			printf "${line}\t0\t${weighted_avg}\t${score_sum}\n" >> "OUTPUT/~{output_basename}_prs_mix_score.sscore"
+
+		done < WORK/sample_ids.txt
 	>>>
 
 	runtime {
@@ -148,6 +153,6 @@ task CalculateMixScore {
 	}
 
 	output {
-		File prs_mix_raw_score = "~{output_basename}_prs_mix_score.sscore"
+		File prs_mix_raw_score = "OUTPUT/~{output_basename}_prs_mix_score.sscore"
 	}
 }
