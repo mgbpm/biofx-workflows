@@ -196,6 +196,14 @@ task GetRegions {
 
   # ---------------------------------------------------------------------------
 
+  error() {
+      local message="${1}"
+      printf -- '%s\n' "${message}" >&2
+      exit 1
+  }
+
+  # ---------------------------------------------------------------------------
+
   printf -- 'SPECIFIED STORAGE: %d GB\n\n' '~{storage}'
   printf -- 'INITIAL STORAGE UTILIZATION:\n'
   df --human
@@ -260,11 +268,40 @@ task GetRegions {
   comm -1 -2 "${QUERY}" "${PCA}" > "${PQ}"
   printf -- 'done\n'
 
+  if [[ ! -s ${PQ} ]]
+  then
+      error 'No variant in the PCA variants file is mentioned in the query VCF.'
+  fi
+
   PR="${WORKDIR}/PR"
   printf -- "${TEMPLATE}" "${PR}"
   comm -1 -2 "${REFERENCE}" "${PCA}" > "${PR}"
   printf -- 'done\n'
 
+  if [[ ! -s ${PR} ]]
+  then
+      error 'No variant in the PCA variants file is mentioned in the reference VCF.'
+  fi
+
+  NPR=$( wc --lines < "${PR}" )
+  NPCS=20
+  if (( NPR < 2 * NPCS + 1 ))
+  then
+
+      # NB: The flashpca program, invoked by PCATasks.PerformPCA, will fail if
+      #
+      #     min(NVARIANTS, NSAMPLES) < 2 * NPCS + 1
+      #
+      # ...where NVARIANTS and NSAMPLES are the numbers of variants (rows) and
+      # samples (data columns) in the reference VCF, and NPCS is the value of
+      # the command's --ndim flag (currently hard-coded as 20; see
+      # PCATasks.PerformPCA).  (The inequality above is derived from line 623 of
+      # https://github.com/gabraham/flashpca/blob/b8044f13607a072125828547684fde8b081d6191/flashpca.cpp .)
+      # In particular, flashpca will fail when NPR = NVARIANTS is less than
+      # 2 * NPCS + 1.  Hence the error condition detected here.
+
+      error 'The reference VCF mentions too few PCA variants for the PCA calculation.'
+  fi
 
   NIXQ="${WORKDIR}/NIXQ"
   printf -- "${TEMPLATE}" "${NIXQ}"
@@ -363,6 +400,11 @@ task GetRegions {
   printf -- "${TEMPLATE}" "${PQR}"
   comm -1 -2 "${PQ}" "${PR}" > "${PQR}"
   printf -- 'done\n'
+
+  if [[ ! -s ${PQR} ]]
+  then
+      error 'No variant in the PCA variants file is mentioned in both the query and reference VCFs'
+  fi
 
   printf -- "${TEMPLATE}" "${WANTED}"
   sort --unique "${PQR}" "${EXTRA}" > "${WANTED}"
