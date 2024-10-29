@@ -9,7 +9,6 @@ workflow PRSMixWorkflow {
 		File input_vcf
 		File input_vcf_idx
 		Array[File] var_weights
-		String population_basename
 		# PRS Mix inputs
 		File score_weights
 		# Adjustment inputs
