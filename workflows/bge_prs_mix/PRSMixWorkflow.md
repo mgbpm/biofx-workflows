@@ -6,12 +6,13 @@
 | :--- | :--- | :---: | :--- | :--- |
 | File | input_vcf | Yes | Imputed VCF or VCF with genome data | |
 | File | input_vcf_idx | Yes | Index for input VCF | |
-| Array[File] | var_weights | Yes | Variant weights files for PRS calculation | |
-| File | score_weights | Yes | Weights for PRS scores according to PGS ID for calculating PRS Mix scores | |
-| File | population_loadings | Yes | | |
-| File | population_meansd | Yes | | |
-| File | population_pcs | Yes | | |
-| File | pruning_sites_for_pca | Yes | | |
+| Array[File] | var_weights_files | Yes | Variant weights files for PRS calculation | |
+| File | score_weights_file | Yes | Weights for PRS scores according to PGS ID for calculating PRS Mix scores | |
+| File | population_loadings | Yes | Population vectors from PCA | |
+| File | population_meansd | Yes | Population statistics from PCA | |
+| File | population_pcs | Yes | Principal components from PCA | |
+| File | pruning_sites_for_pca | Yes | Pruning sites for PCA | |
+| File | scoring_sites | Yes | Sites used in scoring to create ancestry adjustment model | |
 | String | ubuntu_docker_image | No | Ubunutu Docker image | "ubuntu:21.10" |
 
 ## Output Parameters

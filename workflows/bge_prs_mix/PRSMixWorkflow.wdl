@@ -8,32 +8,36 @@ workflow PRSMixWorkflow {
 		# Scoring inputs
 		File input_vcf
 		File input_vcf_idx
-		Array[File] var_weights
+		Array[File] var_weights_files
 		# PRS Mix inputs
-		File score_weights
-		# Adjustment inputs
+		File score_weights_file
+		# Condition-specific adjustment inputs
 		File population_loadings
 		File population_meansd
 		File population_pcs
+		File ancestry_adjustment_model
+		# Other adjustment inputs
 		File pruning_sites_for_pca
+		File scoring_sites
 		String ubuntu_docker_image = "ubuntu:21.10"
 	}
 
 	# Scatter over the files within the zipped file and run scoring on each
 	String sample_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
-	scatter (i in range(length(var_weights))) {
-		String var_weight_basename = sub(basename(var_weights), ".txt", "")
+	scatter (i in range(length(var_weights_files))) {
+		String var_weight_basename = sub(basename(var_weights_files), ".txt", "")
 		call ScoringTasks.DetermineChromosomeEncoding as DetermineChrEncoding {
 			input:
-				weights = var_weights[i]
+				weights = var_weights_files[i]
 		}
 		call ScoringTasks.ScoreVcf as ScoreImputedVCF {
 			input:
 				vcf = input_vcf,
 				basename = var_weight_basename + "_" + sample_basename,
-				weights = var_weights[i],
+				weights = var_weights_files[i],
 				base_mem = 16,
 				chromosome_encoding = DetermineChrEncoding.chromosome_encoding,
+				sites = scoring_sites
 		}
 	}
 
@@ -41,7 +45,7 @@ workflow PRSMixWorkflow {
 	call CalculateMixScore {
 		input:
 			raw_scores = ScoreImputedVCF.score,
-			score_weights = score_weights,
+			score_weights = score_weights_file,
 			output_basename = sample_basename
 	}
 
@@ -79,7 +83,7 @@ workflow PRSMixWorkflow {
 	# Adjust score with model and PCA
 	call ScoringTasks.AdjustScores {
 		input:
-			fitted_model_params = fitted_params_for_model,
+			fitted_model_params = ancestry_adjustment_model,
 			pcs = ProjectArray.projections,
 			scores = CalculateMixScore.prs_mix_raw_score
 	}
@@ -101,10 +105,10 @@ task CalculateMixScore {
 	input {
 		Array[File] raw_scores_files
 		Int raw_scores_len = length(raw_scores_files)
-		File score_weights_file
+		File score_weights
 		String output_basename
 		String docker_image
-		Int disk_size = ceil(size(score_weights_file, "GB") * 2) + 10
+		Int disk_size = ceil(size(score_weights, "GB") * 2) + 10
 		Int mem_size = 2
 		Int preemptible = 1
 	}
@@ -129,7 +133,7 @@ task CalculateMixScore {
 			# Add the raw score from each file to the sum of raw scores
 			for c in '~{sep="' '" raw_scores_files}'; do
 				pgs_id=$(basename $c .txt | cut -d "_" -f 1)
-				score_weight=$(grep "${pgs_id}" "~{score_weights_file}" | cut -f 2)
+				score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f 2)
 				raw_score=$(grep "${line}" $c | cut -f 4)
 				weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
 				score_sum=$(awk -v x=${weighted_score} -v y=${score_sum} 'BEGIN {print x+y}')
