@@ -48,9 +48,22 @@ task ScoreVcf {
     fi
     # ------------------------------------------------------------------------
     ### DEV END ###
-    /plink2 --score ~{weights} header ignore-dup-ids list-variants no-mean-imputation \
-    cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --allow-extra-chr ~{extra_args} -vcf ~{vcf} \
-    --new-id-max-allele-len 1000 missing ~{"--extract " + sites} --out ~{basename} --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
+    COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
+    /plink2                                               \
+        --allow-extra-chr          ~{extra_args}          \
+        ~{"--extract "             + sites}               \
+        --memory                   ~{plink_mem}           \
+        --new-id-max-allele-len    1000 missing           \
+        --out                      ~{basename}            \
+        ~{"--output-chr "          + chromosome_encoding} \
+        --set-all-var-ids          '@:#:$r:$a'            \
+        --score                    '~{weights}'           \
+                                   header                 \
+                                   ignore-dup-ids         \
+                                   list-variants          \
+                                   no-mean-imputation     \
+                                   cols="${COLUMNS}"      \
+        --vcf                      '~{vcf}'
   >>>
 
   output {
@@ -665,13 +678,14 @@ task ExtractIDsPlink {
   Int plink_mem = ceil(mem * 0.75 * 1000)
 
   command <<<
-    /plink2 \
-      --vcf ~{vcf} \
+  /plink2                                  \
+      --allow-extra-chr                    \
+      --memory                ~{plink_mem} \
       --new-id-max-allele-len 1000 missing \
-      --rm-dup exclude-all \
-      --allow-extra-chr \
-      --write-snplist allow-dups \
-      --memory ~{plink_mem}
+      --rm-dup exclude-all                 \
+      --set-all-var-ids       '@:#:$r:$a'  \
+      --write-snplist         allow-dups   \
+      --vcf                   '~{vcf}'
   >>>
 
   output {
