@@ -105,8 +105,7 @@ workflow PRSOrchestrationWorkflow {
 		File pc_plot = RunPRSMix.pc_plot
 
 		# Individual Outputs
-		#File individual_risk_report
-		#File individual_qc_file
+		Array[File] individuals_risk_summaries = CategorizeScores.individual_risk_summaries
 	}
 }
 
@@ -149,7 +148,6 @@ task CategorizeScores {
 	input {
 		Array[File] adjusted_scores
 		File sample_ids
-		Array[Int] num_bins
 		String docker_image
 		Int disk_size = ceil(size(adjusted_scores, "GB")) + 10
 		Int mem_size = 2
@@ -179,7 +177,7 @@ task CategorizeScores {
 				fi
 				
 				# Output individual's percentile and bin to csv
-				printf "$(basename ${c} _adjusted_scores.tsv),${percentile},~{num_bins},${bin}\n" >> OUTPUT/"${line}"_risk_summary.csv
+				printf "$(basename ${c} _adjusted_scores.tsv),${percentile},4,${bin}\n" >> OUTPUT/"${line}"_risk_summary.csv
 			done
 		done < "~{sample_ids}"
 	>>>
