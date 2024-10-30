@@ -18,49 +18,49 @@ workflow PRSMixWorkflow {
 		File scoring_sites
 		# Docker images
 		String ubuntu_docker_image = "ubuntu:21.10"
+		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
+		String python_docker_image = "python:3.9.10"
+		String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
+		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
 	}
 
 	# Calculate raw PRS score per variant weights file
 	scatter (i in range(length(var_weights_files))) {
-		String var_weight_basename = sub(basename(var_weights_files), ".txt", "")
 		call DetermineChromosomeEncoding {
 			input:
 				weights = var_weights_files[i],
 				docker_image = python_docker_image
 		}
-		call ScoreVcf {
+		call ScoreVCF {
 			input:
 				input_vcf = input_vcf,
 				var_weights = var_weights_files[i],
 				chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding,
 				sites = scoring_sites,
-				output_basename = var_weight_basename + "_" + sample_basename
+				docker_image = plink_docker_image
 		}
 	}
 
 	# Calculate raw PRS mix score
 	call CalculateMixScore {
 		input:
-			raw_scores = ScoreVcf.score,
+			raw_scores = ScoreVCF.score,
 			score_weights = score_weights_file,
 			output_basename = sample_basename
 	}
 
 	# Calculate PCA for individual
-	call ExtractIDsPlink {
+	call ExtractIDs {
 		input:
 			input_vcf = input_vcf,
-			chromosome_encoding = DetermineChrEncoding.chromosome_encoding,
-			mem = 8
+			chromosome_encoding = DetermineChrEncoding.chromosome_encoding
 	}
-	call ArrayVcfToPlinkDataset {
+	call ArrayVCFToPlinkDataset {
 		input:
-		vcf = imputed_array_vcf,
+		input_vcf = input_vcf,
 		pruning_sites = pruning_sites_for_pca,
-		basename = basename,
-		mem = 8,
-		use_ref_alt_for_ids = use_ref_alt_for_ids,
-		chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding
+		chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding,
+		docker_image = plink_docker_image
 	}
 	call ProjectArray {
 		input:
@@ -69,29 +69,31 @@ workflow PRSMixWorkflow {
 			bed = ArrayVcfToPlinkDataset.bed,
 			bim = ArrayVcfToPlinkDataset.bim,
 			fam = ArrayVcfToPlinkDataset.fam,
-			basename = "pca"
+			docker_image = flash_pca_docker_image
 	}
 	call MakePCAPlot {
 		input:
 			population_pcs = population_pcs,
-			target_pcs = ProjectArray.projections
+			target_pcs = ProjectArray.projections,
+			docker_image = tidyverse_docker_image
 	}
 
 	# Adjust score with model and PCA
 	call AdjustScores {
 		input:
-			fitted_model_params = ancestry_adjustment_model,
+			model_parameters = ancestry_adjustment_model,
 			pcs = ProjectArray.projections,
-			scores = CalculateMixScore.prs_mix_raw_score
+			scores = CalculateMixScore.prs_mix_raw_score,
+			docker_image = tidyverse_docker_image
 	}
 	
 	output {
 		# Sample IDs list
 		File sample_ids_list = CalculateMixScore.sample_ids_list
 		# PRS output
-		Array[File] prs_raw_scores = ScoreVcf.score
-		Array[File] prs_raw_scores_log = ScoreVcf.log
-    	Array[File] prs_raw_sites_scored = ScoreVcf.sites_scored
+		Array[File] prs_raw_scores = ScoreImputedVCF.score
+		Array[File] prs_raw_scores_log = ScoreImputedVCF.log
+    	Array[File] prs_raw_sites_scored = ScoreImputedVCF.sites_scored
 		File prs_mix_raw_score = CalculateMixScore.prs_mix_raw_score
 		File adjusted_scores = AdjustScores.adjusted_scores
 		# PCA output
@@ -160,303 +162,317 @@ task CalculateMixScore {
 	}
 }
 
-task ScoreVcf {
-	input {
-    	File vcf
-    	String basename
-    	File weights
-    	Int base_mem = 8
-    	String? extra_args
-    	File? sites
-    	File? exclude_sites
-    	String? chromosome_encoding
-    	Boolean use_ref_alt_for_ids = false
-    	Boolean use_dosage_annotation = true
-  	}
+# Following PRS tasks adapted from:
+# https://raw.githubusercontent.com/broadinstitute/palantir-workflows/refs/heads/main/ImputationPipeline/ScoringTasks.wdl
+# https://raw.githubusercontent.com/broadinstitute/palantir-workflows/refs/heads/main/ImputationPipeline/PCATasks.wdl
 
-  	Int runtime_mem = base_mem + 2
-  	Int plink_mem = ceil(base_mem * 0.75 * 1000)
-  	Int disk_space =  3*ceil(size(vcf, "GB")) + 20
-  	String var_ids_string = "@:#:" + if use_ref_alt_for_ids then "\\$r:\\$a" else "\\$1:\\$2"
-
-  	command <<<
-  		/plink2 --score ~{weights} header ignore-dup-ids list-variants no-mean-imputation \
-  		cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums --set-all-var-ids ~{var_ids_string} --allow-extra-chr ~{extra_args} -vcf ~{vcf} ~{if use_dosage_annotation then "dosage=DS" else ""} \
-  		--new-id-max-allele-len 1000 missing ~{"--extract " + sites} ~{"--exclude " + exclude_sites} --out ~{basename} --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
-  	>>>
-
-  	output {
-  	  	File score = "~{basename}.sscore"
-  	  	File log = "~{basename}.log"
-  	  	File sites_scored = "~{basename}.sscore.vars"
-  	}
-
-  	runtime {
-  		docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-  		disks: "local-disk " + disk_space + " HDD"
-  		memory: runtime_mem + " GB"
-  	}
-}
-
-task ExtractIDsPlink {
-	input {
-		File vcf
-		Int disk_size = 2 * ceil(size(vcf, "GB")) + 100
-		Boolean use_ref_alt_for_ids = false
-		Int mem = 8
-		String? chromosome_encoding
-	}
-
-  	Int plink_mem = ceil(mem * 0.75 * 1000)
-  	String var_ids_string = "@:#:" + if use_ref_alt_for_ids then "\\$r:\\$a" else "\\$1:\\$2"
-
-  	command <<<
-  		/plink2 \
-  			--vcf ~{vcf} \
-  			--set-all-var-ids ~{var_ids_string} \
-  			--new-id-max-allele-len 1000 missing \
-  			--rm-dup exclude-all \
-  			--allow-extra-chr \
-  			--write-snplist allow-dups \
-  			--memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
-  	>>>
-
-	output {
-	  	File ids = "plink2.snplist"
-	}
-
-  	runtime {
-  	  	docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-  	  	disks: "local-disk " + disk_size + " HDD"
-  	  	memory: mem + " GB"
-  	}
-}
-
-#plink chromosome encoding rules: https://www.cog-genomics.org/plink/2.0/data#irreg_output
+# plink chromosome encoding rules: https://www.cog-genomics.org/plink/2.0/data#irreg_output
 task DetermineChromosomeEncoding {
-  	input {
-  	  	File weights
-  	}
-
-  	command <<<
-  	  	python3 << "EOF"
-  	  	code = 'MT'
-  	  	with open("~{weights}") as weights_file:
-  	  	  	chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
-  	  	  	if any('chr' in c for c in chroms):
-  	  	  	    if 'chrM' in chroms:
-  	  	  	        code = 'chrM'
-  	  	  	    else:
-  	  	  	        code = 'chrMT'
-  	  	  	elif 'M' in chroms:
-  	  	      	code = 'M'
-
-  	  	with open('chr_encode_out.txt', 'w') as write_code_file:
-  	  		write_code_file.write(f'{code}\n')
-  	  	EOF
-  	>>>
-
-  	runtime {
-  	  docker : "python:3.9.10"
-  	}
-
-  	output {
-  	  String chromosome_encoding = read_string("chr_encode_out.txt")
-  }
-}
-
-task ArrayVcfToPlinkDataset {
 	input {
-	  File vcf
-	  File pruning_sites
-	  File? subset_to_sites
-	  String basename
-	  Int mem = 8
-	  Boolean use_ref_alt_for_ids = false
-	  String? chromosome_encoding
+		File var_weights
 	}
 
-	Int disk_space =  3 * ceil(size(vcf, "GB")) + 20
-	String var_ids_string = "@:#:" + if use_ref_alt_for_ids then "\\$r:\\$a" else "\\$1:\\$2"	
-	
 	command <<<
-	  	/plink2 --vcf ~{vcf} --extract-intersect ~{pruning_sites} ~{subset_to_sites} --allow-extra-chr --set-all-var-ids ~{var_ids_string} \
-	  	--new-id-max-allele-len 1000 missing --out ~{basename} --make-bed --rm-dup force-first ~{"--output-chr " + chromosome_encoding}
+		python3 << "EOF"
+		code = 'MT'
+		with open("~{var_weights}") as weights_file:
+			chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
+			if any('chr' in c for c in chroms):
+				if 'chrM' in chroms:
+					code = 'chrM'
+				else:
+					code = 'chrMT'
+			elif 'M' in chroms:
+				code = 'M'
+
+		with open('chr_encode_out.txt', 'w') as write_code_file:
+			write_code_file.write(f'{code}\n')
+		EOF
 	>>>
 
-	output {
-	  	File bed = "~{basename}.bed"
-	  	File bim = "~{basename}.bim"
-	  	File fam = "~{basename}.fam"
-	}	
 	runtime {
-	  	docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-	  	disks: "local-disk " + disk_space + " HDD"
-		memory: mem + " GB"
+		docker : "~{docker_image}"
+	}
+
+	output {
+		String chromosome_encoding = read_string("chr_encode_out.txt")
+	}
+}
+
+task ScoreVCF {
+	input {
+		File input_vcf
+		File var_weights
+		String chromosome_encoding
+		File sites
+		String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + "_" + sub(basename(var_weights), ".var_weights.txt", "")
+		String docker_image
+		Int base_mem = 16
+		Int mem_size = base_mem + 2
+		Int plink_mem = ceil(base_mem * 0.75 * 1000)
+		Int disk_size =  (ceil(size(input_vcf, "GB")) * 3) + 20
+	}
+  
+	command <<<
+		set -euxo pipefail
+
+		/plink2 --score "~{var_weights}" \
+			header ignore-dup-ids list-variants no-mean-imputation \
+			cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums \
+			--set-all-var-ids "@:#:\\$1:\\$2" \
+			-vcf "~{input_vcf}" \
+			dosage=DS \
+			--new-id-max-allele-len 1000 missing \
+			--extract "~{sites}" \
+			--out "~{output_basename}" \
+			--memory "~{plink_mem}" \
+			--output-chr "~{chromosome_encoding}"
+	>>>
+
+	runtime {
+		docker: "~{docker_image}"
+		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + " GB"
+	}
+
+	output {
+		File score = "~{output_basename}.sscore"
+		File log = "~{output_basename}.log"
+		File sites_scored = "~{output_basename}.sscore.vars"
+	}
+}
+
+task ExtractIDs {
+	input {
+		File input_vcf
+		String chromosome_encoding
+		String docker_image
+		Int disk_size = 2 * ceil(size(input_vcf, "GB")) + 100
+		Int mem_size = 8
+		Int plink_mem = ceil(mem * 0.75 * 1000)
+	}
+
+	command <<<
+		set -euxo pipefail
+
+		/plink2 \
+			--vcf "~{input_vcf}" \
+			--set-all-var-ids "@:#:\\$1:\\$2" \
+			--new-id-max-allele-len 1000 missing \
+			--rm-dup exclude-all \
+			--allow-extra-chr \
+			--write-snplist allow-dups \
+			--memory "~{plink_mem}" \
+			--output-chr "~{chromosome_encoding}"
+	>>>
+
+	runtime {
+		docker: "~{docker_image}"
+		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + " GB"
+	}
+
+	output {
+		File ids = "plink2.snplist"
+	}
+}
+
+task ArrayVCFToPlinkDataset {
+	input {
+		File input_vcf
+		File pruning_sites
+		String chromosome_encoding
+    	String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
+		Int disk_size = (ceil(size(input_vcf, "GB")) * 3) + 20
+		Int mem_size = 8
+	}
+
+	command <<<
+		/plink2 \
+			--vcf "~{input_vcf}" \
+			--extract-intersect "~{pruning_sites}" \
+			--allow-extra-chr \
+			--set-all-var-ids "@:#:\\$1:\\$2" \
+			--new-id-max-allele-len 1000 missing \
+			--out "~{output_basename}" \
+			--make-bed \
+			--rm-dup force-first \
+			--output-chr "~{chromosome_encoding}"
+	>>>
+
+	runtime {
+		docker: "~{docker_image}"
+		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + " GB"
+	}
+
+	output {
+		File bed = "~{output_basename}.bed"
+		File bim = "~{output_basename}.bim"
+		File fam = "~{output_basename}.fam"
 	}
 }
 
 task ProjectArray {
-  	input {
-  	  	File bim
-  	  	File bed
-  	  	File fam
-  	  	File pc_loadings
-  	  	File pc_meansd
-  	  	String basename
-  	  	Int mem = 8
-  	  	Int nthreads = 16
-  	  	String? divisor
-  	}
+	input {
+		File bim
+		File bed
+		File fam
+		File pc_loadings
+		File pc_meansd
+		String output_basename = "pca"
+		Int disk_size = 400
+		Int mem_size = 8
+		Int nthreads = 16
+	}
 
-  	command <<<
-  	  	cp ~{bim} ~{basename}.bim
-  	  	cp ~{bed} ~{basename}.bed
-  	  	cp ~{fam} ~{basename}.fam
+	command <<<
+		cp "~{bim}" "~{output_basename}.bim"
+		cp "~{bed}" "~{output_basename}.bed"
+		cp "~{fam}" "~{output_basename}.fam"
 
-  	  	cp ~{pc_loadings} loadings.txt
-  	  	cp ~{pc_meansd} meansd.txt
+		cp "~{pc_loadings}" loadings.txt
+		cp "~{pc_meansd}" meansd.txt
 
-  	  	# Check if .bim file, pc loadings, and pc meansd files have the same IDs
-  	  	# 1. extract IDs, removing first column of .bim file and first rows of the pc files
-  	  	awk '{print $2}' ~{basename}.bim > bim_ids.txt
-  	  	awk '{print $1}' loadings.txt | tail -n +2 > pcloadings_ids.txt
-  	  	awk '{print $1}' meansd.txt | tail -n +2 > meansd_ids.txt
+		# Check if .bim file, pc loadings, and pc meansd files have the same IDs
+		# 1. extract IDs, removing first column of .bim file and first rows of the pc files
+		awk '{print $2}' "~{output_basename}.bim" > bim_ids.txt
+		awk '{print $1}' loadings.txt | tail -n +2 > pcloadings_ids.txt
+		awk '{print $1}' meansd.txt | tail -n +2 > meansd_ids.txt
 
-  	  	diff bim_ids.txt pcloadings_ids.txt > diff1.txt
-  	  	diff bim_ids.txt meansd_ids.txt > diff2.txt
-  	  	diff pcloadings_ids.txt meansd_ids.txt > diff3.txt
+		diff bim_ids.txt pcloadings_ids.txt > diff1.txt
+		diff bim_ids.txt meansd_ids.txt > diff2.txt
+		diff pcloadings_ids.txt meansd_ids.txt > diff3.txt
 
-  	  	if [[ -s diff3.txt ]]
-  	  	then
-  	  	echo "PC loadings file and PC means file do not contain the same IDs; check your input files and run again."
-  	  	exit 1
-  	  	fi
+		if [[ -s diff3.txt ]];then
+			echo "PC loadings file and PC means file do not contain the same IDs. Check your input files and run again."
+			exit 1
+		fi
 
-  	  	# check if diff files are not empty
-  	  	if [[ -s diff1.txt || -s diff2.txt ]]
-  	  	then
-  	  	echo "IDs in .bim file are not the same as the IDs in the PCA files; check that you have the right files and run again."
-  	  	exit 1
-  	  	fi
+		# Check if diff files are not empty
+		if [[ -s diff1.txt || -s diff2.txt ]]; then
+			echo "IDs in .bim file are not the same as the IDs in the PCA files. Check that you have the right files and run again."
+			exit 1
+		fi
 
-  	  	~/flashpca/flashpca \
-  	  	  --bfile ~{basename} \
-  	  	  --numthreads ~{nthreads} \
-  	  	  --project \
-  	  	  --inmeansd meansd.txt \
-  	  	  --outproj projections.txt \
-  	  	  --inload loadings.txt \
-  	  	  -v \
-  	  	  ~{"--div " + divisor}
-  	>>>
+		~/flashpca/flashpca \
+			--bfile "~{output_basename}" \
+			--numthreads "~{nthreads}" \
+			--project \
+			--inmeansd meansd.txt \
+			--outproj projections.txt \
+			--inload loadings.txt \
+			-v
+	>>>
 
-  	output {
-  	  	File projections = "projections.txt"
-  	}
+	runtime {
+		docker: "~{docker_image}"
+		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + " GB"
+	}
 
-  	runtime {
-  	  	docker: "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
-  	  	disks: "local-disk 400 HDD"
-  	  	memory: mem + " GB"
-  	}
+	output {
+		File projections = "projections.txt"
+	}
 }
 
 task MakePCAPlot {
-  	input {
-  	  	File population_pcs
-  	  	File target_pcs
-  	}
+	input {
+		File population_pcs
+		File target_pcs
+		String docker_image
+		Int disk_size = 100
+	}
 
-  	command <<<
-  	  	Rscript -<< "EOF"
-  	  	  	library(dplyr)
-  	  	  	library(readr)
-  	  	  	library(ggplot2)
+	command <<<
+		Rscript -<< "EOF"
+			ibrary(dplyr)
+			library(readr)
+			library(ggplot2)
 
-  	  	  	population_pcs <- read_tsv("~{population_pcs}")
-  	  	  	target_pcs <- read_tsv("~{target_pcs}")
+			population_pcs <- read_tsv("~{population_pcs}")
+			target_pcs <- read_tsv("~{target_pcs}")
 
-  	  	  	ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
-  	  	  		geom_point(size=0.1, alpha=0.1) +
-  	  	  	  	geom_point(data = target_pcs, aes(x=PC1, y=PC2, color="Target")) +
-  	  	  	  	labs(x="PC1", y="PC2") +
-  	  	  	  	theme_bw()
+			ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
+				geom_point(size=0.1, alpha=0.1) +
+				geom_point(data = target_pcs, aes(x=PC1, y=PC2, color="Target")) +
+				labs(x="PC1", y="PC2") +
+				theme_bw()
 
-  	  	  	ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
+			ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
 
-  	  	EOF
-  	>>>
+		EOF
+	>>>
 
-  	output {
-  		File pca_plot = "PCA_plot.png"
-  	}
+	output {
+		File pca_plot = "PCA_plot.png"
+	}
 
-  	runtime {
-  	  	docker: "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
-  	  	disks: "local-disk 100 HDD"
-  	}
+	runtime {
+		docker: "~{docker_image}"
+ 		disks: "local-disk " + disk_size + " HDD"
+	}
 }
 
 task AdjustScores {
-  	input {
-		File fitted_model_params
+	input {
+		File model_parameters
 		File pcs
 		File scores
-		Int mem = 2
-  	}
+		String docker_image
+		Int disk_size = 100
+		Int mem_size = 2
+	}
 
-  	command <<<
-  	  Rscript -<< "EOF"
-  	    library(dplyr)
-  	    library(readr)
+	command <<<
+		Rscript -<< "EOF"
+			library(dplyr)
+			library(readr)
 
-  	    # read in model params
-  	    params_tibble <- read_tsv("~{fitted_model_params}")
-  	    params <- params_tibble %>% pull(value)
+			# Read in model parameters
+			params_tibble <- read_tsv("~{model_parameters}")
+			params <- params_tibble %>% pull(value)
 
-  	    # linear transformation to predict variance
-  	    f_sigma2 <- function(t, theta) {
-  	      PC1 = t %>% pull(PC1)
-  	      PC2 = t %>% pull(PC2)
-  	      PC3 = t %>% pull(PC3)
-  	      PC4 = t %>% pull(PC4)
-  	      PC5 = t %>% pull(PC5)
-  	      sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
-  	    }
+			# Linear transformation to predict variance
+			f_sigma2 <- function(t, theta) {
+				PC1 = t %>% pull(PC1)
+				PC2 = t %>% pull(PC2)
+				PC3 = t %>% pull(PC3)
+				PC4 = t %>% pull(PC4)
+				PC5 = t %>% pull(PC5)
+				sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
+			}
 
 
-  	    # linear transformation to predict mean
-  	    f_mu <- function(t, theta) {
-  	      PC1 = t %>% pull(PC1)
-  	      PC2 = t %>% pull(PC2)
-  	      PC3 = t %>% pull(PC3)
-  	      PC4 = t %>% pull(PC4)
-  	      PC5 = t %>% pull(PC5)
-  	      mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
-  	    }
+			# Linear transformation to predict mean
+			f_mu <- function(t, theta) {
+				PC1 = t %>% pull(PC1)
+				PC2 = t %>% pull(PC2)
+				PC3 = t %>% pull(PC3)
+				PC4 = t %>% pull(PC4)
+				PC5 = t %>% pull(PC5)
+				mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
+			}
 
-  	    scores = inner_join(read_tsv("~{pcs}"),
-  	                              read_tsv("~{scores}"), by=c("IID" = "#IID"))
+			scores = inner_join(read_tsv("~{pcs}"), read_tsv("~{scores}"), by=c("IID" = "#IID"))
 
-  	    adjusted_scores <- scores %>% mutate(adjusted_score =
-  	                                                      (SCORE1_SUM - f_mu(scores, params[1:5]))/
-  	                                                      sqrt(f_sigma2(scores, params[6:10]))
-  	                                                    )
-  	    adjusted_scores <- adjusted_scores %>% mutate(percentile=pnorm(adjusted_score,0))
+			adjusted_scores <- scores %>% mutate(
+				adjusted_score = (SCORE1_SUM - f_mu(scores, params[1:5]))/sqrt(f_sigma2(scores, params[6:10]))
+				)
+			adjusted_scores <- adjusted_scores %>% mutate(percentile=pnorm(adjusted_score,0))
 
-  	    # return array scores
-  	    write_tsv(adjusted_scores, "adjusted_scores.tsv")
-  	  EOF
-  	>>>
+			# Return array scores
+			write_tsv(adjusted_scores, "adjusted_scores.tsv")
+		EOF
+	>>>
 
-  	output {
+	output {
 		File adjusted_scores = "adjusted_scores.tsv"
-  	}
+	}
 
-  	runtime {
-		docker: "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
-		disks: "local-disk 100 HDD"
-		memory: mem + " GB"
-  	}
+	runtime {
+		docker: "~{docker_image}"
+		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + " GB"
+	}
 }
