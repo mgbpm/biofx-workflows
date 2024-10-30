@@ -24,11 +24,14 @@ workflow PRSMixWorkflow {
 		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
 	}
 
+	String condition_name = sub(basename(score_weights_file), ".score_weights.txt", "")
+
 	# Calculate raw PRS score per variant weights file
 	scatter (i in range(length(var_weights_files))) {
 		call DetermineChromosomeEncoding {
 			input:
 				weights = var_weights_files[i],
+				output_basename = condition_name
 				docker_image = python_docker_image
 		}
 		call ScoreVCF {
@@ -37,6 +40,7 @@ workflow PRSMixWorkflow {
 				var_weights = var_weights_files[i],
 				chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding,
 				sites = scoring_sites,
+				output_basename = condition_name,
 				docker_image = plink_docker_image
 		}
 	}
@@ -46,7 +50,7 @@ workflow PRSMixWorkflow {
 		input:
 			raw_scores = ScoreVCF.score,
 			score_weights = score_weights_file,
-			output_basename = sample_basename
+			output_basename = condition_name
 	}
 
 	# Calculate PCA for individual
@@ -60,6 +64,7 @@ workflow PRSMixWorkflow {
 		input_vcf = input_vcf,
 		pruning_sites = pruning_sites_for_pca,
 		chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding,
+		output_basename = condition_name,
 		docker_image = plink_docker_image
 	}
 	call ProjectArray {
@@ -69,12 +74,14 @@ workflow PRSMixWorkflow {
 			bed = ArrayVcfToPlinkDataset.bed,
 			bim = ArrayVcfToPlinkDataset.bim,
 			fam = ArrayVcfToPlinkDataset.fam,
+			output_basename = condition_name + "_pca",
 			docker_image = flash_pca_docker_image
 	}
 	call MakePCAPlot {
 		input:
 			population_pcs = population_pcs,
 			target_pcs = ProjectArray.projections,
+			output_basename = condition_name,
 			docker_image = tidyverse_docker_image
 	}
 
@@ -84,6 +91,7 @@ workflow PRSMixWorkflow {
 			model_parameters = ancestry_adjustment_model,
 			pcs = ProjectArray.projections,
 			scores = CalculateMixScore.prs_mix_raw_score,
+			output_basename = condition_name,
 			docker_image = tidyverse_docker_image
 	}
 	
@@ -170,23 +178,25 @@ task CalculateMixScore {
 task DetermineChromosomeEncoding {
 	input {
 		File var_weights
+		String output_basename
+		String docker_image
 	}
 
 	command <<<
 		python3 << "EOF"
-		code = 'MT'
-		with open("~{var_weights}") as weights_file:
-			chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
-			if any('chr' in c for c in chroms):
-				if 'chrM' in chroms:
-					code = 'chrM'
-				else:
-					code = 'chrMT'
-			elif 'M' in chroms:
-				code = 'M'
+			code = 'MT'
+			with open("~{var_weights}") as weights_file:
+				chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
+				if any('chr' in c for c in chroms):
+					if 'chrM' in chroms:
+						code = 'chrM'
+					else:
+						code = 'chrMT'
+				elif 'M' in chroms:
+					code = 'M'
 
-		with open('chr_encode_out.txt', 'w') as write_code_file:
-			write_code_file.write(f'{code}\n')
+			with open('~{output_basename}.chr_encode.txt', 'w') as write_code_file:
+				write_code_file.write(f'{code}\n')
 		EOF
 	>>>
 
@@ -195,7 +205,7 @@ task DetermineChromosomeEncoding {
 	}
 
 	output {
-		String chromosome_encoding = read_string("chr_encode_out.txt")
+		String chromosome_encoding = read_string("~{output_basename}.chr_encode.txt")
 	}
 }
 
@@ -205,7 +215,7 @@ task ScoreVCF {
 		File var_weights
 		String chromosome_encoding
 		File sites
-		String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + "_" + sub(basename(var_weights), ".var_weights.txt", "")
+		String output_basename
 		String docker_image
 		Int base_mem = 16
 		Int mem_size = base_mem + 2
@@ -282,7 +292,7 @@ task ArrayVCFToPlinkDataset {
 		File input_vcf
 		File pruning_sites
 		String chromosome_encoding
-    	String output_basename = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
+    	String output_basename
 		Int disk_size = (ceil(size(input_vcf, "GB")) * 3) + 20
 		Int mem_size = 8
 	}
@@ -320,7 +330,7 @@ task ProjectArray {
 		File fam
 		File pc_loadings
 		File pc_meansd
-		String output_basename = "pca"
+		String output_basename
 		Int disk_size = 400
 		Int mem_size = 8
 		Int nthreads = 16
@@ -372,7 +382,7 @@ task ProjectArray {
 	}
 
 	output {
-		File projections = "projections.txt"
+		File projections = "~{output_basename}_projections.txt"
 	}
 }
 
@@ -380,6 +390,7 @@ task MakePCAPlot {
 	input {
 		File population_pcs
 		File target_pcs
+		String output_basename
 		String docker_image
 		Int disk_size = 100
 	}
@@ -399,13 +410,13 @@ task MakePCAPlot {
 				labs(x="PC1", y="PC2") +
 				theme_bw()
 
-			ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
+			ggsave(filename = "~{output_basename}_pca_plot.png", dpi=300, width = 6, height = 6)
 
 		EOF
 	>>>
 
 	output {
-		File pca_plot = "PCA_plot.png"
+		File pca_plot = "~{output_basename}_pca_plot.png"
 	}
 
 	runtime {
@@ -419,6 +430,7 @@ task AdjustScores {
 		File model_parameters
 		File pcs
 		File scores
+		String output_basename
 		String docker_image
 		Int disk_size = 100
 		Int mem_size = 2
@@ -462,12 +474,12 @@ task AdjustScores {
 			adjusted_scores <- adjusted_scores %>% mutate(percentile=pnorm(adjusted_score,0))
 
 			# Return array scores
-			write_tsv(adjusted_scores, "adjusted_scores.tsv")
+			write_tsv(adjusted_scores, "~{output_basename}_adjusted_scores.tsv")
 		EOF
 	>>>
 
 	output {
-		File adjusted_scores = "adjusted_scores.tsv"
+		File adjusted_scores = "~{output_basename}_adjusted_scores.tsv"
 	}
 
 	runtime {

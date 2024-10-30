@@ -84,6 +84,12 @@ workflow PRSOrchestrationWorkflow {
 		# Bin individuals based on thresholds
 		# Determine individual's percentile based on PRS score
 		# Produce a risk report csv that can be used to generate the final report
+	call CategorizeScores {
+		input:
+			adjusted_scores = RunPRSMix.adjusted_scores,
+			sample_ids = RunPRSMix.sample_ids_list[0],
+			docker_image = ubuntu_docker_image
+	}
 
 	output {
 		# Glimpse outputs
@@ -117,9 +123,9 @@ task UnzipConditionFile {
 	command <<<
 		set -euxo pipefail
 
-		mkdir OUTPUTS
+		mkdir -p OUTPUT
 
-		tar -xf "${zipped_condition_file}" -C OUTPUTS
+		tar -xf "${zipped_condition_file}" -C OUTPUT
 	>>>
 
 	runtime {
@@ -130,11 +136,62 @@ task UnzipConditionFile {
 	}
 
 	output {
-		Array[File] var_weights_files = glob("OUTPUTS/*.var_weights.txt")
-		File score_weights_file = "OUTPUTS/~{output_basename}.score_weights.txt"
-		File population_loadings = "OUTPUTS/~{output_basename}.pc.loadings"
-		File population_meansd = "OUTPUTS/~{output_basename}.pc.meansd"
-		File population_pcs = "OUTPUTS/~{output_basename}.pc"
-		File ancestry_adjustment_model = "OUTPUTS/~{output_basename}.fitted_model_params.tsv"
+		Array[File] var_weights_files = glob("OUTPUT/*.var_weights.txt")
+		File score_weights_file = "OUTPUT/~{output_basename}.score_weights.txt"
+		File population_loadings = "OUTPUT/~{output_basename}.pc.loadings"
+		File population_meansd = "OUTPUT/~{output_basename}.pc.meansd"
+		File population_pcs = "OUTPUT/~{output_basename}.pc"
+		File ancestry_adjustment_model = "OUTPUT/~{output_basename}.fitted_model_params.tsv"
+	}	
+}
+
+task CategorizeScores {
+	input {
+		Array[File] adjusted_scores
+		File sample_ids
+		Array[Int] num_bins
+		String docker_image
+		Int disk_size = ceil(size(adjusted_scores, "GB")) + 10
+		Int mem_size = 2
+		Int preemptible = 1
+	}
+
+	command <<<
+		set -euxo pipefail
+
+		mkdir -p OUTPUT
+
+		while read line; do
+			# Write headers for individual's risk summary
+			printf "Condition,Percentile,Total_Bins,Individuals_Bin\n">> OUTPUT/"${line}"_risk_summary.csv	
+
+			for c in '~{sep="' '" adjusted_scores}'; do
+				# Find the bin for the percentile
+				percentile=$(grep "${line}" $c | cut -f 27)
+				if [ $percentile -le 20 ]; then
+					bin="Below Average"
+				elif [ $percentile -le 75]; then
+					bin="Average"
+				elif [ $percentile -le 90]; then
+					bin="Above Average"
+				else
+					bin="High"
+				fi
+				
+				# Output individual's percentile and bin to csv
+				printf "$(basename ${c} _adjusted_scores.tsv),${percentile},~{num_bins},${bin}\n" >> OUTPUT/"${line}"_risk_summary.csv
+			done
+		done < "~{sample_ids}"
+	>>>
+
+	runtime {
+  		docker: "~{docker_image}"
+		disks: "local-disk " + disk_size + " SSD"
+		memory: mem_size + "GB"
+		preemptible: preemptible
+	}
+
+	output {
+		Array[File] individual_risk_summaries = glob("OUTPUT/*.csv")
 	}	
 }
