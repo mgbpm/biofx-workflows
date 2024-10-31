@@ -18,7 +18,7 @@ task CalculateMixScore {
 		mkdir -p OUTPUT
 		mkdir -p WORK
 
-		score_weights_file=$(tar -tf VTE.tar | grep score_weights | cut -d "/" -f 2)
+		score_weights_file=$(tar -tf "~{condition_zip_file}" | grep score_weights | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${score_weights_file}
 		mv ${score_weights_file} WORK/score_weights.txt
 
@@ -128,7 +128,7 @@ task DetermineChromosomeEncoding {
 
 	command <<<
 
-		var_weights_file=$(tar -tf VTE.tar | grep harmonized_weights | cut -d "/" -f 2)
+		var_weights_file=$(tar -tf "~{condition_zip_file}" | grep harmonized_weights | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${var_weights_file}
 		mv ${var_weights_file} harmonized_weights.txt
 
@@ -174,11 +174,11 @@ task ScoreVCF {
 		set -euxo pipefail
 
 		mkdir -p WORK
-		sites_file=$(tar -tf VTE.tar | grep .sscore.vars | cut -d "/" -f 2)
+		sites_file=$(tar -tf "~{condition_zip_file}" | grep .sscore.vars | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${sites_file}
 		mv ${sites_file} WORK/sites.sscore.vars
 
-		var_weights_file=$(tar -tf VTE.tar | grep harmonized_weights | cut -d "/" -f 2)
+		var_weights_file=$(tar -tf "~{condition_zip_file}" | grep harmonized_weights | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${var_weights_file}
 		mv ${var_weights_file} harmonized_weights.txt
 
@@ -304,11 +304,11 @@ task ProjectArray {
 		cp "~{bed}" WORK/"~{output_basename}.bed"
 		cp "~{fam}" WORK/"~{output_basename}.fam"
 
-		pc_loadings_file=$(tar -tf VTE.tar | grep .pc.loadings | cut -d "/" -f 2)
+		pc_loadings_file=$(tar -tf "~{condition_zip_file}" | grep .pc.loadings | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${pc_loadings_file}
 		mv ${pc_loadings_file} WORK/loadings.txt
 
-		meansd_file=$(tar -tf VTE.tar | grep .pc.meansd | cut -d "/" -f 2)
+		meansd_file=$(tar -tf "~{condition_zip_file}" | grep .pc.meansd | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${meansd_file}
 		mv ${meansd_file} WORK/meansd.txt
 
@@ -366,7 +366,7 @@ task MakePCAPlot {
 	command <<<
 		set -euxo pipefail
 
-		pcs_file=$(tar -tf VTE.tar | grep .pc$ | cut -d "/" -f 2)
+		pcs_file=$(tar -tf "~{condition_zip_file}" | grep .pc$ | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${pcs_file}
 		mv ${pcs_file} population_pcs.txt
 		
@@ -412,7 +412,7 @@ task AdjustScores {
 	command <<<
 		set -euxo pipefail
 
-		model_params_file=$(tar -tf VTE.tar | grep fitted_model_params | cut -d "/" -f 2)
+		model_params_file=$(tar -tf "~{condition_zip_file}" | grep fitted_model_params | cut -d "/" -f 2)
 		tar -xf "~{condition_zip_file}" ${model_params_file}
 		mv ${model_params_file} model_params.tsv
 
