@@ -60,41 +60,6 @@ task CalculateMixScore {
 	}
 }
 
-task UnzipConditionFile {
-	input {
-		File zipped_condition_file
-		String output_basename = sub(basename(zipped_condition_file), "\\.(tar|TAR|tar.gz|TAR.GZ)$", "")
-		String docker_image
-		Int disk_size = ceil(size(zipped_condition_file, "GB") * 2) + 10
-		Int mem_size = 2
-		Int preemptible = 1
-	}
-
-	command <<<
-		set -euxo pipefail
-
-		mkdir -p OUTPUT
-
-		tar -xf "${zipped_condition_file}" -C OUTPUT
-	>>>
-
-	runtime {
-  		docker: "~{docker_image}"
-		disks: "local-disk " + disk_size + " SSD"
-		memory: mem_size + "GB"
-		preemptible: preemptible
-	}
-
-	output {
-		Array[File] var_weights_files = glob("OUTPUT/*.var_weights.txt")
-		File score_weights_file = "OUTPUT/~{output_basename}.score_weights.txt"
-		File population_loadings = "OUTPUT/~{output_basename}.pc.loadings"
-		File population_meansd = "OUTPUT/~{output_basename}.pc.meansd"
-		File population_pcs = "OUTPUT/~{output_basename}.pc"
-		File ancestry_adjustment_model = "OUTPUT/~{output_basename}.fitted_model_params.tsv"
-	}	
-}
-
 task CategorizeScores {
 	input {
 		Array[File] adjusted_scores
@@ -152,27 +117,35 @@ task CategorizeScores {
 # plink chromosome encoding rules: https://www.cog-genomics.org/plink/2.0/data#irreg_output
 task DetermineChromosomeEncoding {
 	input {
-		File var_weights
-		String output_basename
+		File condition_zip_file
 		String docker_image
 	}
 
 	command <<<
-		python3 << "EOF"
-			code = 'MT'
-			with open("~{var_weights}") as weights_file:
-				chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
-				if any('chr' in c for c in chroms):
-					if 'chrM' in chroms:
-						code = 'chrM'
-					else:
-						code = 'chrMT'
-				elif 'M' in chroms:
-					code = 'M'
 
-			with open('~{output_basename}.chr_encode.txt', 'w') as write_code_file:
-				write_code_file.write(f'{code}\n')
-		EOF
+		mkdir -p chr_encoding_files
+		mkdir -p var_weights_files
+		tar -xf "~{condition_zip_file}" --wildcards "*.var_weights.txt" -C var_weights_files
+
+		for file in var_weights_files/*; do
+			base=$(basename $file ".var_weights.txt")
+
+			python3 << "EOF"
+				code = 'MT'
+				with open($file) as weights_file:
+					chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
+					if any('chr' in c for c in chroms):
+						if 'chrM' in chroms:
+							code = 'chrM'
+						else:
+							code = 'chrMT'
+					elif 'M' in chroms:
+						code = 'M'
+
+				with open('chr_encoding_files/' + base + '.chr_encode.txt', 'w') as write_code_file:
+					write_code_file.write(f'{code}\n')
+			EOF
+		done
 	>>>
 
 	runtime {
@@ -180,7 +153,8 @@ task DetermineChromosomeEncoding {
 	}
 
 	output {
-		String chromosome_encoding = read_string("~{output_basename}.chr_encode.txt")
+		Array[File] chr_encoding = glob("chr_encoding_files/*.chr_encode.txt")
+		Array[File] var_weights_files = glob("var_weights_files/*.var_weights.txt")
 	}
 }
 

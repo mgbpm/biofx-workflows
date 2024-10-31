@@ -60,21 +60,11 @@ workflow PRSOrchestrationWorkflow {
 
 	# Run PRS Mix Workflow
 	scatter (i in range(length(condition_files))) {
-		call PRSTasks.UnzipConditionFile as UnzipFiles {
-			input:
-				zipped_condition_file = condition_files[i],
-				docker_image = ubuntu_docker_image
-		}
 		call PRSMixWorkflow as RunPRSMix {
 			input:
 				imputed_vcf = RunGlimpse.imputed_vcf,
 				imputed_vcf_index = RunGlimpse.imputed_vcf_index
-				var_weights_files = UnzipFiles.var_weights_files,
-				score_weights_file = UnzipFiles.score_weights_file,
-				population_loadings = UnzipFiles.population_loadings,
-				population_meansd = UnzipFiles.population_meansd,
-				population_pcs = UnzipFiles.population_pcs,
-				ancestry_adjustment_model = UnzipFiles.ancestry_adjustment_model,
+				condition_file = condition_files[i],
 				pruning_sites_for_pca = pruning_sites_for_pca,
 				scoring_sites = scoring_sites,
 				ubuntu_docker_image = ubuntu_docker_image
