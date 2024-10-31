@@ -11,7 +11,6 @@ workflow PRSMixWorkflow {
 		File condition_file
 		# Other adjustment inputs
 		File pruning_sites_for_pca
-		File scoring_sites
 		# Docker images
 		String ubuntu_docker_image = "ubuntu:21.10"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
@@ -35,7 +34,7 @@ workflow PRSMixWorkflow {
 				input_vcf = input_vcf,
 				var_weights = ChrEncoding.var_weights_files[i],
 				chromosome_encoding = ChrEncoding.chr_encoding[i],
-				sites = scoring_sites,
+				condition_zip_file = condition_file,
 				output_basename = condition_name,
 				docker_image = plink_docker_image
 		}
@@ -65,8 +64,7 @@ workflow PRSMixWorkflow {
 	}
 	call PRSTasks.ProjectArray as ProjectPC {
 		input:
-			pc_loadings = population_loadings
-			pc_meansd = population_meansd,
+			condition_zip_file = condition_file,
 			bed = VCFToPlinkDataset.bed,
 			bim = VCFToPlinkDataset.bim,
 			fam = VCFToPlinkDataset.fam,
@@ -75,7 +73,7 @@ workflow PRSMixWorkflow {
 	}
 	call PRSTasks.MakePCAPlot as PCAPlot {
 		input:
-			population_pcs = population_pcs,
+			condition_zip_file = condition_file,
 			target_pcs = ProjectPC.projections,
 			output_basename = condition_name,
 			docker_image = tidyverse_docker_image
@@ -84,7 +82,7 @@ workflow PRSMixWorkflow {
 	# Adjust score with model and PCA
 	call PRSTasks.AdjustScores as AdjustedScores {
 		input:
-			model_parameters = ancestry_adjustment_model,
+			condition_zip_file = condition_file,
 			pcs = ProjectPC.projections,
 			scores = MixRawScore.prs_mix_raw_score,
 			output_basename = condition_name,

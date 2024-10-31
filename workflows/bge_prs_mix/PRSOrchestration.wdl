@@ -22,7 +22,7 @@ workflow PRSOrchestrationWorkflow {
 		File? glimpse_monitoring_script
 
 		# PRS INPUTS
-		Array[File] condition_files
+		Array[File] condition_zip_files
 		File scoring_sites
 		File pruning_sites_for_pca
 		String ubuntu_docker_image = "ubuntu:21.10"
@@ -59,12 +59,12 @@ workflow PRSOrchestrationWorkflow {
 	}
 
 	# Run PRS Mix Workflow
-	scatter (i in range(length(condition_files))) {
+	scatter (i in range(length(condition_zip_files))) {
 		call PRSMixWorkflow as RunPRSMix {
 			input:
 				imputed_vcf = RunGlimpse.imputed_vcf,
 				imputed_vcf_index = RunGlimpse.imputed_vcf_index
-				condition_file = condition_files[i],
+				condition_file = condition_zip_files[i],
 				pruning_sites_for_pca = pruning_sites_for_pca,
 				scoring_sites = scoring_sites,
 				ubuntu_docker_image = ubuntu_docker_image

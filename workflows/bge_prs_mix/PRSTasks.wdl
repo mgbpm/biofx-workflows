@@ -120,6 +120,7 @@ task DetermineChromosomeEncoding {
 	input {
 		File condition_zip_file
 		String docker_image
+		Int disk_size = ceil(size(condition_zip_file, "GB"))
 	}
 
 	command <<<
@@ -151,6 +152,7 @@ task DetermineChromosomeEncoding {
 
 	runtime {
 		docker : "~{docker_image}"
+		disks: "local-disk " + disk_size + " HDD"
 	}
 
 	output {
@@ -164,17 +166,22 @@ task ScoreVCF {
 		File input_vcf
 		File var_weights
 		String chromosome_encoding
-		File sites
+		File condition_zip_file
 		String output_basename
 		String docker_image
 		Int base_mem = 16
 		Int mem_size = base_mem + 2
 		Int plink_mem = ceil(base_mem * 0.75 * 1000)
-		Int disk_size =  (ceil(size(input_vcf, "GB")) * 3) + 20
+		Int disk_size =  ceil(size(input_vcf, "GB")) * 3 + ceil(size(condition_zip_file, "GB") + size(var_weights, "GB")) + 20
 	}
   
 	command <<<
 		set -euxo pipefail
+
+		mkdir -p WORK
+		sites_file=$(tar -tf VTE.tar | grep .sscore.vars | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${sites_file}
+		mv ${sites_file} WORK/sites.sscore.vars
 
 		/plink2 --score "~{var_weights}" \
 			header ignore-dup-ids list-variants no-mean-imputation \
@@ -183,7 +190,7 @@ task ScoreVCF {
 			-vcf "~{input_vcf}" \
 			dosage=DS \
 			--new-id-max-allele-len 1000 missing \
-			--extract "~{sites}" \
+			--extract WORK/sites.sscore.vars \
 			--out "~{output_basename}" \
 			--memory "~{plink_mem}" \
 			--output-chr "~{chromosome_encoding}"
@@ -249,6 +256,8 @@ task ArrayVCFToPlinkDataset {
 	}
 
 	command <<<
+		set -euxo pipefail
+
 		/plink2 \
 			--vcf "~{input_vcf}" \
 			--extract-intersect "~{pruning_sites}" \
@@ -279,8 +288,7 @@ task ProjectArray {
 		File bim
 		File bed
 		File fam
-		File pc_loadings
-		File pc_meansd
+		File condition_zip_file
 		String output_basename
 		String docker_image
 		Int disk_size = 400
@@ -289,30 +297,39 @@ task ProjectArray {
 	}
 
 	command <<<
-		cp "~{bim}" "~{output_basename}.bim"
-		cp "~{bed}" "~{output_basename}.bed"
-		cp "~{fam}" "~{output_basename}.fam"
+		set -euxo pipefail
 
-		cp "~{pc_loadings}" loadings.txt
-		cp "~{pc_meansd}" meansd.txt
+		mkdir -p WORK
+
+		cp "~{bim}" WORK/"~{output_basename}.bim"
+		cp "~{bed}" WORK/"~{output_basename}.bed"
+		cp "~{fam}" WORK/"~{output_basename}.fam"
+
+		pc_loadings_file=$(tar -tf VTE.tar | grep .pc.loadings | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${pc_loadings_file}
+		mv ${pc_loadings_file} WORK/loadings.txt
+
+		meansd_file=$(tar -tf VTE.tar | grep .pc.meansd | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${meansd_file}
+		mv ${meansd_file} WORK/meansd.txt
 
 		# Check if .bim file, pc loadings, and pc meansd files have the same IDs
 		# 1. extract IDs, removing first column of .bim file and first rows of the pc files
-		awk '{print $2}' "~{output_basename}.bim" > bim_ids.txt
-		awk '{print $1}' loadings.txt | tail -n +2 > pcloadings_ids.txt
-		awk '{print $1}' meansd.txt | tail -n +2 > meansd_ids.txt
+		awk '{print $2}' WORK/"~{output_basename}.bim" > WORK/bim_ids.txt
+		awk '{print $1}' WORK/loadings.txt | tail -n +2 > WORK/pcloadings_ids.txt
+		awk '{print $1}' WORK/meansd.txt | tail -n +2 > WORK/meansd_ids.txt
 
-		diff bim_ids.txt pcloadings_ids.txt > diff1.txt
-		diff bim_ids.txt meansd_ids.txt > diff2.txt
-		diff pcloadings_ids.txt meansd_ids.txt > diff3.txt
+		diff WORK/bim_ids.txt WORK/pcloadings_ids.txt > WORK/diff1.txt
+		diff WORK/bim_ids.txt WORK/meansd_ids.txt > WORK/diff2.txt
+		diff WORK/pcloadings_ids.txt WORK/meansd_ids.txt > WORK/diff3.txt
 
-		if [[ -s diff3.txt ]];then
+		if [[ -s WORK/diff3.txt ]];then
 			echo "PC loadings file and PC means file do not contain the same IDs. Check your input files and run again."
 			exit 1
 		fi
 
 		# Check if diff files are not empty
-		if [[ -s diff1.txt || -s diff2.txt ]]; then
+		if [[ -s WORK/diff1.txt || -s WORK/diff2.txt ]]; then
 			echo "IDs in .bim file are not the same as the IDs in the PCA files. Check that you have the right files and run again."
 			exit 1
 		fi
@@ -321,9 +338,9 @@ task ProjectArray {
 			--bfile "~{output_basename}" \
 			--numthreads "~{nthreads}" \
 			--project \
-			--inmeansd meansd.txt \
-			--outproj projections.txt \
-			--inload loadings.txt \
+			--inmeansd WORK/meansd.txt \
+			--outproj "~{output_basename}_projections.txt" \
+			--inload WORK/loadings.txt \
 			-v
 	>>>
 
@@ -340,7 +357,7 @@ task ProjectArray {
 
 task MakePCAPlot {
 	input {
-		File population_pcs
+		File condition_zip_file
 		File target_pcs
 		String output_basename
 		String docker_image
@@ -348,12 +365,18 @@ task MakePCAPlot {
 	}
 
 	command <<<
+		set -euxo pipefail
+
+		pcs_file=$(tar -tf VTE.tar | grep .pc$ | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${pcs_file}
+		mv ${pcs_file} population_pcs.txt
+		
 		Rscript -<< "EOF"
-			ibrary(dplyr)
+			library(dplyr)
 			library(readr)
 			library(ggplot2)
 
-			population_pcs <- read_tsv("~{population_pcs}")
+			population_pcs <- read_tsv(population_pcs.txt)
 			target_pcs <- read_tsv("~{target_pcs}")
 
 			ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
@@ -363,7 +386,6 @@ task MakePCAPlot {
 				theme_bw()
 
 			ggsave(filename = "~{output_basename}_pca_plot.png", dpi=300, width = 6, height = 6)
-
 		EOF
 	>>>
 
@@ -379,7 +401,7 @@ task MakePCAPlot {
 
 task AdjustScores {
 	input {
-		File model_parameters
+		File condition_zip_file
 		File pcs
 		File scores
 		String output_basename
@@ -389,12 +411,18 @@ task AdjustScores {
 	}
 
 	command <<<
+		set -euxo pipefail
+
+		model_params_file=$(tar -tf VTE.tar | grep fitted_model_params | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${model_params_file}
+		mv ${model_params_file} model_params.tsv
+
 		Rscript -<< "EOF"
 			library(dplyr)
 			library(readr)
 
 			# Read in model parameters
-			params_tibble <- read_tsv("~{model_parameters}")
+			params_tibble <- read_tsv(model_params.tsv)
 			params <- params_tibble %>% pull(value)
 
 			# Linear transformation to predict variance
