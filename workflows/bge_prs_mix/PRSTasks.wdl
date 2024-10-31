@@ -17,7 +17,10 @@ task CalculateMixScore {
 
 		mkdir -p OUTPUT
 		mkdir -p WORK
-		tar -xf "~{condition_zip_file}" --wildcards "*.score_weights.txt" -C WORK
+
+		score_weights_file=$(tar -tf VTE.tar | grep score_weights | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${score_weights_file}
+		mv ${score_weights_file} WORK/score_weights.txt
 
 		# Extract all sample IDs from a raw score file
 		score_file_array=('~{sep="' '" raw_scores_files}')
@@ -33,7 +36,7 @@ task CalculateMixScore {
 			# Add the raw score from each file to the sum of raw scores
 			for c in '~{sep="' '" raw_scores_files}'; do
 				pgs_id=$(basename $c .txt | cut -d "_" -f 1)
-				score_weight=$(grep "${pgs_id}" WORK/*.score_weights.txt | cut -f 2)
+				score_weight=$(grep "${pgs_id}" WORK/score_weights.txt | cut -f 2)
 				raw_score=$(grep "${line}" $c | cut -f 4)
 				weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
 				score_sum=$(awk -v x=${weighted_score} -v y=${score_sum} 'BEGIN {print x+y}')
