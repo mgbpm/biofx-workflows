@@ -26,7 +26,7 @@ workflow PRSMixWorkflow {
 	# Calculate raw PRS score per variant weights file
 	call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 		input:
-			condition_file = condition_file,
+			condition_zip_file = condition_file,
 			docker_image = interaction_docker_image
 	}
 	scatter (i in range(length(ChrEncoding.var_weights_files))) {
@@ -45,7 +45,7 @@ workflow PRSMixWorkflow {
 	call PRSTasks.CalculateMixScore as MixRawScore {
 		input:
 			raw_scores = RawScore.score,
-			score_weights = score_weights_file,
+			condition_zip_file = condition_file,
 			output_basename = condition_name
 	}
 

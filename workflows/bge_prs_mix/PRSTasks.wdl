@@ -4,10 +4,10 @@ task CalculateMixScore {
 	input {
 		Array[File] raw_scores_files
 		Int raw_scores_len = length(raw_scores_files)
-		File score_weights
+		File condition_zip_file
 		String output_basename
 		String docker_image
-		Int disk_size = ceil(size(score_weights, "GB") * 2) + 10
+		Int disk_size = ceil(size(raw_scores_files, "GB") + size(condition_zip_file, "GB")) + 10
 		Int mem_size = 2
 		Int preemptible = 1
 	}
@@ -16,7 +16,8 @@ task CalculateMixScore {
 		set -euxo pipefail
 
 		mkdir -p OUTPUT
-		mkdir -p OUTPUT
+		mkdir -p WORK
+		tar -xf "~{condition_zip_file}" --wildcards "*.score_weights.txt" -C WORK
 
 		# Extract all sample IDs from a raw score file
 		score_file_array=('~{sep="' '" raw_scores_files}')
@@ -32,7 +33,7 @@ task CalculateMixScore {
 			# Add the raw score from each file to the sum of raw scores
 			for c in '~{sep="' '" raw_scores_files}'; do
 				pgs_id=$(basename $c .txt | cut -d "_" -f 1)
-				score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f 2)
+				score_weight=$(grep "${pgs_id}" WORK/*.score_weights.txt | cut -f 2)
 				raw_score=$(grep "${line}" $c | cut -f 4)
 				weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
 				score_sum=$(awk -v x=${weighted_score} -v y=${score_sum} 'BEGIN {print x+y}')
