@@ -128,29 +128,23 @@ task DetermineChromosomeEncoding {
 
 	command <<<
 
-		mkdir -p chr_encoding_files
-		mkdir -p var_weights_files
-		tar -xf "~{condition_zip_file}" --wildcards "*.var_weights.txt" -C var_weights_files
+		var_weights_file=$(tar -tf VTE.tar | grep harmonized_weights | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${var_weights_file}
+		mv ${var_weights_file} harmonized_weights.txt
 
-		for file in var_weights_files/*; do
-			base=$(basename $file ".var_weights.txt")
-
-			python3 << "EOF"
-				code = 'MT'
-				with open($file) as weights_file:
-					chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
-					if any('chr' in c for c in chroms):
-						if 'chrM' in chroms:
-							code = 'chrM'
-						else:
-							code = 'chrMT'
-					elif 'M' in chroms:
-						code = 'M'
-
-				with open('chr_encoding_files/' + base + '.chr_encode.txt', 'w') as write_code_file:
-					write_code_file.write(f'{code}\n')
-			EOF
-		done
+		python3 -c '
+code = "MT"
+with open("harmonzied_weights.txt") as weights_file:
+	chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
+	if any("chr" in c for c in chroms):
+		if "chrM" in chroms:
+			code = "chrM"
+		else:
+			code = "chrMT"
+	elif "M" in chroms:
+		code = "M"
+with open("chr_encode_out.txt", "w") as write_code_file:
+	write_code_file.write(f"{code}\n")'
 	>>>
 
 	runtime {
@@ -159,15 +153,13 @@ task DetermineChromosomeEncoding {
 	}
 
 	output {
-		Array[File] chr_encoding = glob("chr_encoding_files/*.chr_encode.txt")
-		Array[File] var_weights_files = glob("var_weights_files/*.var_weights.txt")
+		String chr_encoding = read_string("chr_encode_out.txt")
 	}
 }
 
 task ScoreVCF {
 	input {
 		File input_vcf
-		File var_weights
 		String chromosome_encoding
 		File condition_zip_file
 		String output_basename
@@ -186,7 +178,11 @@ task ScoreVCF {
 		tar -xf "~{condition_zip_file}" ${sites_file}
 		mv ${sites_file} WORK/sites.sscore.vars
 
-		/plink2 --score "~{var_weights}" \
+		var_weights_file=$(tar -tf VTE.tar | grep harmonized_weights | cut -d "/" -f 2)
+		tar -xf "~{condition_zip_file}" ${var_weights_file}
+		mv ${var_weights_file} harmonized_weights.txt
+
+		/plink2 --score harmonzied_weights \
 			header ignore-dup-ids list-variants no-mean-imputation \
 			cols=maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums \
 			--set-all-var-ids "@:#:\\$1:\\$2" \

@@ -14,7 +14,6 @@ workflow PRSMixWorkflow {
 		# Docker images
 		String ubuntu_docker_image = "ubuntu:21.10"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-		String python_docker_image = "python:3.9.10"
 		String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
 		String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
 		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
@@ -32,8 +31,7 @@ workflow PRSMixWorkflow {
 		call PRSTasks.ScoreVCF as RawScore {
 			input:
 				input_vcf = input_vcf,
-				var_weights = ChrEncoding.var_weights_files[i],
-				chromosome_encoding = ChrEncoding.chr_encoding[i],
+				chromosome_encoding = ChrEncoding.chr_encoding,
 				condition_zip_file = condition_file,
 				output_basename = condition_name,
 				docker_image = plink_docker_image
@@ -43,22 +41,18 @@ workflow PRSMixWorkflow {
 	# Calculate raw PRS mix score
 	call PRSTasks.CalculateMixScore as MixRawScore {
 		input:
-			raw_scores = RawScore.score,
+			raw_scores_files = RawScore.score,
 			condition_zip_file = condition_file,
-			output_basename = condition_name
+			output_basename = condition_name,
+			docker_image = ubuntu_docker_image
 	}
 
 	# Calculate PCA for individual
-	call PRSTasks.ExtractIDs as {
-		input:
-			input_vcf = input_vcf,
-			chromosome_encoding = ChrEncoding.chromosome_encoding
-	}
 	call PRSTasks.ArrayVCFToPlinkDataset as VCFToPlinkDataset {
 		input:
 		input_vcf = input_vcf,
 		pruning_sites = pruning_sites_for_pca,
-		chromosome_encoding = ChrEncoding.chromosome_encoding,
+		chromosome_encoding = ChrEncoding.chr_encoding,
 		output_basename = condition_name,
 		docker_image = plink_docker_image
 	}
