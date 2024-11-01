@@ -1,8 +1,11 @@
 version 1.0
 
 import "../lowpassimputation/Glimpse2Imputation.wdl"
-import "PRSMixWorkflow.wdl"
-import "PRSTasks.wdl"
+import "PRSRawScoreWorkflow.wdl"
+import "PRSMixScoreWorkflow.wdl"
+import "PRSPCAWorkflow.wdl"
+import "PRSAdjustmentWorkflow.wdl"
+import "PRSCategorizationWorkflow.wdl"
 
 workflow PRSOrchestrationWorkflow {
 	input {
@@ -23,9 +26,12 @@ workflow PRSOrchestrationWorkflow {
 
 		# PRS INPUTS
 		Array[File] condition_zip_files
-		File scoring_sites
 		File pruning_sites_for_pca
 		String ubuntu_docker_image = "ubuntu:21.10"
+		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
+		String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
+		String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
+		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
 
 		# REFERENCE FILES
 		File ref_fasta
@@ -58,28 +64,50 @@ workflow PRSOrchestrationWorkflow {
 			monitoring_script = glimpse_monitoring_script
 	}
 
-	# Run PRS Mix Workflow
-	scatter (i in range(length(condition_zip_files))) {
-		call PRSMixWorkflow as RunPRSMix {
+	scatter (i in range(length(condition_zip_files))){
+		# Get PRS raw scores for each condition
+		call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
 			input:
-				imputed_vcf = RunGlimpse.imputed_vcf,
-				imputed_vcf_index = RunGlimpse.imputed_vcf_index
+				input_vcf = RunGlimpse.imputed_vcf,
 				condition_file = condition_zip_files[i],
-				pruning_sites_for_pca = pruning_sites_for_pca,
-				scoring_sites = scoring_sites,
+				plink_docker_image = plink_docker_image,
+				interaction_docker_image = interaction_docker_image
+		}
+		# Get the PRS mix raw score for each condition
+		call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
+			input:
+				raw_scores = PRSRawScores.prs_raw_scores,
+				condition_file = condition_zip_files[i],
 				ubuntu_docker_image = ubuntu_docker_image
+		}
+		# Perform PCA with population model
+		call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
+			input:
+				condition_file = condition_zip_files[i],
+				input_vcf = RunGlimpse.imputed_vcf,
+				pruning_sites_for_pca = pruning_sites_for_pca,
+				chr_encoding = PRSRawScores.chromosome_encoding,
+				plink_docker_image = plink_docker_image,
+				flash_pca_docker_image = flash_pca_docker_image,
+				tidyverse_docker_image = tidyverse_docker_image
+
+		}
+		# Adjust PRS mix score for each condition
+		call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
+			input:
+				condition_file = condition_zip_files[i],
+				pca_projections = PerformPCA.pc_projection,
+				prs_mix_raw_score = PRSMixScores.prs_mix_raw_score,
+				tidyverse_docker_image = tidyverse_docker_image
 		}
 	}
 
-	# For each disease...
-		# Bin individuals based on thresholds
-		# Determine individual's percentile based on PRS score
-		# Produce a risk report csv that can be used to generate the final report
-	call PRSTasks.CategorizeScores as GetRiskSummaries {
+	# Categorize each condition's score into bins; report percentile & bin
+	call PRSCategorizationWorkflow.PRSCategorizationWorkflow as CategorizeScores {
 		input:
-			adjusted_scores = RunPRSMix.adjusted_scores,
-			sample_ids = RunPRSMix.sample_ids_list[0],
-			docker_image = ubuntu_docker_image
+			prs_scores = AdjustPRSScores.adjusted_scores,
+			sample_ids = PRSMixScores.sample_ids[0],
+			ubuntu_docker_image = ubuntu_docker_image
 	}
 
 	output {
@@ -91,11 +119,11 @@ workflow PRSOrchestrationWorkflow {
         File? glimpse_ligate_monitoring = RunGlimpse.glimpse_ligate_monitoring
 
 		# PRS Outputs
-		File prs_mix_adjusted_score = RunPRSMix.adjusted_scores
-		File pc_projection = RunPRSMix.pc_projection
-		File pc_plot = RunPRSMix.pc_plot
+		File prs_mix_adjusted_score = AdjustPRSScores.adjusted_scores
+		File pc_projection = PerformPCA.pc_projection
+		File pc_plot = PerformPCA.pc_plot
 
 		# Individual Outputs
-		Array[File] individuals_risk_summaries = GetRiskSummaries.individual_risk_summaries
+		Array[File] individuals_risk_summaries = CategorizeScores.individual_risk_summaries
 	}
 }
