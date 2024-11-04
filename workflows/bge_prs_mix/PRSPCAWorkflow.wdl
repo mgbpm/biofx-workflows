@@ -4,56 +4,57 @@ import "../../steps/PRSTasks.wdl"
 
 workflow PRSPCAWorkflow {
 	input {
-		# Zip with condition-specific files
-		File condition_file
+		String condition_name
+		File var_weights
 		# PCA inputs
 		File input_vcf
+		File pc_loadings
+		File pc_meansd
+		File population_pcs
 		File pruning_sites_for_pca
-		File? chr_encoding
+		File? weights_chr_encoding
 		# Docker images
-		String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
+		String python_docker_image = "python:3.9.10"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
 		String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
 		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
 	}
 
-	String condition_name = sub(basename(condition_file), "\\.(tar|TAR|tar.gz|TAR.GZ)$", "")
-
 	if (!defined(chr_encoding)) {
 		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
-				condition_zip_file = condition_file,
-				docker_image = interaction_docker_image
+				weights = var_weights,
+				docker_image = python_docker_image
 		}
 	}
 
-	call PRSTasks.ArrayVCFToPlinkDataset as VCFToPlinkDataset {
+	call PRSTasks.ArrayVcfToPlinkDataset as GetPlinkDataset {
 		input:
-		input_vcf = input_vcf,
+		vcf = input_vcf,
 		pruning_sites = pruning_sites_for_pca,
-		chromosome_encoding = select_first([chr_encoding, ChrEncoding.chr_encoding]),
-		output_basename = condition_name,
+		chromosome_encoding = select_first([weights_chr_encoding, ChrEncoding.chromosome_encoding]),
+		basename = condition_name,
 		docker_image = plink_docker_image
 	}
-	call PRSTasks.ProjectArray as ProjectPC {
+	call PRSTasks.ProjectArray as ProjectPCA {
 		input:
-			condition_zip_file = condition_file,
-			bed = VCFToPlinkDataset.bed,
-			bim = VCFToPlinkDataset.bim,
-			fam = VCFToPlinkDataset.fam,
-			output_basename = condition_name + "_pca",
+			bim = GetPlinkDataset.bim,
+			bed = GetPlinkDataset.bed,
+			fam = GetPlinkDataset.fam,
+			pc_loadings = pc_loadings,
+			pc_meansd = pc_meansd,
+			basename = condition_name + "_pca",
 			docker_image = flash_pca_docker_image
 	}
 	call PRSTasks.MakePCAPlot as PCAPlot {
 		input:
-			condition_zip_file = condition_file,
-			target_pcs = ProjectPC.projections,
-			output_basename = condition_name,
+			population_pcs = population_pcs,
+			target_pcs = ProjectPCA.projections,
 			docker_image = tidyverse_docker_image
 	}
 	
 	output {
-		File pc_projection = ProjectPC.projections
+		File pc_projection = ProjectPCA.projections
 		File pc_plot = PCAPlot.pca_plot
 	}
 }

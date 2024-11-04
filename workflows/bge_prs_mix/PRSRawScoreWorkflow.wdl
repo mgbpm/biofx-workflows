@@ -4,35 +4,36 @@ import "../../steps/PRSTasks.wdl"
 
 workflow PRSRawScoreWorkflow {
 	input {
-		# Zip with condition-specific files
-		File condition_file
+		String condition_name
+		File var_weights
+		File scoring_sites
 		# Input VCF
 		File input_vcf
 		# Docker images
+		String python_docker_image = "python:3.9.10"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-		String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
 	}
-
-	String condition_name = sub(basename(condition_file), "\\.(tar|TAR|tar.gz|TAR.GZ)$", "")
 
 	call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 		input:
-			condition_zip_file = condition_file,
-			docker_image = interaction_docker_image
+			weights = var_weights,
+			docker_image = python_docker_image
 	}
-	call PRSTasks.ScoreVCF as GetRawScores {
+
+	call PRSTasks.ScoreVcf as ScoreVCF {
 		input:
-			input_vcf = input_vcf,
-			chromosome_encoding = ChrEncoding.chr_encoding,
-			condition_zip_file = condition_file,
-			output_basename = condition_name,
+			vcf = input_vcf,
+			chromosome_encoding = ChrEncoding.chromosome_encoding,
+			sites = scoring_sites,
+			weights = var_weights,
+			basename = condition_name,
 			docker_image = plink_docker_image
 	}
 
 	output {
-		String chromosome_encoding = ChrEncoding.chr_encoding
-		File prs_raw_scores = GetRawScores.score
-		File prs_raw_scores_log = GetRawScores.log
-    	File prs_sites_scored = GetRawScores.sites_scored
+		String chromosome_encoding = ChrEncoding.chromosome_encoding
+		File prs_raw_scores = ScoreVCF.score
+		File prs_raw_scores_log = ScoreVCF.log
+    	File prs_sites_scored = ScoreVCF.sites_scored
 	}
 }

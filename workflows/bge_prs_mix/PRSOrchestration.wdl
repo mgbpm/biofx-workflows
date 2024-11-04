@@ -65,6 +65,7 @@ workflow PRSOrchestrationWorkflow {
 	}
 
 	scatter (i in range(length(condition_zip_files))){
+		call Unzip 
 		# Get PRS raw scores for each condition
 		call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
 			input:
