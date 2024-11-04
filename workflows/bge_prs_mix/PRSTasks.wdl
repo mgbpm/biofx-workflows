@@ -9,7 +9,9 @@ task DetermineChromosomeEncoding {
 	input {
 		File condition_zip_file
 		String docker_image
-		Int disk_size = ceil(size(condition_zip_file, "GB"))
+		Int disk_size = ceil(size(condition_zip_file, "GB")) + 10
+		Int mem_size = 2
+		Int preemptible = 1
 	}
 
 	command <<<
@@ -36,6 +38,8 @@ with open("chr_encode_out.txt", "w") as write_code_file:
 	runtime {
 		docker : "~{docker_image}"
 		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + "GB"
+        preemptible: preemptible
 	}
 
 	output {
@@ -50,10 +54,11 @@ task ScoreVCF {
 		File condition_zip_file
 		String output_basename
 		String docker_image
+		Int disk_size =  ceil(size(input_vcf, "GB") * 3) + ceil(size(condition_zip_file, "GB")) + 20
 		Int base_mem = 16
 		Int mem_size = base_mem + 2
 		Int plink_mem = ceil(base_mem * 0.75 * 1000)
-		Int disk_size =  ceil(size(input_vcf, "GB")) * 3 + ceil(size(condition_zip_file, "GB") + size(var_weights, "GB")) + 20
+		Int preemptible = 1
 	}
   
 	command <<<
@@ -85,6 +90,7 @@ task ScoreVCF {
 		docker: "~{docker_image}"
 		disks: "local-disk " + disk_size + " HDD"
 		memory: mem_size + " GB"
+		preemptible: preemptible
 	}
 
 	output {
@@ -103,6 +109,7 @@ task ArrayVCFToPlinkDataset {
 		String docker_image
 		Int disk_size = (ceil(size(input_vcf, "GB")) * 3) + 20
 		Int mem_size = 8
+		Int preemptible = 1
 	}
 
 	command <<<
@@ -124,6 +131,7 @@ task ArrayVCFToPlinkDataset {
 		docker: "~{docker_image}"
 		disks: "local-disk " + disk_size + " HDD"
 		memory: mem_size + " GB"
+		preemptible: preemptible
 	}
 
 	output {
@@ -144,6 +152,7 @@ task ProjectArray {
 		Int disk_size = 400
 		Int mem_size = 8
 		Int nthreads = 16
+		Int preemptible = 1
 	}
 
 	command <<<
@@ -198,6 +207,7 @@ task ProjectArray {
 		docker: "~{docker_image}"
 		disks: "local-disk " + disk_size + " HDD"
 		memory: mem_size + " GB"
+		preemptible: preemptible
 	}
 
 	output {
@@ -212,6 +222,8 @@ task MakePCAPlot {
 		String output_basename
 		String docker_image
 		Int disk_size = 100
+		Int mem_size = 2
+		Int preemptible = 1
 	}
 
 	command <<<
@@ -246,6 +258,8 @@ task MakePCAPlot {
 	runtime {
 		docker: "~{docker_image}"
  		disks: "local-disk " + disk_size + " HDD"
+		memory: mem_size + " GB"
+		preemptible: preemptible
 	}
 }
 
@@ -258,6 +272,7 @@ task AdjustScores {
 		String docker_image
 		Int disk_size = 100
 		Int mem_size = 2
+		Int preemptible = 1
 	}
 
 	command <<<
@@ -316,5 +331,6 @@ task AdjustScores {
 		docker: "~{docker_image}"
 		disks: "local-disk " + disk_size + " HDD"
 		memory: mem_size + " GB"
+		preemptible: preemptible
 	}
 }
