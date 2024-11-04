@@ -1,6 +1,6 @@
 version 1.0
 
-import "PRSTasks.wdl"
+import "../../steps/PRSTasks.wdl"
 import "../../steps/Utilities.wdl"
 
 workflow PRSAdjustmentWorkflow {
@@ -12,8 +12,8 @@ workflow PRSAdjustmentWorkflow {
 		File? input_vcf
 		File? pruning_sites_for_pca
 		String? chr_encoding
-		# PRS Mix raw scores
-		File prs_mix_raw_score
+		# PRS raw scores
+		File prs_raw_score
 		# Docker images
 		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
 		String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"

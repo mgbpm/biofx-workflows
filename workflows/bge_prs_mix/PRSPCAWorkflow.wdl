@@ -1,6 +1,6 @@
 version 1.0
 
-import "PRSTasks.wdl"
+import "../../steps/PRSTasks.wdl"
 
 workflow PRSPCAWorkflow {
 	input {
