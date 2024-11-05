@@ -5,8 +5,8 @@ import "../../steps/Utilities.wdl"
 
 workflow PRSAdjustmentWorkflow {
 	input {
-		String condition_name
-		File var_weights
+		# Chromosome encoding
+		File? weights_chr_encoding
 		# PCA inputs
 		File? pca_projections
 		File? input_vcf
@@ -14,8 +14,9 @@ workflow PRSAdjustmentWorkflow {
 		File? pc_meansd
 		File? population_pcs
 		File? pruning_sites_for_pca
-		File? weights_chr_encoding
-		# Score inputs
+		# Score adjustment inputs
+		String condition_name
+		File var_weights
 		File fitted_model_params
 		File prs_raw_scores
 		# Docker images

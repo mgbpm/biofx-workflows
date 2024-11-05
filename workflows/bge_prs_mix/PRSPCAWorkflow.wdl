@@ -4,9 +4,9 @@ import "../../steps/PRSTasks.wdl"
 
 workflow PRSPCAWorkflow {
 	input {
+		# PCA inputs
 		String condition_name
 		File var_weights
-		# PCA inputs
 		File input_vcf
 		File pc_loadings
 		File pc_meansd

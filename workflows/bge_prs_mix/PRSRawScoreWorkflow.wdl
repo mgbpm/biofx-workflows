@@ -4,10 +4,10 @@ import "../../steps/PRSTasks.wdl"
 
 workflow PRSRawScoreWorkflow {
 	input {
+		# PRS inputs
 		String condition_name
 		File var_weights
 		File scoring_sites
-		# Input VCF
 		File input_vcf
 		# Docker images
 		String python_docker_image = "python:3.9.10"
@@ -31,7 +31,9 @@ workflow PRSRawScoreWorkflow {
 	}
 
 	output {
+		# Chromosme encoding
 		String chromosome_encoding = ChrEncoding.chromosome_encoding
+		# PRS outputs
 		File prs_raw_scores = ScoreVCF.score
 		File prs_raw_scores_log = ScoreVCF.log
     	File prs_sites_scored = ScoreVCF.sites_scored

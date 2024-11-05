@@ -2,6 +2,7 @@ version 1.0
 
 workflow PRSMixScoreWorkflow {
 	input {
+		# PRS Mix inputs
 		String condition_name
 		Array[File] raw_scores
 		File score_weights

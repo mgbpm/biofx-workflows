@@ -4,9 +4,8 @@ import "../../steps/PRSTasks.wdl"
 
 workflow PRSCategorizationWorkflow {
 	input {
-		# PRS Scores (preferably adjusted)
+		# PRS inputs
 		Array[File] prs_scores
-		# Sample ID list
 		File sample_ids
 		# Ubuntu Docker image
 		String ubuntu_docker_image = "ubuntu:21.10"
