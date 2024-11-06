@@ -336,7 +336,7 @@ workflows:
       branches:
         - /.+/
       tags:
-        - ignore-all-tags
+        - PRS_*
   - name: PRSMakeAdjustmentModel
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/MakeAdjustmentModel.wdl
@@ -344,7 +344,7 @@ workflows:
       branches:
         - /.+/
       tags:
-        - ignore-all-tags
+        - PRS_*
   - name: PRSPerformPopulationPCA
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/PerformPopulationPCA.wdl
