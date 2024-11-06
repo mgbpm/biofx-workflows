@@ -120,9 +120,9 @@ workflow RunPRSWorkflow {
       # , population_scoring_mem               = 64
       # , PopulationArrayVcfToPlinkDataset.mem = 64
 
-      , population_loadings                  = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
-      , population_pcs                       = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
-      , population_meansd                    = "PLACEHOLDER__REQUIRED_BY_BUGGY_CODE"
+      , population_loadings                  = "PLACEHOLDER__REQUIRED_BUT_NOT_USED"
+      , population_pcs                       = "PLACEHOLDER__REQUIRED_BUT_NOT_USED"
+      , population_meansd                    = "PLACEHOLDER__REQUIRED_BUT_NOT_USED"
   }
 
   output {
