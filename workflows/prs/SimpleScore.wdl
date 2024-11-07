@@ -1,6 +1,6 @@
 version 1.0
 
-workflow ScoreVcfWorkflow {
+workflow SimpleScore {
   input {
     File  vcf
     File  weights
