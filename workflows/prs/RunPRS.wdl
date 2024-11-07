@@ -14,8 +14,6 @@ workflow RunPRSWorkflow {
     File             reference_vcf
                      
     String           name
-
-    Map[String, Int] memory_specs = {}
   }
 
   call Baseline
