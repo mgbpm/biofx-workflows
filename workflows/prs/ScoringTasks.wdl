@@ -16,9 +16,11 @@ task ScoreVcf {
     String? chromosome_encoding
   }
 
-  Int runtime_mem = base_mem + 2
-  Int plink_mem = ceil(base_mem * 0.75 * 1000)
-  Int disk_space =  3*ceil(size(vcf, "GB")) + 20
+  Int base_memory    = if base_mem < 8 then 8 else base_mem
+  Int plink_mem      = base_memory * 1000
+  Int runtime_memory = base_memory + 2
+
+  Int disk_space     = 3 * ceil(size(vcf, "GB")) + 20
 
   String devdir     = 'DEV'
   String inputsdir  = devdir + '/INPUTS'
@@ -76,7 +78,7 @@ task ScoreVcf {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     disks: "local-disk " + disk_space + " HDD"
-    memory: runtime_mem + " GB"
+    memory: runtime_memory + " GB"
   }
 }
 
@@ -675,7 +677,9 @@ task ExtractIDsPlink {
     Int mem = 8
   }
 
-  Int plink_mem = ceil(mem * 0.75 * 1000)
+  Int base_memory = if mem < 8 then 8 else mem
+  Int plink_mem = base_memory * 1000
+  Int runtime_memory = base_memory + 2
 
   command <<<
   /plink2                                  \
@@ -695,7 +699,7 @@ task ExtractIDsPlink {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     disks: "local-disk " + disk_size + " HDD"
-    memory: mem + " GB"
+    memory: runtime_memory + " GB"
   }
 }
 

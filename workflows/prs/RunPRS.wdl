@@ -20,6 +20,16 @@ workflow RunPRSWorkflow {
 
   call Baseline
 
+  call CountVcfVariants as CountQueryVariants {
+    input:
+      vcf = query_vcf
+  }
+
+  call CountVcfVariants as CountReferenceVariants {
+    input:
+      vcf = reference_vcf
+  }
+
   call RenameChromosomesInTsv as RenameChromosomesInWeights {
     input:
         tsv        = weights
@@ -42,14 +52,24 @@ workflow RunPRSWorkflow {
       vcf = reference_vcf
   }
 
+  # NB: The settings for the mem parameter in the next two calls
+  # implement the recommendations given in
+  # https://www.cog-genomics.org/plink/2.0/other#memory
+
   call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
     input:
-      vcf = RenameChromosomesInQueryVcf.renamed
+        vcf = RenameChromosomesInQueryVcf.renamed
+      , mem = if   CountQueryVariants.nvariants > 50000000
+              then 8 + ceil((CountQueryVariants.nvariants - 50000000)/10000000)
+              else 8
   }
 
   call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
     input:
-      vcf = RenameChromosomesInReferenceVcf.renamed
+        vcf = RenameChromosomesInReferenceVcf.renamed
+      , mem = if   CountReferenceVariants.nvariants > 50000000
+              then 8 + ceil((CountReferenceVariants.nvariants - 50000000)/10000000)
+              else 8
   }
 
   call GetRegions {
@@ -87,14 +107,15 @@ workflow RunPRSWorkflow {
     , weight_set     : weight_set
   }
 
-  # Map[String, Int] memory_specs_default = {
-  #                                           "i_extract"      : 32,
-  #                                           "i_scoring"      : 16,
-  #                                           "i_vcf_to_plink" : 16,
-  #                                           "r_extract"      : 64,
-  #                                           "r_scoring"      : 64,
-  #                                           "r_vcf_to_plink" : 64
-  #                                         }
+  Int base_memory = if   GetRegions.nvariants > 50000000
+                    then 8 + ceil((GetRegions.nvariants - 50000000)/10000000)
+                    else 8
+
+  Int pca_memory = base_memory
+
+  # NB: The setting below agrees with the recommendations given in
+  # https://www.cog-genomics.org/plink/2.0/other#memory
+  Int plink_memory = base_memory
 
   call ScoringPart.ScoringImputedDataset as ScoreQueryVcf {
     input:
@@ -111,14 +132,14 @@ workflow RunPRSWorkflow {
       , basename                             = name
       , population_basename                  = "1kg"
 
-      # , ExtractIDsPlink.mem                  = select_first([memory_specs        ["i_extract"]
-      #                                                        memory_specs_default["i_extract"]])
-      # , scoring_mem                          = 16
-      # , vcf_to_plink_mem                     = 16
-      #
-      # , ExtractIDsPopulation.mem             = 64
-      # , population_scoring_mem               = 64
-      # , PopulationArrayVcfToPlinkDataset.mem = 64
+      , extract_ids_plink_mem                = plink_memory
+      , extract_ids_population_mem           = plink_memory
+      , vcf_to_plink_mem                     = plink_memory
+      , population_vcf_to_plink_mem          = plink_memory
+      , scoring_mem                          = plink_memory
+      , population_scoring_mem               = plink_memory
+      , pca_memory                           = pca_memory
+      , project_array_memory                 = pca_memory
 
       , population_loadings                  = "PLACEHOLDER__REQUIRED_BUT_NOT_USED"
       , population_pcs                       = "PLACEHOLDER__REQUIRED_BUT_NOT_USED"
@@ -163,6 +184,41 @@ task Baseline {
 
   runtime {
     docker: "ubuntu:21.10"
+  }
+}
+
+# -------------------------------------------------------------------------------
+
+task CountVcfVariants {
+  input {
+    File vcf
+  }
+
+  Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
+  String OUTPUTDIR = "OUTPUT"
+  String NVARIANTS = OUTPUTDIR + "/nvariants.txt"
+
+  command <<<
+  set -o errexit
+  # set -o pipefail
+  # set -o nounset
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  # set -o xtrace
+
+  # ---------------------------------------------------------------------------
+
+  mkdir --verbose --parents '~{OUTPUTDIR}'
+
+  zgrep --count --invert-match '^#' '~{vcf}' > '~{NVARIANTS}'
+  >>>
+
+  output {
+    Int nvariants = read_int(NVARIANTS)
+  }
+
+  runtime {
+    docker: "ubuntu:21.10"
+    disks : "local-disk ~{storage} HDD"
   }
 }
 
@@ -320,6 +376,7 @@ task GetRegions {
   String        OUTPUTDIR         = "OUTPUT"
   String        QUERY_REGIONS     = OUTPUTDIR + "/query_regions.tsv"
   String        REFERENCE_REGIONS = OUTPUTDIR + "/reference_regions.tsv"
+  String        NVARIANTS         = OUTPUTDIR + "/nvariants"
   String        WARNINGS          = OUTPUTDIR + "/WARNINGS"
   Array[String] WORKFILES         = [
                                         WORKDIR + "/WEIGHTS"
@@ -645,6 +702,10 @@ task GetRegions {
 
   # ---------------------------------------------------------------------------
 
+  wc --lines < "${REGIONS}" > '~{NVARIANTS}'
+
+  # ---------------------------------------------------------------------------
+
   printf -- 'FINAL STORAGE UTILIZATION:\n'
   df --human
 
@@ -663,6 +724,7 @@ task GetRegions {
     File         query_regions     = QUERY_REGIONS
     File?        reference_regions = REFERENCE_REGIONS
     File?        warnings          = WARNINGS
+    Int          nvariants         = read_int(NVARIANTS)
 
     Array[File?] workfiles         = WORKFILES
     File?        workfiles_tgz     = ARCHIVE

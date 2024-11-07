@@ -12,6 +12,8 @@ task PerformPCA {
     Int    nthreads = 16
   }
 
+  Int memory = 2 + (if mem < 8 then 8 else mem)
+
   # again, based on Wallace commands
   command <<<
     WORKDIR="$( mktemp --directory )"
@@ -43,7 +45,7 @@ task PerformPCA {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
     disks: "local-disk 400 HDD"
-    memory: mem + " GB"
+    memory: memory + " GB"
   }
 }
 
@@ -61,6 +63,7 @@ task ProjectArray {
     Boolean orderIndependentCheck = false
   }
 
+  Int memory = 2 + (if mem < 8 then 8 else mem)
   String postprocess = if orderIndependentCheck then "sort" else "cat"
 
   command <<<
@@ -124,7 +127,7 @@ task ProjectArray {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
     disks: "local-disk 400 HDD"
-    memory: mem + " GB"
+    memory: memory + " GB"
   }
 }
 
@@ -137,6 +140,9 @@ task ArrayVcfToPlinkDataset {
     Int mem = 8
   }
 
+  Int base_memory = if mem < 8 then 8 else mem
+  Int plink_mem = base_memory * 1000
+  Int runtime_memory = base_memory + 2
   Int disk_space =  3 * ceil(size(vcf, "GB")) + 20
 
   String devdir     = 'DEV'
@@ -174,6 +180,7 @@ task ArrayVcfToPlinkDataset {
       --new-id-max-allele-len 1000 missing \
       --out ~{basename} \
       --make-bed \
+      --memory ~{plink_mem} \
       --rm-dup force-first
   >>>
 
@@ -187,6 +194,6 @@ task ArrayVcfToPlinkDataset {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     disks: "local-disk " + disk_space + " HDD"
-    memory: mem + " GB"
+    memory: runtime_memory + " GB"
   }
 }

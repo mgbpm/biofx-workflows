@@ -12,9 +12,14 @@ workflow ScoringImputedDataset {
 	NamedWeightSet named_weight_set
 
 	File imputed_array_vcf  # imputed VCF for scoring (and optionally PCA projection): make sure the variant IDs exactly match those in the weights file
+	Int extract_ids_plink_mem = 8
+	Int extract_ids_population_mem = 8
 	Int scoring_mem = 16
 	Int population_scoring_mem = scoring_mem * 4
 	Int vcf_to_plink_mem = 8
+	Int population_vcf_to_plink_mem = 8
+	Int pca_memory = 8
+	Int project_array_memory = 8
 
 	String? population_basename # for naming the output of population scoring
 	String basename # for naming the output of array scoring and the array projection files
@@ -84,7 +89,8 @@ workflow ScoringImputedDataset {
 	if (adjustScores && defined(population_vcf)) {
 		call ScoringTasks.ExtractIDsPlink as ExtractIDsPopulation {
 			input:
-				vcf = select_first([population_vcf])
+				vcf = select_first([population_vcf]),
+				mem = extract_ids_population_mem
 		}
 	}
 
@@ -142,7 +148,8 @@ workflow ScoringImputedDataset {
 	if (adjustScores) {
 		call ScoringTasks.ExtractIDsPlink {
 			input:
-				vcf = imputed_array_vcf
+				vcf = imputed_array_vcf,
+				mem = extract_ids_plink_mem
 		}
 
 		if (redoPCA && defined(population_vcf)) {
@@ -151,7 +158,8 @@ workflow ScoringImputedDataset {
 					vcf = select_first([population_vcf]),
 					pruning_sites = select_first([pruning_sites_for_pca]),
 					subset_to_sites = ExtractIDsPlink.ids,
-					basename = "population"
+					basename = "population",
+					mem = population_vcf_to_plink_mem
 			}
 
 			call PCATasks.PerformPCA {
@@ -159,6 +167,7 @@ workflow ScoringImputedDataset {
 				bim = PopulationArrayVcfToPlinkDataset.bim,
 				bed = PopulationArrayVcfToPlinkDataset.bed,
 				fam = PopulationArrayVcfToPlinkDataset.fam,
+				mem = pca_memory,
 				basename = basename
 			}
 		}
@@ -186,6 +195,7 @@ workflow ScoringImputedDataset {
 				bed = ArrayVcfToPlinkDataset.bed,
 				bim = ArrayVcfToPlinkDataset.bim,
 				fam = ArrayVcfToPlinkDataset.fam,
+				mem = project_array_memory,
 				basename = basename
 		}
 
@@ -324,5 +334,3 @@ task CheckPopulationIdsValid{
 		 docker: "ubuntu:21.10"
 	 }
  }
-
-
