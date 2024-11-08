@@ -289,14 +289,14 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
-  - name: ScoreVcf
+  - name: PRSScoreVcfWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/ScoreVcf.wdl
+    primaryDescriptorPath: /workflows/prs/ScoreVcfWorkflow.wdl
     filters:
       branches:
         - /.+/
       tags:
-        - ignore-all-tags
+        - PRS_*
   - name: PerformPCA
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/PerformPCA.wdl
