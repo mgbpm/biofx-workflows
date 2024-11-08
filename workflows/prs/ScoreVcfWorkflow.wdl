@@ -10,6 +10,7 @@ workflow ScoreVcf {
     File query_vcf
     File weights
     File pca_variants
+    File subset_to_sites
 
     File model_parameters
     File training_variants
@@ -32,6 +33,12 @@ workflow ScoreVcf {
   call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
     input:
         tsv        = pca_variants
+      , skipheader = false
+  }
+
+  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInSubsetSites {
+    input:
+        tsv        = subset_to_sites
       , skipheader = false
   }
 
@@ -64,6 +71,7 @@ workflow ScoreVcf {
     input:
         vcf           = RenameChromosomesInQueryVcf.renamed
       , pruning_sites = RenameChromosomesInPcaVariants.renamed
+      , subset_to_sites = RenameChromosomesInSubsetSites.renamed
       , mem           = GetBaseMemory.gigabytes
       , basename      = "temp"
   }
