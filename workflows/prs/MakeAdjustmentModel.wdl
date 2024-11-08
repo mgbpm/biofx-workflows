@@ -14,6 +14,11 @@ workflow MakeAdjustmentModelWorkflow {
     File?  query_variants
   }
 
+  call HelperTasks.GetBaseMemory {
+    input:
+      vcf = reference_vcf
+  }
+
   call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
     input:
         tsv        = weights
@@ -36,6 +41,7 @@ workflow MakeAdjustmentModelWorkflow {
         vcf             = RenameChromosomesInReferenceVcf.renamed
       , pruning_sites   = RenameChromosomesInPcaVariants.renamed
       , basename        = name
+      , mem             = GetBaseMemory.gigabytes
       , subset_to_sites = query_variants
   }
 
@@ -45,6 +51,7 @@ workflow MakeAdjustmentModelWorkflow {
       , bim      = ReferenceBed.bim
       , fam      = ReferenceBed.fam
       , basename = name
+      , mem      = GetBaseMemory.gigabytes
   }
 
   WeightSet weight_set = object {
