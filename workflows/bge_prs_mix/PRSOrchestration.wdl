@@ -168,7 +168,7 @@ task UnzipConditionFile {
 	}
 
 	output {
-		File var_weights = "~{basename}/~{basename}.all_harmonized_weights.txt"
+		Array[File] var_weights = "~{basename}/~{basename}.harmonized_weights.txt"
 		File fitted_model_params = "~{basename}/~{basename}.fitted_model_params.tsv"
 		File pcs = "~{basename}/~{basename}.pc"
 		File pc_loadings = "~{basename}/~{basename}.pc.loadings"
