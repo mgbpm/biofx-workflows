@@ -16,6 +16,6 @@
 ## Output Parameters
 
 | Type | Name | When | Description |
-| :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | File | pc_projection | If a PC projections file is not provided | PCA array for adjusting PRS scores |
 | File | pc_plot | If a PC projections file is not provided | PCA plot from PCA projection |

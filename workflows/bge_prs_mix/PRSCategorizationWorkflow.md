@@ -11,5 +11,5 @@
 ## Output Parameters
 
 | Type | Name | When | Description |
-| :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | Array[File] | individuals_risk_summaries | Always | Risk summary report with risk percentile and bins for each sample |

@@ -11,6 +11,6 @@
 ## Output Parameters
 
 | Type | Name | When | Description |
-| :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | File | prs_mix_raw_score | Always | Per sample weighted average of raw PRS scores |
 | File | sample_ids | Always | Sample IDs corresponding to the samples in the PRS score file |

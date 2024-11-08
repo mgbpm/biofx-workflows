@@ -42,7 +42,7 @@ This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percent
 ## Output Parameters
 
 | Type | Name | When | Description |
-| :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | File | glimpse_vcf | Always | Output imputed VCF from running GLIMPSE |
 | File | glimpse_vcf_index | Always | Output imputer VCF index from running GLIMPSE |
 | File | glimpse_qc_metrics | When collect_glimpse_qc = "true" | QC metrics from running GLIMPSE |
