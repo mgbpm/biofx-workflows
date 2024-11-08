@@ -3,6 +3,7 @@ version 1.0
 import "PCATasks.wdl"
 import "TrainAncestryAdjustmentModel.wdl"
 import "Structs.wdl"
+import "HelperTasks.wdl"
 
 workflow MakeAdjustmentModelWorkflow {
   input {
@@ -13,10 +14,27 @@ workflow MakeAdjustmentModelWorkflow {
     File?  query_variants
   }
 
+  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+    input:
+        tsv        = weights
+      , skipheader = true
+  }
+
+  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
+    input:
+        tsv        = pca_variants
+      , skipheader = false
+  }
+
+  call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
+    input:
+      vcf = reference_vcf
+  }
+
   call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
     input:
-        vcf             = reference_vcf
-      , pruning_sites   = pca_variants
+        vcf             = RenameChromosomesInReferenceVcf.renamed
+      , pruning_sites   = RenameChromosomesInPcaVariants.renamed
       , basename        = name
       , subset_to_sites = query_variants
   }
@@ -30,7 +48,7 @@ workflow MakeAdjustmentModelWorkflow {
   }
 
   WeightSet weight_set = object {
-    linear_weights : weights
+    linear_weights : RenameChromosomesInWeights.renamed
   }
 
   NamedWeightSet named_weight_set = object {
@@ -42,7 +60,7 @@ workflow MakeAdjustmentModelWorkflow {
     input:
         named_weight_set    = named_weight_set
       , population_pcs      = PerformPCA.pcs
-      , population_vcf      = reference_vcf
+      , population_vcf      = RenameChromosomesInReferenceVcf.renamed
       , population_basename = name
       , sites               = query_variants
   }
