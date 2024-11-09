@@ -41,6 +41,11 @@ workflow ScoringImputedDataset {
 	Boolean adjustScores = true
   }
 
+  call HelperTasks.GetBaseMemory {
+    input:
+      vcf = query_vcf
+  }
+
   if (adjustScores) {
 		#check for required optional inputs
 		if (!defined(population_loadings)) {
@@ -120,7 +125,7 @@ workflow ScoringImputedDataset {
 			vcf = imputed_array_vcf,
 			basename = basename,
 			weights = named_weight_set.weight_set.linear_weights,
-			base_mem = scoring_mem,
+			base_mem = GetBaseMemory.gigabytes,
 			extra_args = columns_for_scoring,
 			sites = sites_to_use_in_scoring,
 			chromosome_encoding = DetermineChromosomeEncoding.chromosome_encoding
@@ -177,7 +182,7 @@ workflow ScoringImputedDataset {
 			vcf = imputed_array_vcf,
 			pruning_sites = select_first([pruning_sites_for_pca]),
 			basename = basename,
-			mem = vcf_to_plink_mem
+			mem = GetBaseMemory.gigabytes
 		}
 
 		if (defined(population_vcf)) {
@@ -195,7 +200,7 @@ workflow ScoringImputedDataset {
 				bed = ArrayVcfToPlinkDataset.bed,
 				bim = ArrayVcfToPlinkDataset.bim,
 				fam = ArrayVcfToPlinkDataset.fam,
-				mem = project_array_memory,
+				mem = GetBaseMemory.gigabytes,
 				basename = basename
 		}
 
