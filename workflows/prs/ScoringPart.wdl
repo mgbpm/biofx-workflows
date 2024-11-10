@@ -6,21 +6,15 @@ import "PCATasks.wdl" as PCATasks
 import "ScoringTasks.wdl" as ScoringTasks
 import "TrainAncestryAdjustmentModel.wdl" as TrainAncestryAdjustmentModel
 import "HelperTasks.wdl"
-import "Structs.wdl"
 
 workflow ScoringImputedDataset {
 	input { 
 	NamedWeightSet named_weight_set
 
 	File imputed_array_vcf  # imputed VCF for scoring (and optionally PCA projection): make sure the variant IDs exactly match those in the weights file
-	Int extract_ids_plink_mem = 8
 	Int extract_ids_population_mem = 8
-	Int scoring_mem = 16
-	Int population_scoring_mem = scoring_mem * 4
-	Int vcf_to_plink_mem = 8
 	Int population_vcf_to_plink_mem = 8
 	Int pca_memory = 8
-	Int project_array_memory = 8
 
 	String? population_basename # for naming the output of population scoring
 	String basename # for naming the output of array scoring and the array projection files
@@ -44,7 +38,7 @@ workflow ScoringImputedDataset {
 
   call HelperTasks.GetBaseMemory {
     input:
-      vcf = query_vcf
+      vcf = imputed_array_vcf
   }
 
   if (adjustScores) {
