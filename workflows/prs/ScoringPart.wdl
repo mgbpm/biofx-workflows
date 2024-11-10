@@ -155,7 +155,7 @@ workflow ScoringImputedDataset {
 		call ScoringTasks.ExtractIDsPlink {
 			input:
 				vcf = imputed_array_vcf,
-				mem = extract_ids_plink_mem
+				mem = GetBaseMemory.gigabytes
 		}
 
 		if (redoPCA && defined(population_vcf)) {
@@ -182,6 +182,7 @@ workflow ScoringImputedDataset {
 			input:
 			vcf = imputed_array_vcf,
 			pruning_sites = select_first([pruning_sites_for_pca]),
+			subset_to_sites = ExtractIDsPlink.ids,
 			basename = basename,
 			mem = GetBaseMemory.gigabytes
 		}
