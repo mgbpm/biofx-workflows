@@ -5,6 +5,7 @@ version 1.0
 import "PCATasks.wdl" as PCATasks
 import "ScoringTasks.wdl" as ScoringTasks
 import "TrainAncestryAdjustmentModel.wdl" as TrainAncestryAdjustmentModel
+import "HelperTasks.wdl"
 import "Structs.wdl"
 
 workflow ScoringImputedDataset {
