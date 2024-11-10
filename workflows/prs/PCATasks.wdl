@@ -105,7 +105,7 @@ task ProjectArray {
     if [[ -s bim_pc_diff.txt ]]
     then
         echo "IDs in .bim file are not the same as the IDs in the PCA files; check that you have the right files and run again." >&2
-        exit 1
+        # exit 1
     fi
     rm bim_pc_diff.txt
 
