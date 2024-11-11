@@ -7,7 +7,8 @@ task GetBaseMemory {
   # https://www.cog-genomics.org/plink/2.0/other#memory
 
   input {
-    File vcf
+    File? vcf
+    Int?  nvariants
   }
 
   Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
@@ -16,44 +17,26 @@ task GetBaseMemory {
   String GIGABYTES = OUTPUTDIR + "/gigabytes.txt"
 
   command <<<
-  set -o errexit
-  # set -o pipefail
-  # set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
-
-  # ---------------------------------------------------------------------------
-
-  NVARIANTS="$( zgrep --count --invert-match '^#' '~{vcf}' )"
-
-  MINGIGABYTES=8
-  if (( NVARIANTS > 50000000 ))
-  then
-      EXCESS=$(( NVARIANTS - 50000000 ))
-      DIVISOR=10000000
-
-      # NB: The RHS in the next assignment below is equivalent to
-      # ceil(EXCESS/DIVISOR); see https://stackoverflow.com/a/12536521
-      EXTRA=$(( (EXCESS + DIVISOR - 1)/DIVISOR ))
-
-      GIGABYTES=$(( MINGIGABYTES + EXTRA ))
-  else
-      GIGABYTES=${MINGIGABYTES}
-  fi
-
   mkdir --verbose --parents '~{OUTPUTDIR}'
-  printf -- '%d\n' "${NVARIANTS}" > '~{NVARIANTS}'
-  printf -- '%d\n' "${GIGABYTES}" > '~{GIGABYTES}'
+
+  NVARIANTS=~{if defined(nvariants)
+              then nvariants
+              else "\"$( zgrep --count --invert-match '^#' '" + vcf + "' | tee '" + NVARIANTS + "' )\""}
+
+  python3 <<EOF > '~{GIGABYTES}'
+  import math
+  print(8 + max(0, math.ceil((${NVARIANTS} - 50000000)/10000000)))
+  EOF
   >>>
 
   output {
-    Int nvariants = read_int(NVARIANTS)
-    Int gigabytes = read_int(GIGABYTES)
+    Int  gigabytes  = read_int(GIGABYTES)
+    Int? nvariants_ = read_int(NVARIANTS)
   }
 
   runtime {
-    docker: "ubuntu:21.10"
     disks : "local-disk ~{storage} HDD"
+    docker: "python:3.11"
   }
 }
 
