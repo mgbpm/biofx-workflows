@@ -4,8 +4,9 @@
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
+| File | condition_name | Yes | Name of condition/disease | |
 | Array[File] | raw_scores | Yes | Raw PRS scores | |
-| File | condition_file | Yes | Tar file of condition-/disease-specific variant weights, score weights, and pca files | |
+| File | score_weights | Yes | Score weights for each PGS ID | |
 | String | ubuntu_docker_image | No | Ubuntu Docker image | "ubuntu:21.10" |
 
 ## Output Parameters

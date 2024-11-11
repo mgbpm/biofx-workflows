@@ -5,6 +5,11 @@ import "../../steps/Utilities.wdl"
 
 workflow PRSAdjustmentWorkflow {
 	input {
+		# Score adjustment inputs
+		String condition_name
+		File? var_weights
+		File fitted_model_params
+		File prs_raw_scores
 		# Chromosome encoding
 		String? weights_chr_encoding
 		# PCA inputs
@@ -14,11 +19,6 @@ workflow PRSAdjustmentWorkflow {
 		File? pc_meansd
 		File? population_pcs
 		File? pruning_sites_for_pca
-		# Score adjustment inputs
-		String condition_name
-		File var_weights
-		File fitted_model_params
-		File prs_raw_scores
 		# Docker images
 		String python_docker_image = "python:3.9.10"
 		String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
@@ -27,7 +27,7 @@ workflow PRSAdjustmentWorkflow {
 	}
 
 	if (!defined(pca_projections) && !defined(input_vcf)) {
-		call Utilities.FailTask {
+		call Utilities.FailTask as PCAInputFail {
             input:
                 error_message = "Either a PCA projections file or all inputs to perform PCA must be provided."
         }
@@ -35,6 +35,12 @@ workflow PRSAdjustmentWorkflow {
 
 	# Determine chromosome encoding if not provided
 	if (!defined(weights_chr_encoding)) {
+		if (!defined(var_weights)) {
+			call Utilities.FailTask as VarWeightsFail {
+				input:
+					error_message = "Must have variant weights file for determining chromosome encoding."
+			}
+		}
 		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
 				weights = var_weights,
