@@ -7,53 +7,51 @@ task GetBaseMemory {
   # https://www.cog-genomics.org/plink/2.0/other#memory
 
   input {
-    File vcf
+    File? vcf
+    Int?  nvariants
   }
 
-  Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
-  String OUTPUTDIR = "OUTPUT"
-  String NVARIANTS = OUTPUTDIR + "/nvariants.txt"
-  String GIGABYTES = OUTPUTDIR + "/gigabytes.txt"
+  Int     storage   = 20 + 2 * ceil(size(vcf, "GB"))
+  Boolean ERROR     = defined(vcf) == defined(nvariants)
+  String  OUTPUTDIR = "OUTPUT"
+  String  NVARIANTS = OUTPUTDIR + "/nvariants.txt"
+  String  GIGABYTES = OUTPUTDIR + "/gigabytes.txt"
 
   command <<<
   set -o errexit
-  # set -o pipefail
-  # set -o nounset
+  set -o pipefail
+  set -o nounset
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
   # set -o xtrace
 
-  # ---------------------------------------------------------------------------
-
-  NVARIANTS="$( zgrep --count --invert-match '^#' '~{vcf}' )"
-
-  MINGIGABYTES=8
-  if (( NVARIANTS > 50000000 ))
+  if ~{if ERROR then "true" else "false"}
   then
-      EXCESS=$(( NVARIANTS - 50000000 ))
-      DIVISOR=10000000
-
-      # NB: The RHS in the next assignment below is equivalent to
-      # ceil(EXCESS/DIVISOR); see https://stackoverflow.com/a/12536521
-      EXTRA=$(( (EXCESS + DIVISOR - 1)/DIVISOR ))
-
-      GIGABYTES=$(( MINGIGABYTES + EXTRA ))
-  else
-      GIGABYTES=${MINGIGABYTES}
+      printf -- 'INTERNAL ERROR: too few or too many arguments specified' >&2
+      exit 1
   fi
 
+  # --------------------------------------------------------------------------
+
   mkdir --verbose --parents '~{OUTPUTDIR}'
-  printf -- '%d\n' "${NVARIANTS}" > '~{NVARIANTS}'
-  printf -- '%d\n' "${GIGABYTES}" > '~{GIGABYTES}'
+
+  NVARIANTS=~{if defined(nvariants)
+              then nvariants
+              else "\"$( zgrep --count --invert-match '^#' '" + vcf + "' | tee '" + NVARIANTS + "' )\""}
+
+  python3 <<EOF > '~{GIGABYTES}'
+  import math
+  print(8 + max(0, math.ceil((${NVARIANTS} - 50000000)/10000000)))
+  EOF
   >>>
 
   output {
-    Int nvariants = read_int(NVARIANTS)
-    Int gigabytes = read_int(GIGABYTES)
+    Int gigabytes  = read_int(GIGABYTES)
+    Int nvariants_ = if defined(nvariants) then nvariants else read_int(NVARIANTS)
   }
 
   runtime {
-    docker: "ubuntu:21.10"
     disks : "local-disk ~{storage} HDD"
+    docker: "python:3.11"
   }
 }
 
@@ -192,5 +190,4 @@ task RenameChromosomesInVcf {
     docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
     disks : "local-disk ~{storage} HDD"
   }
-
 }

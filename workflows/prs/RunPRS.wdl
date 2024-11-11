@@ -2,6 +2,7 @@ version 1.0
 
 import "ScoringPart.wdl"
 import "ScoringTasks.wdl"
+import "HelperTasks.wdl"
 import "Structs.wdl"
 
 workflow RunPRSWorkflow {
@@ -18,56 +19,48 @@ workflow RunPRSWorkflow {
 
   call Baseline
 
-  call CountVcfVariants as CountQueryVariants {
+  call HelperTasks.GetBaseMemory as GetMemoryForQuery {
     input:
-      vcf = query_vcf
+        vcf = query_vcf
   }
 
-  call CountVcfVariants as CountReferenceVariants {
+  call HelperTasks.GetBaseMemory as GetMemoryForReference {
     input:
-      vcf = reference_vcf
+        vcf = reference_vcf
   }
 
-  call RenameChromosomesInTsv as RenameChromosomesInWeights {
+  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
     input:
         tsv        = weights
       , skipheader = true
   }
 
-  call RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
+  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
     input:
         tsv        = pca_variants
       , skipheader = false
   }
 
-  call RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
+  call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
     input:
       vcf = query_vcf
   }
 
-  call RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
+  call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
     input:
       vcf = reference_vcf
   }
 
-  # NB: The settings for the mem parameter in the next two calls
-  # implement the recommendations given in
-  # https://www.cog-genomics.org/plink/2.0/other#memory
-
   call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
     input:
         vcf = RenameChromosomesInQueryVcf.renamed
-      , mem = if   CountQueryVariants.nvariants > 50000000
-              then 8 + ceil((CountQueryVariants.nvariants - 50000000)/10000000)
-              else 8
+      , mem = GetMemoryForQuery.gigabytes
   }
 
   call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
     input:
         vcf = RenameChromosomesInReferenceVcf.renamed
-      , mem = if   CountReferenceVariants.nvariants > 50000000
-              then 8 + ceil((CountReferenceVariants.nvariants - 50000000)/10000000)
-              else 8
+      , mem = GetMemoryForReference.gigabytes
   }
 
   call GetRegions {
@@ -76,6 +69,11 @@ workflow RunPRSWorkflow {
       , pca_variants = RenameChromosomesInPcaVariants.renamed
       , query        = ExtractQueryVariants.ids
       , reference    = ExtractReferenceVariants.ids
+  }
+
+  call HelperTasks.GetBaseMemory {
+    input:
+      nvariants = GetRegions.nvariants
   }
 
   if (defined(GetRegions.query_regions)) {
@@ -105,14 +103,8 @@ workflow RunPRSWorkflow {
     , weight_set     : weight_set
   }
 
-  Int base_memory = if   GetRegions.nvariants > 50000000
-                    then 8 + ceil((GetRegions.nvariants - 50000000)/10000000)
-                    else 8
-
-  Int pca_memory = base_memory
-
-  # NB: The setting below agrees with the recommendations given in
-  # https://www.cog-genomics.org/plink/2.0/other#memory
+  Int base_memory  = GetBaseMemory.gigabytes
+  Int pca_memory   = base_memory
   Int plink_memory = base_memory
 
   call ScoringPart.ScoringImputedDataset as ScoreQueryVcf {
@@ -186,179 +178,6 @@ task Baseline {
 }
 
 # -------------------------------------------------------------------------------
-
-task CountVcfVariants {
-  input {
-    File vcf
-  }
-
-  Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
-  String OUTPUTDIR = "OUTPUT"
-  String NVARIANTS = OUTPUTDIR + "/nvariants.txt"
-
-  command <<<
-  set -o errexit
-  # set -o pipefail
-  # set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
-
-  # ---------------------------------------------------------------------------
-
-  mkdir --verbose --parents '~{OUTPUTDIR}'
-
-  zgrep --count --invert-match '^#' '~{vcf}' > '~{NVARIANTS}'
-  >>>
-
-  output {
-    Int nvariants = read_int(NVARIANTS)
-  }
-
-  runtime {
-    docker: "ubuntu:21.10"
-    disks : "local-disk ~{storage} HDD"
-  }
-}
-
-# -------------------------------------------------------------------------------
-
-task RenameChromosomesInTsv {
-  input {
-    File    tsv
-    Boolean skipheader
-    File    lookup     = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
-  }
-
-  Int    storage   = 20 + 2 * ceil(size(tsv, "GB"))
-  String OUTPUTDIR = "OUTPUT"
-  String RENAMED   = OUTPUTDIR + "/renamed_" + basename(tsv)
-
-  command <<<
-  python3 <<EOF
-  import sys
-  import os
-  import re
-
-  def error(message):
-      print(f'ERROR: {message}', file=sys.stderr)
-      sys.exit(1)
-
-
-  def read_lookup():
-      lookup = dict()
-      with open('~{lookup}') as reader:
-          for rawline in reader:
-              key, value = rawline.rstrip('\r\n').split('\t')
-              lookup[key] = value
-      return lookup
-
-
-  def main():
-
-      def rename(chromosomename,
-                 _lookup=read_lookup(),
-                 _parse_re=re.compile(r'^([\da-z]+)(.*)',
-                                      flags=re.I)):
-
-          match = _parse_re.search(chromosomename)
-
-          if match:
-              core, rest = match.groups()
-              if core in _lookup:
-                  return f'{_lookup[core]}{rest}'
-
-          error(f'Unsupported H. sapiens chromosome name: {chromosomename}')
-
-      inputtsv = '~{tsv}'
-      outputtsv = '~{RENAMED}'
-
-      os.makedirs(os.path.dirname(outputtsv), exist_ok=True)
-
-      with open(outputtsv, 'w') as writer:
-
-          with open(inputtsv) as reader:
-
-              skipheader = ~{if skipheader then "True" else "False"}
-
-              if skipheader:
-                  writer.write(next(reader))
-
-              for rawline in reader:
-                  row = rawline.rstrip('\r\n').split('\t')
-                  parts = row[0].split(':')
-                  newid = ':'.join([rename(parts[0])] + parts[1:])
-                  print('\t'.join([newid] + row[1:]), file=writer)
-                  continuing = True
-
-  # --------------------------------------------------------------------------
-
-  main()
-  EOF
-  >>>
-
-  output {
-    File renamed = RENAMED
-  }
-
-  runtime {
-    docker: "python:3.11"
-    disks : "local-disk ~{storage} HDD"
-  }
-
-}
-
-
-task RenameChromosomesInVcf {
-  input {
-    File vcf
-    File rename = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
-  }
-
-  Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
-  String OUTPUTDIR = "OUTPUT"
-  String RENAMED   = OUTPUTDIR + "/renamed_" + basename(vcf)
-
-  command <<<
-  set -o errexit
-  # set -o pipefail
-  # set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
-
-  # ---------------------------------------------------------------------------
-
-  mkdir --verbose --parents '~{OUTPUTDIR}'
-
-  WORKDIR="$( mktemp --directory )"
-  INPUTVCF="${WORKDIR}/input.vcf.gz"
-
-  ln --symbolic --verbose '~{vcf}' "${INPUTVCF}"
-
-  bcftools index    \
-      --force       \
-      --tbi         \
-      "${INPUTVCF}"
-
-  bcftools annotate            \
-      --no-version             \
-      --output='~{RENAMED}'    \
-      --output-type=z          \
-      --rename-chr='~{rename}' \
-      "${INPUTVCF}"
-
-  >>>
-
-  output {
-    File renamed = RENAMED
-  }
-
-  runtime {
-    docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
-    disks : "local-disk ~{storage} HDD"
-  }
-
-}
-
 
 task GetRegions {
   input {
