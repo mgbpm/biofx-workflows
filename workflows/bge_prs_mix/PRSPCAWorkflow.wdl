@@ -1,6 +1,7 @@
 version 1.0
 
 import "../../steps/PRSTasks.wdl"
+import "../../steps/Utilities.wdl"
 
 workflow PRSPCAWorkflow {
 	input {
@@ -29,7 +30,7 @@ workflow PRSPCAWorkflow {
 		}
 		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
-				weights = var_weights,
+				weights = select_first([var_weights]),
 				docker_image = python_docker_image
 		}
 	}
