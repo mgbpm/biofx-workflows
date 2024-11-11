@@ -43,7 +43,7 @@ workflow PRSAdjustmentWorkflow {
 		}
 		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
-				weights = var_weights,
+				weights = select_first([var_weights]),
 				docker_image = python_docker_image
 		}
 	}
