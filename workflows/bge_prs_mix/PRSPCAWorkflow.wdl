@@ -14,6 +14,7 @@ workflow PRSPCAWorkflow {
 		File pruning_sites_for_pca
 		File? var_weights
 		String? weights_chr_encoding
+		Int? plink_mem
 		# Docker images
 		String python_docker_image = "python:3.9.10"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
@@ -35,13 +36,21 @@ workflow PRSPCAWorkflow {
 		}
 	}
 
+	if (!defined(plink_mem)) {
+		call PRSTasks.GetBaseMemory as PlinkMemory {
+			input:
+				vcf = input_vcf
+		}
+	}
+
 	call PRSTasks.ArrayVcfToPlinkDataset as GetPlinkDataset {
 		input:
 		vcf = input_vcf,
 		pruning_sites = pruning_sites_for_pca,
 		chromosome_encoding = select_first([weights_chr_encoding, ChrEncoding.chromosome_encoding]),
 		basename = condition_name,
-		docker_image = plink_docker_image
+		docker_image = plink_docker_image,
+		mem_size = select_first([PlinkMemory.gigabytes, plink_mem])
 	}
 	call PRSTasks.ProjectArray as ProjectPCA {
 		input:
