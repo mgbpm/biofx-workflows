@@ -104,8 +104,9 @@ task ProjectArray {
 
     if [[ -s bim_pc_diff.txt ]]
     then
-        echo "IDs in .bim file are not the same as the IDs in the PCA files; check that you have the right files and run again." >&2
-        exit 1
+        # NB: NORMALLY, THIS CONDITION IS FATAL.  IT IS ALLOWED HERE ONLY
+        # TEMPORARILY, FOR THE 2024 ANVIL COFEST.
+        echo "WARNING: The IDs in .bim file are not the same as the IDs in the PCA files; any results produced by the workflow will be unreliable." >&2
     fi
     rm bim_pc_diff.txt
 
