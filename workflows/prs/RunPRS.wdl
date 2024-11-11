@@ -13,7 +13,8 @@ workflow RunPRSWorkflow {
     File             weights
     File             pca_variants
     File             reference_vcf
-                     
+    Boolean          make_model_only = false                     
+
     String           name
   }
 
@@ -116,6 +117,7 @@ workflow RunPRSWorkflow {
                                                              RenameChromosomesInQueryVcf.renamed])
       , population_vcf                       = select_first([SubsetReferenceVcf.result,
                                                              RenameChromosomesInReferenceVcf.renamed])
+      , make_model_only                      = make_model_only
       , redoPCA                              = true
       , adjustScores                         = true
 
@@ -137,12 +139,24 @@ workflow RunPRSWorkflow {
   }
 
   output {
-    File    raw_scores                    = ScoreQueryVcf.raw_scores
-    Boolean fit_converged                 = select_first([ScoreQueryVcf.fit_converged])
-    File    adjusted_array_scores         = select_first([ScoreQueryVcf.adjusted_array_scores])
-    File    adjusted_population_scores    = select_first([ScoreQueryVcf.adjusted_population_scores])
-    File    pc_projection                 = select_first([ScoreQueryVcf.pc_projection])
-    File    pc_plot                       = select_first([ScoreQueryVcf.pc_plot])
+    File?   raw_scores                 = ScoreQueryVcf.raw_scores
+    File?   adjusted_array_scores      = ScoreQueryVcf.adjusted_array_scores
+    File    pc_projection              = select_first([ScoreQueryVcf.pc_projection])
+    File    pc_plot                    = select_first([ScoreQueryVcf.pc_plot])
+
+    # -------------------------------------------------------------------------
+
+    File    model_parameters           = select_first([ScoreQueryVcf.model_parameters])
+    File    training_variants          = select_first([ScoreQueryVcf.training_variants])
+    # .........................................................................
+    File    pcs                        = select_first([ScoreQueryVcf.pcs])
+    File    pcloadings                 = select_first([ScoreQueryVcf.pcloadings])
+    File    pcmeansd                   = select_first([ScoreQueryVcf.pcmeansd])
+
+    # -------------------------------------------------------------------------
+
+    Boolean converged                  = select_first([ScoreQueryVcf.fit_converged])
+    File    adjusted_population_scores = select_first([ScoreQueryVcf.adjusted_population_scores])
 
     # Int?    n_missing_sites_from_training = CompareScoredSitesToSitesUsedInTraining.n_missing_sites
     # File?   missing_sites_shifted_scores  = CombineMissingSitesAdjustedScores.missing_sites_shifted_scores
