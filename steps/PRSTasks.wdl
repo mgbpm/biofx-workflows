@@ -242,8 +242,6 @@ task CheckWeightsCoverSitesUsedInTraining {
         if len(sites_missing_from_weight_set) > 0:
             sys.exit(f"Error: {len(sites_missing_from_weight_set)} sites used in model training are missing from weights files.")
         EOF
-
-
     >>>
 
     runtime {
@@ -377,13 +375,13 @@ task AddShiftToRawScores {
 
     command <<<
         Rscript -<< "EOF"
-            library(dplyr)
-            library(readr)
+        library(dplyr)
+        library(readr)
 
-            scores <- read_tsv("~{raw_scores}")
-            shifted_scores <- scores %>% mutate(SCORE1_SUM = SCORE1_SUM + ~{shift})
+        scores <- read_tsv("~{raw_scores}")
+        shifted_scores <- scores %>% mutate(SCORE1_SUM = SCORE1_SUM + ~{shift})
 
-            write_tsv(shifted_scores, "~{basename}.tsv")
+        write_tsv(shifted_scores, "~{basename}.tsv")
         EOF
     >>>
 
@@ -451,104 +449,100 @@ task TrainAncestryModel {
 
     command <<<
         Rscript -<< "EOF"
-            library(dplyr)
-            library(readr)
-            library(tibble)
-            population_pcs = read_tsv("~{population_pcs}")
-            population_scores = read_tsv("~{population_scores}")
+        library(dplyr)
+        library(readr)
+        library(tibble)
+        population_pcs = read_tsv("~{population_pcs}")
+        population_scores = read_tsv("~{population_scores}")
 
-            population_data = inner_join(population_pcs, population_scores, by=c("IID" = "#IID"))
+        population_data = inner_join(population_pcs, population_scores, by=c("IID" = "#IID"))
 
-            # generate the linear model from the population data using the first 4 PCs
-            population_model = glm(SCORE1_SUM ~ PC1 + PC2 + PC3 + PC4, data = population_data, family = "gaussian")
+        # generate the linear model from the population data using the first 4 PCs
+        population_model = glm(SCORE1_SUM ~ PC1 + PC2 + PC3 + PC4, data = population_data, family = "gaussian")
 
-            population_data <- population_data %>% mutate(residual_score2 = resid(population_model)^2)
+        population_data <- population_data %>% mutate(residual_score2 = resid(population_model)^2)
 
-            # generate the linear model for the variance of the score using the first 4 PCs
-            population_var_model <- glm(residual_score2 ~ PC1 + PC2 + PC3 + PC4, data = population_data, family = Gamma(link = "log"))
+        # generate the linear model for the variance of the score using the first 4 PCs
+        population_var_model <- glm(residual_score2 ~ PC1 + PC2 + PC3 + PC4, data = population_data, family = Gamma(link = "log"))
 
-            # use linear model to fit full likelihood model
+        # use linear model to fit full likelihood model
 
-            # linear transformation to predict variance
-            f_sigma2 <- function(t, theta) {
-            PC1 = t %>% pull(PC1)
-            PC2 = t %>% pull(PC2)
-            PC3 = t %>% pull(PC3)
-            PC4 = t %>% pull(PC4)
-            PC5 = t %>% pull(PC5)
-            sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
-            }
+        # linear transformation to predict variance
+        f_sigma2 <- function(t, theta) {
+        PC1 = t %>% pull(PC1)
+        PC2 = t %>% pull(PC2)
+        PC3 = t %>% pull(PC3)
+        PC4 = t %>% pull(PC4)
+        PC5 = t %>% pull(PC5)
+        sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
+        }
 
+        # linear transformation to predict mean
+        f_mu <- function(t, theta) {
+        PC1 = t %>% pull(PC1)
+        PC2 = t %>% pull(PC2)
+        PC3 = t %>% pull(PC3)
+        PC4 = t %>% pull(PC4)
+        PC5 = t %>% pull(PC5)
+        mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
+        }
 
-            # linear transformation to predict mean
-            f_mu <- function(t, theta) {
-            PC1 = t %>% pull(PC1)
-            PC2 = t %>% pull(PC2)
-            PC3 = t %>% pull(PC3)
-            PC4 = t %>% pull(PC4)
-            PC5 = t %>% pull(PC5)
-            mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
-            }
+        # negative log likelihood
+        nLL_mu_and_var <- function(theta) {
+        theta_mu = theta[1:5]
+        theta_var = theta[6:10]
+        x = population_data %>% pull(SCORE1_SUM)
+        sum(log(sqrt(f_sigma2(population_data, theta_var))) + (1/2)*(x-f_mu(population_data, theta_mu))^2/f_sigma2(population_data, theta_var))
+        }
 
+        # gradient of negative log likelihood function
+        grr <- function(theta) {
+        theta_mu = theta[1:5]
+        theta_var = theta[6:10]
+        d_mu_1 <- 1
+        d_mu_2 <- population_data %>% pull(PC1)
+        d_mu_3 <- population_data %>% pull(PC2)
+        d_mu_4 <- population_data %>% pull(PC3)
+        d_mu_5 <- population_data %>% pull(PC4)
+        d_sig_7 <- 1 * f_sigma2(population_data, theta_var)
+        d_sig_8 <- population_data %>% pull(PC1) * f_sigma2(population_data, theta_var)
+        d_sig_9 <- population_data %>% pull(PC2) * f_sigma2(population_data, theta_var)
+        d_sig_10 <- population_data %>% pull(PC3) * f_sigma2(population_data, theta_var)
+        d_sig_11 <- population_data %>% pull(PC4) * f_sigma2(population_data, theta_var)
 
-            # negative log likelihood
-            nLL_mu_and_var <- function(theta) {
-            theta_mu = theta[1:5]
-            theta_var = theta[6:10]
-            x = population_data %>% pull(SCORE1_SUM)
-            sum(log(sqrt(f_sigma2(population_data, theta_var))) + (1/2)*(x-f_mu(population_data, theta_mu))^2/f_sigma2(population_data, theta_var))
-            }
+        x <- population_data %>% pull(SCORE1_SUM)
+        mu_coeff <- -(x - f_mu(population_data, theta_mu))/f_sigma2(population_data, theta_var)
+        sig_coeff <- 1/(2*f_sigma2(population_data, theta_var)) -(1/2)*(x - f_mu(population_data, theta_mu))^2/(f_sigma2(population_data, theta_var)^2)
 
+        grad <- c(sum(mu_coeff*d_mu_1),
+        sum(mu_coeff*d_mu_2),
+        sum(mu_coeff*d_mu_3),
+        sum(mu_coeff*d_mu_4),
+        sum(mu_coeff*d_mu_5),
+        sum(sig_coeff*d_sig_7),
+        sum(sig_coeff*d_sig_8),
+        sum(sig_coeff*d_sig_9),
+        sum(sig_coeff*d_sig_10),
+        sum(sig_coeff*d_sig_11)
+        )
+        }
 
-            # gradient of negative log likelihood function
-            grr <- function(theta) {
-            theta_mu = theta[1:5]
-            theta_var = theta[6:10]
-            d_mu_1 <- 1
-            d_mu_2 <- population_data %>% pull(PC1)
-            d_mu_3 <- population_data %>% pull(PC2)
-            d_mu_4 <- population_data %>% pull(PC3)
-            d_mu_5 <- population_data %>% pull(PC4)
-            d_sig_7 <- 1 * f_sigma2(population_data, theta_var)
-            d_sig_8 <- population_data %>% pull(PC1) * f_sigma2(population_data, theta_var)
-            d_sig_9 <- population_data %>% pull(PC2) * f_sigma2(population_data, theta_var)
-            d_sig_10 <- population_data %>% pull(PC3) * f_sigma2(population_data, theta_var)
-            d_sig_11 <- population_data %>% pull(PC4) * f_sigma2(population_data, theta_var)
+        # use linear model fits as initial parameters for full likelihood fit
+        initial_pars <- c(population_model$coefficients, population_var_model$coefficients)
+        initial_pars <- setNames(initial_pars, c("Beta0_mu", "Beta1_mu", "Beta2_mu", "Beta3_mu", "Beta4_mu",
+                                                         "Beta0_var", "Beta1_var", "Beta2_var", "Beta3_var", "Beta4_var"))
+        fit_mu_and_var <- optim(nLL_mu_and_var, par = initial_pars, gr = grr, method = "BFGS")
 
-            x <- population_data %>% pull(SCORE1_SUM)
-            mu_coeff <- -(x - f_mu(population_data, theta_mu))/f_sigma2(population_data, theta_var)
-            sig_coeff <- 1/(2*f_sigma2(population_data, theta_var)) -(1/2)*(x - f_mu(population_data, theta_mu))^2/(f_sigma2(population_data, theta_var)^2)
+        write(ifelse(fit_mu_and_var$convergence == 0, "true", "false"), "fit_converged.txt")
 
+        write_tsv(enframe(fit_mu_and_var$par), "~{output_basename}_fitted_model_params.tsv")
 
-            grad <- c(sum(mu_coeff*d_mu_1),
-            sum(mu_coeff*d_mu_2),
-            sum(mu_coeff*d_mu_3),
-            sum(mu_coeff*d_mu_4),
-            sum(mu_coeff*d_mu_5),
-            sum(sig_coeff*d_sig_7),
-            sum(sig_coeff*d_sig_8),
-            sum(sig_coeff*d_sig_9),
-            sum(sig_coeff*d_sig_10),
-            sum(sig_coeff*d_sig_11)
-            )
-            }
+        population_adjusted <- population_data %>% select(-residual_score2) %>% mutate(adjusted_score =
+                                        (SCORE1_SUM - f_mu(population_data, fit_mu_and_var$par[1:5]))/
+                                        sqrt(f_sigma2(population_data, fit_mu_and_var$par[6:10])))
+        population_adjusted <- population_adjusted %>% mutate(percentile=pnorm(adjusted_score,0))
 
-            # use linear model fits as initial parameters for full likelihood fit
-            initial_pars <- c(population_model$coefficients, population_var_model$coefficients)
-            initial_pars <- setNames(initial_pars, c("Beta0_mu", "Beta1_mu", "Beta2_mu", "Beta3_mu", "Beta4_mu",
-                                                             "Beta0_var", "Beta1_var", "Beta2_var", "Beta3_var", "Beta4_var"))
-            fit_mu_and_var <- optim(nLL_mu_and_var, par = initial_pars, gr = grr, method = "BFGS")
-
-            write(ifelse(fit_mu_and_var$convergence == 0, "true", "false"), "fit_converged.txt")
-
-            write_tsv(enframe(fit_mu_and_var$par), "~{output_basename}_fitted_model_params.tsv")
-
-            population_adjusted <- population_data %>% select(-residual_score2) %>% mutate(adjusted_score =
-                                                                                                                                                (SCORE1_SUM - f_mu(population_data, fit_mu_and_var$par[1:5]))/
-                                                                                                                                                    sqrt(f_sigma2(population_data, fit_mu_and_var$par[6:10])))
-            population_adjusted <- population_adjusted %>% mutate(percentile=pnorm(adjusted_score,0))
-
-            write_tsv(population_adjusted, "population_adjusted_scores.tsv")
+        write_tsv(population_adjusted, "population_adjusted_scores.tsv")
         EOF
     >>>
 
@@ -579,45 +573,45 @@ task AdjustScores {
 
     command <<<
         Rscript -<< "EOF"
-            library(dplyr)
-            library(readr)
+        library(dplyr)
+        library(readr)
 
-            # read in model params
-            params_tibble <- read_tsv("~{fitted_model_params}")
-            params <- params_tibble %>% pull(value)
+        # read in model params
+        params_tibble <- read_tsv("~{fitted_model_params}")
+        params <- params_tibble %>% pull(value)
 
-            # linear transformation to predict variance
-            f_sigma2 <- function(t, theta) {
-                PC1 = t %>% pull(PC1)
-                PC2 = t %>% pull(PC2)
-                PC3 = t %>% pull(PC3)
-                PC4 = t %>% pull(PC4)
-                PC5 = t %>% pull(PC5)
-                sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
-            }
+        # linear transformation to predict variance
+        f_sigma2 <- function(t, theta) {
+            PC1 = t %>% pull(PC1)
+            PC2 = t %>% pull(PC2)
+            PC3 = t %>% pull(PC3)
+            PC4 = t %>% pull(PC4)
+            PC5 = t %>% pull(PC5)
+            sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
+        }
 
 
-            # linear transformation to predict mean
-            f_mu <- function(t, theta) {
-                PC1 = t %>% pull(PC1)
-                PC2 = t %>% pull(PC2)
-                PC3 = t %>% pull(PC3)
-                PC4 = t %>% pull(PC4)
-                PC5 = t %>% pull(PC5)
-                mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
-            }
+        # linear transformation to predict mean
+        f_mu <- function(t, theta) {
+            PC1 = t %>% pull(PC1)
+            PC2 = t %>% pull(PC2)
+            PC3 = t %>% pull(PC3)
+            PC4 = t %>% pull(PC4)
+            PC5 = t %>% pull(PC5)
+            mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
+        }
 
-            scores = inner_join(read_tsv("~{pcs}"),
-                                                                read_tsv("~{scores}"), by=c("IID" = "#IID"))
+        scores = inner_join(read_tsv("~{pcs}"),
+            read_tsv("~{scores}"), by=c("IID" = "#IID"))
 
-            adjusted_scores <- scores %>% mutate(adjusted_score =
-                                                                                                                (SCORE1_SUM - f_mu(scores, params[1:5]))/
-                                                                                                                sqrt(f_sigma2(scores, params[6:10]))
-                                                                                                            )
-            adjusted_scores <- adjusted_scores %>% mutate(percentile=pnorm(adjusted_score,0))
+        adjusted_scores <- scores %>% mutate(adjusted_score =
+            (SCORE1_SUM - f_mu(scores, params[1:5]))/
+            sqrt(f_sigma2(scores, params[6:10]))
+            )
+        adjusted_scores <- adjusted_scores %>% mutate(percentile=pnorm(adjusted_score,0))
 
-            # return array scores
-            write_tsv(adjusted_scores, "adjusted_scores.tsv")
+        # return array scores
+        write_tsv(adjusted_scores, "adjusted_scores.tsv")
         EOF
     >>>
 
@@ -645,20 +639,20 @@ task MakePCAPlot {
 
     command <<<
         Rscript -<< "EOF"
-            library(dplyr)
-            library(readr)
-            library(ggplot2)
+        library(dplyr)
+        library(readr)
+        library(ggplot2)
 
-            population_pcs <- read_tsv("~{population_pcs}")
-            target_pcs <- read_tsv("~{target_pcs}")
+        population_pcs <- read_tsv("~{population_pcs}")
+        target_pcs <- read_tsv("~{target_pcs}")
 
-            ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
-                geom_point(size=0.1, alpha=0.1) +
-                geom_point(data = target_pcs, aes(x=PC1, y=PC2, color="Target")) +
-                labs(x="PC1", y="PC2") +
-                theme_bw()
+        ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
+            geom_point(size=0.1, alpha=0.1) +
+            geom_point(data = target_pcs, aes(x=PC1, y=PC2, color="Target")) +
+            labs(x="PC1", y="PC2") +
+            theme_bw()
 
-            ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
+        ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
 
         EOF
     >>>
@@ -878,7 +872,9 @@ task ArrayVcfToPlinkDataset {
         String? chromosome_encoding
         String docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
         Int disk_size = 3 * ceil(size(vcf, "GB")) + 20
-        Int mem_size = 8
+        Int base_mem = 8
+        Int mem_size = base_mem + 2
+        Int plink_mem = ceil(base_mem * 0.75 * 1000)
         Int preemptible = 1
     }
 
@@ -886,7 +882,7 @@ task ArrayVcfToPlinkDataset {
   
     command <<<
         /plink2 --vcf ~{vcf} --extract-intersect ~{pruning_sites} ~{subset_to_sites} --allow-extra-chr --set-all-var-ids ~{var_ids_string} \
-        --new-id-max-allele-len 1000 missing --out ~{basename} --make-bed --rm-dup force-first ~{"--output-chr " + chromosome_encoding}
+        --new-id-max-allele-len 1000 missing --out ~{basename} --make-bed --rm-dup force-first ~{"--output-chr " + chromosome_encoding} --memory ~{plink_mem}
     >>>
 
     output {
