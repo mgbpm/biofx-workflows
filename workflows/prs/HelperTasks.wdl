@@ -191,3 +191,118 @@ task RenameChromosomesInVcf {
     disks : "local-disk ~{storage} HDD"
   }
 }
+
+task SubsetVcf {
+  input {
+    File    inputvcf
+    File    regions
+    String  label     = "data"
+    Boolean nocleanup = false
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String OUTPUTVCF = OUTPUTDIR + "/" + label + ".vcf.gz"
+  Int    storage   = 20 + 3 * ceil(size(inputvcf, "GB"))
+
+  command <<<
+  set -o pipefail
+  set -o errexit
+  set -o nounset
+  export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  set -o xtrace
+
+  # ---------------------------------------------------------------------------
+
+  printf -- 'SPECIFIED STORAGE: %d GB\n\n' '~{storage}'
+  printf -- 'INITIAL STORAGE UTILIZATION:\n'
+  df --human
+  printf -- '\n'
+
+  # ---------------------------------------------------------------------------
+
+  mkdir --verbose --parents '~{OUTPUTDIR}'
+  WORKDIR="$( mktemp --directory )"
+  INPUTVCF="${WORKDIR}/input.vcf.gz"
+
+  ln --symbolic --verbose '~{inputvcf}' "${INPUTVCF}"
+
+  bcftools index      \
+      --force         \
+      --tbi           \
+      "${INPUTVCF}"
+
+  cleanup() {
+
+      bcftools                   \
+          norm                   \
+          --multiallelics -any   \
+          --no-version           \
+          --output-type v        \
+    | bcftools                   \
+          annotate               \
+          --remove 'INFO,FORMAT' \
+          --no-version           \
+          --output-type v        \
+    | perl -lne '
+        BEGIN { $, = "\t"; }
+        @::F = split( $,, $_, -1 );
+        if (/^#/) {
+          if (/^##contig=<ID=/) {
+            unless ( $done ) {
+              $done = 1;
+              for $chromosome ( 1 .. 22, q(X) ) {
+                print qq(##contig=<ID=$chromosome>);
+              }
+            }
+          }
+          else {
+            print;
+          }
+        }
+        else {
+          $::F[ 2 ] = join(
+            q(:),
+            @::F[ 0, 1, 3, 4 ]
+          );
+          print @::F;
+        }
+      '
+  }
+
+  if ~{if nocleanup then "true" else "false"}
+  then
+      POSTPROCESS=cat
+  else
+      POSTPROCESS=cleanup
+  fi
+
+  bcftools                             \
+      view                             \
+      --no-version                     \
+      --output-type v                  \
+      --regions-file '~{regions}'      \
+      "${INPUTVCF}"                    \
+    | "${POSTPROCESS}"                 \
+    | bcftools                         \
+          view                         \
+          --no-version                 \
+          --output-type z              \
+          --output-file '~{OUTPUTVCF}'
+
+  # ---------------------------------------------------------------------------
+
+  printf -- 'FINAL STORAGE UTILIZATION:\n'
+  df --human
+
+  # ---------------------------------------------------------------------------
+  >>>
+
+  output {
+    File result = OUTPUTVCF
+  }
+
+  runtime {
+    docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
+    disks : "local-disk ~{storage} HDD"
+  }
+}
