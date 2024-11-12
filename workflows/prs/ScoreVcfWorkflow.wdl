@@ -7,20 +7,22 @@ import "Structs.wdl"
 
 workflow ScoreVcf {
   input {
-    File query_vcf
-    File weights
-    File pca_variants
+    File  query_vcf
+    File  weights
+    File  pca_variants
 
-    File model_parameters
-    File training_variants
-    File principal_components
-    File loadings
-    File meansd
+    File  model_parameters
+    File  training_variants
+    File  principal_components
+    File  loadings
+    File  meansd
+
+    File? query_regions
   }
 
-  call HelperTasks.GetBaseMemory {
+  call HelperTasks.GetBaseMemory as GetMemoryForQuery {
     input:
-      vcf = query_vcf
+        vcf = query_vcf
   }
 
   call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
@@ -37,8 +39,37 @@ workflow ScoreVcf {
 
   call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
     input:
-      vcf = query_vcf
+        vcf = query_vcf
   }
+
+  if (defined(query_regions)) {
+    call HelperTasks.SubsetVcf as SubsetQueryVcf {
+      input:
+          inputvcf = RenameChromosomesInQueryVcf.renamed
+        , regions  = select_first([query_regions])
+        , label    = "query"
+    }
+
+    call HelperTasks.GetBaseMemory as GetBaseMemoryFromNregions {
+      input:
+          nvariants = SubsetQueryVcf.nregions
+    }
+  }
+
+  if (!defined(query_regions)) {
+    call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
+      input:
+          vcf = RenameChromosomesInQueryVcf.renamed
+    }
+  }
+
+  File resolved_query_vcf = select_first([SubsetQueryVcf.result,
+                                          RenameChromosomesInQueryVcf.renamed])
+
+  Int  base_memory        = select_first([GetBaseMemoryFromNregions.gigabytes,
+                                          GetBaseMemoryFromVcf.gigabytes])
+
+  # --------------------------------------------------------------------------
 
   WeightSet weight_set = object {
     linear_weights : RenameChromosomesInWeights.renamed
@@ -52,19 +83,19 @@ workflow ScoreVcf {
 
   call ScoringTasks.ScoreVcf as ScoreQueryVcf {
     input:
-        vcf                 = RenameChromosomesInQueryVcf.renamed
+        vcf                 = resolved_query_vcf
       , weights             = RenameChromosomesInWeights.renamed
       , sites               = training_variants
       , chromosome_encoding = "MT"
-      , base_mem            = GetBaseMemory.gigabytes
+      , base_mem            = base_memory
       , basename            = "query"
   }
 
   call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
     input:
-        vcf           = RenameChromosomesInQueryVcf.renamed
+        vcf           = resolved_query_vcf
       , pruning_sites = RenameChromosomesInPcaVariants.renamed
-      , mem           = GetBaseMemory.gigabytes
+      , mem           = base_memory
       , basename      = "temp"
   }
 
@@ -75,7 +106,7 @@ workflow ScoreVcf {
       , bed         = QueryBed.bed
       , bim         = QueryBed.bim
       , fam         = QueryBed.fam
-      , mem         = GetBaseMemory.gigabytes
+      , mem         = base_memory
       , basename    = "query"
   }
 
