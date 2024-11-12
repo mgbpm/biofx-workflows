@@ -943,8 +943,8 @@ task GetBaseMemory {
                 else "\"$( zgrep --count --invert-match '^#' '" + vcf + "' | tee '" + NVARIANTS + "' )\""}
 
     python3 <<EOF > '~{GIGABYTES}'
-        import math
-        print(8 + max(0, math.ceil((${NVARIANTS} - 50000000)/10000000)))
+    import math
+    print(8 + max(0, math.ceil((${NVARIANTS} - 50000000)/10000000)))
     EOF
     >>>
 
