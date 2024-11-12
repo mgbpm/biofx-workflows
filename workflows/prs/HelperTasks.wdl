@@ -202,6 +202,7 @@ task SubsetVcf {
 
   String OUTPUTDIR = "OUTPUT"
   String OUTPUTVCF = OUTPUTDIR + "/" + label + ".vcf.gz"
+  String NREGIONS  = OUTPUTDIR + "/NREGIONS"
   Int    storage   = 20 + 3 * ceil(size(inputvcf, "GB"))
 
   command <<<
@@ -289,6 +290,8 @@ task SubsetVcf {
           --output-type z              \
           --output-file '~{OUTPUTVCF}'
 
+  wc --lines < '~{regions}' > '~{NREGIONS}'
+
   # ---------------------------------------------------------------------------
 
   printf -- 'FINAL STORAGE UTILIZATION:\n'
@@ -298,7 +301,8 @@ task SubsetVcf {
   >>>
 
   output {
-    File result = OUTPUTVCF
+    File result   = OUTPUTVCF
+    Int  nregions = read_int(NREGIONS)
   }
 
   runtime {
