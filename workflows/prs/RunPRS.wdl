@@ -153,6 +153,7 @@ workflow RunPRSWorkflow {
 
     # -------------------------------------------------------------------------
 
+    File?   query_regions              = GetRegions.query_regions
     Boolean converged                  = select_first([ScoreQueryVcf.fit_converged])
     File    adjusted_population_scores = select_first([ScoreQueryVcf.adjusted_population_scores])
 
