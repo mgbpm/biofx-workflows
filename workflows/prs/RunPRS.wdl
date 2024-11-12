@@ -18,8 +18,6 @@ workflow RunPRSWorkflow {
     String           name
   }
 
-  call Baseline
-
   call HelperTasks.GetBaseMemory as GetMemoryForQuery {
     input:
         vcf = query_vcf
@@ -160,34 +158,6 @@ workflow RunPRSWorkflow {
 
     # Int?    n_missing_sites_from_training = CompareScoredSitesToSitesUsedInTraining.n_missing_sites
     # File?   missing_sites_shifted_scores  = CombineMissingSitesAdjustedScores.missing_sites_shifted_scores
-  }
-}
-
-# -------------------------------------------------------------------------------
-
-task Baseline {
-
-  command <<<
-  set -o pipefail
-  set -o errexit
-  set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
-
-  # ---------------------------------------------------------------------------
-
-  printf -- 'ENVIRONMENT:\n'
-  typeset -p
-  printf -- '\n'
-
-  printf -- 'INITIAL STORAGE UTILIZATION:\n'
-  df --human
-
-  # ---------------------------------------------------------------------------
-  >>>
-
-  runtime {
-    docker: "ubuntu:21.10"
   }
 }
 
