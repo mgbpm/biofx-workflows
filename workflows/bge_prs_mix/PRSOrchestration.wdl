@@ -6,7 +6,7 @@ import "PRSRawScoreWorkflow.wdl"
 import "PRSMixScoreWorkflow.wdl"
 import "PRSPCAWorkflow.wdl"
 import "PRSAdjustmentWorkflow.wdl"
-import "PRSCategorizationWorkflow.wdl"
+import "PRSSummaryWorkflow.wdl"
 
 workflow PRSOrchestrationWorkflow {
 	input {
@@ -43,7 +43,7 @@ workflow PRSOrchestrationWorkflow {
 		Boolean run_mix_scoring = true
 		Boolean run_pca = true
 		Boolean run_adjustment = true
-		Boolean run_categorization = true
+		Boolean run_summary = true
 		File? input_vcf
 		File? pc_projections
 		File? input_scores
@@ -167,9 +167,9 @@ workflow PRSOrchestrationWorkflow {
 		}
 	}
 
-	if (run_categorization) {
+	if (run_summary) {
 		# Categorize each condition's score into bins; report percentile & bin
-		call PRSCategorizationWorkflow.PRSCategorizationWorkflow as CategorizeScores {
+		call PRSSummaryWorkflow.PRSSummaryWorkflow as SummarizeScores {
 			input:
 				prs_scores = select_first([AdjustPRSScores.adjusted_scores, input_scores]),
 				sample_ids = select_first([PRSMixScores.sample_ids[0], sample_ids]),
@@ -193,7 +193,7 @@ workflow PRSOrchestrationWorkflow {
 		File? pc_plot = PerformPCA.pc_plot
 
 		# Individual Outputs
-		Array[File]? individuals_risk_summaries = CategorizeScores.individual_risk_summaries
+		Array[File]? individuals_risk_summaries = SummarizeScores.individual_risk_summaries
 	}
 }
 
