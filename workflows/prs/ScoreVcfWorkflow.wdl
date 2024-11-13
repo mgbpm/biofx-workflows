@@ -9,56 +9,27 @@ workflow ScoreVcf {
   input {
     File   query_vcf
     String name
-
-    File   weights
-    File   pca_variants
-
-    File   model_parameters
-    File   training_variants
-    File   principal_components
-    File   loadings
-    File   meansd
-
-    File?  query_regions
+    File   adjustment_model_manifest
   }
 
-  call HelperTasks.GetBaseMemory as GetMemoryForQuery {
-    input:
-        vcf = query_vcf
-  }
-
-  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
-    input:
-        tsv        = weights
-      , skipheader = true
-  }
-
-  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
-    input:
-        tsv        = pca_variants
-      , skipheader = false
-  }
+  AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
   call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
     input:
         vcf = query_vcf
   }
 
-  if (defined(query_regions)) {
+  if (defined(model_data.query_regions)) {
     call HelperTasks.SubsetVcf as SubsetQueryVcf {
       input:
           inputvcf = RenameChromosomesInQueryVcf.renamed
-        , regions  = select_first([query_regions])
+        , regions  = select_first([model_data.query_regions])
         , label    = "query"
     }
 
-    call HelperTasks.GetBaseMemory as GetBaseMemoryFromNregions {
-      input:
-          nvariants = SubsetQueryVcf.nregions
-    }
   }
 
-  if (!defined(query_regions)) {
+  if (!defined(model_data.query_regions)) {
     call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
       input:
           vcf = RenameChromosomesInQueryVcf.renamed
@@ -68,26 +39,26 @@ workflow ScoreVcf {
   File resolved_query_vcf = select_first([SubsetQueryVcf.result,
                                           RenameChromosomesInQueryVcf.renamed])
 
-  Int  base_memory        = select_first([GetBaseMemoryFromNregions.gigabytes,
-                                          GetBaseMemoryFromVcf.gigabytes])
+  Int  base_memory        = select_first([GetBaseMemoryFromVcf.gigabytes,
+                                          model_data.base_memory])
 
   # --------------------------------------------------------------------------
 
   WeightSet weight_set = object {
-    linear_weights : RenameChromosomesInWeights.renamed
+    linear_weights : model_data.weights
   }
-  
+
   call ScoringTasks.CheckWeightsCoverSitesUsedInTraining {
     input:
-        sites_used_in_training = training_variants
+        sites_used_in_training = model_data.training_variants
       , weight_set             = weight_set
   }
 
   call ScoringTasks.ScoreVcf as ScoreQueryVcf {
     input:
         vcf                 = resolved_query_vcf
-      , weights             = RenameChromosomesInWeights.renamed
-      , sites               = training_variants
+      , weights             = model_data.weights
+      , sites               = model_data.training_variants
       , chromosome_encoding = "MT"
       , base_mem            = base_memory
       , basename            = name
@@ -96,15 +67,15 @@ workflow ScoreVcf {
   call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
     input:
         vcf           = resolved_query_vcf
-      , pruning_sites = RenameChromosomesInPcaVariants.renamed
+      , pruning_sites = model_data.pca_variants
       , mem           = base_memory
       , basename      = "temp"
   }
 
   call PCATasks.ProjectArray as ProjectQuery {
     input:
-        pc_loadings = loadings
-      , pc_meansd   = meansd
+        pc_loadings = model_data.loadings
+      , pc_meansd   = model_data.meansd
       , bed         = QueryBed.bed
       , bim         = QueryBed.bim
       , fam         = QueryBed.fam
@@ -114,14 +85,14 @@ workflow ScoreVcf {
 
   call ScoringTasks.AdjustScores {
     input:
-        fitted_model_params = model_parameters
+        fitted_model_params = model_data.parameters
       , pcs                 = ProjectQuery.projections
       , scores              = ScoreQueryVcf.score
   }
 
   call ScoringTasks.MakePCAPlot {
     input:
-        population_pcs = principal_components
+        population_pcs = model_data.principal_components
       , target_pcs     = ProjectQuery.projections
   }
 
