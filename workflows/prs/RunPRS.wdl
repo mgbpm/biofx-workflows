@@ -7,13 +7,13 @@ import "Structs.wdl"
 
 workflow RunPRSWorkflow {
 
-  input { 
+  input {
     File             query_vcf
 
     File             weights
     File             pca_variants
     File             reference_vcf
-    Boolean          make_model_only = false                     
+    Boolean          make_model_only = false
 
     String           name
   }
@@ -136,6 +136,40 @@ workflow RunPRSWorkflow {
       , population_meansd                    = "PLACEHOLDER__REQUIRED_BUT_NOT_USED"
   }
 
+  # call BundleAdjustmentModel {
+  #   input:
+  #       parameters           = select_first([ScoreQueryVcf.model_parameters])
+  #     , training_variants    = select_first([ScoreQueryVcf.training_variants])
+  #
+  #     , principal_components = select_first([ScoreQueryVcf.pcs])
+  #     , loadings             = select_first([ScoreQueryVcf.pcloadings])
+  #     , meansd               = select_first([ScoreQueryVcf.pcmeansd])
+  #
+  #     , weights              = RenameChromosomesInWeights.renamed
+  #     , pca_variants         = RenameChromosomesInPcaVariants.renamed
+  #
+  #     , base_memory          = plink_memory
+  #     , query_regions        = GetRegions.query_regions
+  # }
+
+  call BundleAdjustmentModel {
+    input:
+        model_data = object {
+            parameters           : select_first([ScoreQueryVcf.model_parameters])
+          , training_variants    : select_first([ScoreQueryVcf.training_variants])
+
+          , principal_components : select_first([ScoreQueryVcf.pcs])
+          , loadings             : select_first([ScoreQueryVcf.pcloadings])
+          , meansd               : select_first([ScoreQueryVcf.pcmeansd])
+
+          , weights              : RenameChromosomesInWeights.renamed
+          , pca_variants         : RenameChromosomesInPcaVariants.renamed
+
+          , base_memory          : plink_memory
+          , query_regions        : GetRegions.query_regions
+        }
+  }
+
   output {
     File?   raw_scores                 = ScoreQueryVcf.raw_scores
     File?   adjusted_array_scores      = ScoreQueryVcf.adjusted_array_scores
@@ -156,6 +190,26 @@ workflow RunPRSWorkflow {
     File?   query_regions              = GetRegions.query_regions
     Boolean converged                  = select_first([ScoreQueryVcf.fit_converged])
     File    adjusted_population_scores = select_first([ScoreQueryVcf.adjusted_population_scores])
+
+    # -------------------------------------------------------------------------
+
+    File    adjustment_model_manifest  = BundleAdjustmentModel.manifest
+    File    adjustment_model_manifest_2 =
+                write_json(
+                    object {
+                        parameters           : select_first([ScoreQueryVcf.model_parameters])
+                      , training_variants    : select_first([ScoreQueryVcf.training_variants])
+
+                      , principal_components : select_first([ScoreQueryVcf.pcs])
+                      , loadings             : select_first([ScoreQueryVcf.pcloadings])
+                      , meansd               : select_first([ScoreQueryVcf.pcmeansd])
+
+                      , weights              : RenameChromosomesInWeights.renamed
+                      , pca_variants         : RenameChromosomesInPcaVariants.renamed
+
+                      , base_memory          : plink_memory
+                      , query_regions        : GetRegions.query_regions
+                    })
 
     # Int?    n_missing_sites_from_training = CompareScoredSitesToSitesUsedInTraining.n_missing_sites
     # File?   missing_sites_shifted_scores  = CombineMissingSitesAdjustedScores.missing_sites_shifted_scores
@@ -535,5 +589,59 @@ task GetRegions {
   runtime {
     docker: "ubuntu:21.10"
     disks : "local-disk ~{storage} HDD"
+  }
+}
+
+# task BundleAdjustmentModel {
+#   input {
+#     File  parameters
+#     File  training_variants
+#
+#     File  principal_components
+#     File  loadings
+#     File  meansd
+#
+#     File  weights
+#     File  pca_variants
+#
+#     Int   base_memory
+#     File? query_regions
+#   }
+#
+#   AdjustmentModelData model_data = object {
+#       parameters           : parameters
+#     , training_variants    : training_variants
+#
+#     , principal_components : principal_components
+#     , loadings             : loadings
+#     , meansd               : meansd
+#
+#     , weights              : weights
+#     , pca_variants         : pca_variants
+#
+#     , base_memory          : base_memory
+#     , query_regions        : query_regions
+#   }
+#
+#   command {}
+#
+#   output {
+#     File adjustment_model_manifest = write_json(model_data)
+#   }
+# }
+
+task BundleAdjustmentModel {
+  input {
+    AdjustmentModelData model_data
+  }
+
+  command {}
+
+  output {
+    File manifest = write_json(model_data)
+  }
+
+  runtime {
+    docker: "ubuntu:21.10"
   }
 }
