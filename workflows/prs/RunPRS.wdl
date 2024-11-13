@@ -170,6 +170,22 @@ workflow RunPRS {
         }
   }
 
+  File temp = write_json(
+                  object {
+                      parameters           : select_first([ScoreQueryVcf.model_parameters])
+                    , training_variants    : select_first([ScoreQueryVcf.training_variants])
+
+                    , principal_components : select_first([ScoreQueryVcf.pcs])
+                    , loadings             : select_first([ScoreQueryVcf.pcloadings])
+                    , meansd               : select_first([ScoreQueryVcf.pcmeansd])
+
+                    , weights              : RenameChromosomesInWeights.renamed
+                    , pca_variants         : RenameChromosomesInPcaVariants.renamed
+
+                    , base_memory          : plink_memory
+                    , query_regions        : GetRegions.query_regions
+              })
+
   output {
     File?   raw_scores                 = ScoreQueryVcf.raw_scores
     File?   adjusted_array_scores      = ScoreQueryVcf.adjusted_array_scores
@@ -194,6 +210,7 @@ workflow RunPRS {
     # -------------------------------------------------------------------------
 
     File    adjustment_model_manifest  = BundleAdjustmentModel.manifest
+    File    adjustment_model_manifest_2 = temp
     # File    adjustment_model_manifest_2 =
     #             write_json(
     #                 object {
