@@ -39,3 +39,19 @@ struct PRSWrapperConditionResource {
 	NamedWeightSet named_weight_set
 	AncestryAdjustmentModelParams ancestry_model_params_and_sites
 }
+
+# FOR INTERNAL USE ONLY
+struct AdjustmentModelData {
+  File  parameters
+  File  training_variants
+
+  File  principal_components
+  File  loadings
+  File  meansd
+
+  File  weights
+  File  pca_variants
+
+  Int   base_memory
+  File? query_regions
+}
