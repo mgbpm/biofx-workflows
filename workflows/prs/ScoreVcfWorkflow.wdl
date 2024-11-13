@@ -7,17 +7,19 @@ import "Structs.wdl"
 
 workflow ScoreVcf {
   input {
-    File  query_vcf
-    File  weights
-    File  pca_variants
+    File   query_vcf
+    String name
 
-    File  model_parameters
-    File  training_variants
-    File  principal_components
-    File  loadings
-    File  meansd
+    File   weights
+    File   pca_variants
 
-    File? query_regions
+    File   model_parameters
+    File   training_variants
+    File   principal_components
+    File   loadings
+    File   meansd
+
+    File?  query_regions
   }
 
   call HelperTasks.GetBaseMemory as GetMemoryForQuery {
@@ -88,7 +90,7 @@ workflow ScoreVcf {
       , sites               = training_variants
       , chromosome_encoding = "MT"
       , base_mem            = base_memory
-      , basename            = "query"
+      , basename            = name
   }
 
   call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
