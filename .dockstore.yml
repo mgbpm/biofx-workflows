@@ -337,10 +337,10 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - PRSMix_*
-  - name: PRSCategorizationWorkflow
+  - name: PRSSummaryWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/PRSCategorizationWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/PRSCategorizationWorkflow.md
+    primaryDescriptorPath: /workflows/bge_prs_mix/PRSSummaryWorkflow.wdl
+    readMePath: /workflows/bge_prs_mix/PRSSummaryWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
