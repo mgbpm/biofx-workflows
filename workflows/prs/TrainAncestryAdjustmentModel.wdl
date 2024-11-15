@@ -54,6 +54,7 @@ workflow TrainAncestryAdjustmentModel {
   output {
     File fitted_params = TrainAncestryModel.fitted_params
     File sites_used_in_scoring = select_first([CombineScoringSites.combined_scoring_sites, ScoreVcf.sites_scored])
+    File raw_population_scores = select_first([AddInteractionTermsToScorePopulation.scores_with_interactions, ScoreVcf.score])
     File adjusted_population_scores = TrainAncestryModel.adjusted_population_scores
     Boolean fit_converged = TrainAncestryModel.fit_converged
   }
