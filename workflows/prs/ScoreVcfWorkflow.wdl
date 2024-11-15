@@ -8,8 +8,8 @@ import "Structs.wdl"
 workflow ScoreVcf {
   input {
     File   query_vcf
-    String name
     File   adjustment_model_manifest
+    String name
   }
 
   AdjustmentModelData model_data = read_json(adjustment_model_manifest)
@@ -42,6 +42,12 @@ workflow ScoreVcf {
   Int  base_memory        = select_first([GetBaseMemoryFromVcf.gigabytes,
                                           model_data.base_memory])
 
+  call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
+    input:
+        vcf = resolved_query_vcf
+      , mem = base_memory
+  }
+
   # --------------------------------------------------------------------------
 
   WeightSet weight_set = object {
@@ -69,7 +75,7 @@ workflow ScoreVcf {
         vcf           = resolved_query_vcf
       , pruning_sites = model_data.pca_variants
       , mem           = base_memory
-      , basename      = "temp"
+      , basename      = "query"
   }
 
   call PCATasks.ProjectArray as ProjectQuery {
@@ -101,5 +107,6 @@ workflow ScoreVcf {
     File adjusted_scores = AdjustScores.adjusted_scores
     File pc_projection   = ProjectQuery.projections
     File pc_plot         = MakePCAPlot.pca_plot
+    File kept_variants   = ExtractQueryVariants.ids
   }
 }
