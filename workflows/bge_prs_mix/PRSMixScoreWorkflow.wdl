@@ -21,7 +21,6 @@ workflow PRSMixScoreWorkflow {
 
 	output {
 		File prs_mix_raw_score = CalculateMixScore.prs_mix_raw_score
-		File sample_ids_list = CalculateMixScore.sample_ids_list
 	}
 }
 
@@ -78,7 +77,6 @@ task CalculateMixScore {
 	}
 
 	output {
-		File sample_ids_list = "sample_ids.txt"
 		File prs_mix_raw_score = "~{output_basename}.prs_mix_score.sscore"
 	}
 }

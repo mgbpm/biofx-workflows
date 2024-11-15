@@ -10,7 +10,7 @@
 | File | pc_meansd | Yes | | |
 | File | population_pcs | Yesd | PCA for population | |
 | File | pruning_sites_for_pca | Yes | Pruning sites used to perform PCA | |
-| File | var_weights | Required if chromosome encoding is not provided | PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
+| File | var_weight_file | Required if chromosome encoding is not provided | PGS variant weight file, with 3 columns: variant ID, effect allele, and score | |
 | String | weights_chr_encoding | No | Chromosome encoding string | |
 | File | python_docker_image | No | Python Docker image | "python:3.9.10" |
 | String | plink_docker_image | No | Docker image for Plink 2 | us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124 |

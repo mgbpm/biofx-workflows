@@ -48,7 +48,7 @@ workflow PRSOrchestrationWorkflow {
 		Boolean run_adjustment = true
 		Boolean run_summary = true
 		File? input_vcf
-		File? pc_projections
+		Array[File]? pc_projections
 		File? input_scores
 	}
 
@@ -86,7 +86,7 @@ workflow PRSOrchestrationWorkflow {
 				fasta = select_first([ref_fasta]),
 				fasta_index = select_first([ref_fai]),
 				ref_dict = select_first([ref_dict]),
-				output_basename = select_first([vcf_basename], "PRS_Glimpse"),
+				output_basename = select_first([vcf_basename, "PRS_Glimpse"]),
 				impute_reference_only_variants = impute_reference_only_variants,
 				call_indels = call_indels,
 				n_burnin = select_first([n_burnin]),
@@ -103,9 +103,11 @@ workflow PRSOrchestrationWorkflow {
 	}
 
 	scatter (i in range(length(condition_zip_files))) {
+		String condition_name = sub(basename(condition_zip_files[i]), "_[[0-9]]+\\.tar$", "")
 		call UnzipConditionFile{
 			input:
 				condition_zip_file = condition_zip_files[i],
+				condition_name = condition_name,
 				docker_image = ubuntu_docker_image
 		}
 
@@ -113,7 +115,6 @@ workflow PRSOrchestrationWorkflow {
 			# Get PRS raw scores for each condition
 			call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
 				input:
-					condition_name = UnzipConditionFile.condition_name,
 					var_weights = UnzipConditionFile.var_weights,
 					scoring_sites = UnzipConditionFile.scoring_sites,
 					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
@@ -125,8 +126,8 @@ workflow PRSOrchestrationWorkflow {
 			# Get the PRS mix raw score for each condition
 			call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
 				input:
-					condition_name = UnzipConditionFile.condition_name,
-					raw_scores = PRSRawScores.prs_raw_scores,
+					condition_name = condition_name,
+					raw_scores = select_first([PRSRawScores.prs_raw_scores, input_scores]),
 					score_weights = UnzipConditionFile.score_weights,
 					ubuntu_docker_image = ubuntu_docker_image
 			}
@@ -136,14 +137,13 @@ workflow PRSOrchestrationWorkflow {
 			# Perform PCA with population model
 			call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
 				input:
-					condition_name = UnzipConditionFile.condition_name,
-					var_weights = UnzipConditionFile.var_weights,
+					condition_name = condition_name,
 					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
 					pc_loadings = UnzipConditionFile.pc_loadings,
 					pc_meansd = UnzipConditionFile.pc_meansd,
 					population_pcs = UnzipConditionFile.pcs,
-					pruning_sites_for_pca = pruning_sites_for_pca,
-					chr_encoding = select_first([PRSRawScores.chromosome_encoding]),
+					pruning_sites_for_pca = select_first([pruning_sites_for_pca]),
+					weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
 					plink_docker_image = plink_docker_image,
 					flash_pca_docker_image = flash_pca_docker_image,
 					tidyverse_docker_image = tidyverse_docker_image
@@ -154,11 +154,11 @@ workflow PRSOrchestrationWorkflow {
 			# Adjust PRS mix score for each condition
 			call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
 				input:
-					condition_name = UnzipConditionFile.condition_name,
-					var_weights = UnzipConditionFile.var_weights,
+					condition_name = condition_name,
+					weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
 					pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
-					prs_mix_raw_score = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
-					fitted_model_params = UnzipConditionFile.fitted_model_params
+					prs_raw_scores = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
+					fitted_model_params = UnzipConditionFile.fitted_model_params,
 					tidyverse_docker_image = tidyverse_docker_image
 			}
 		}
@@ -183,11 +183,11 @@ workflow PRSOrchestrationWorkflow {
         File? glimpse_ligate_monitoring = RunGlimpse.glimpse_ligate_monitoring
 
 		# PRS Outputs
-		Array[File]? prs_raw_scores = PRSRawScores.prs_raw_scores
-		File? prs_mix_raw_score = PRSMixScores.prs_mix_raw_score
-		File? prs_adjusted_score = AdjustPRSScores.adjusted_scores
-		File? pc_projection = PerformPCA.pc_projection
-		File? pc_plot = PerformPCA.pc_plot
+		Array[Array[File]?] prs_raw_scores = PRSRawScores.prs_raw_scores
+		Array[File?] prs_mix_raw_score = PRSMixScores.prs_mix_raw_score
+		Array[File?] prs_adjusted_score = AdjustPRSScores.adjusted_scores
+		Array[File?] pc_projection = PerformPCA.pc_projection
+		Array[File?] pc_plot = PerformPCA.pc_plot
 
 		# Individual Outputs
 		Array[File]? individuals_risk_summaries = SummarizeScores.individual_risk_summaries
@@ -197,6 +197,7 @@ workflow PRSOrchestrationWorkflow {
 task UnzipConditionFile {
 	input {
 		File condition_zip_file
+		String condition_name
 		String docker_image
 		Int disk_size = ceil(size(condition_zip_file, "GB") * 2) + 10
 		Int mem_size = 2
@@ -205,10 +206,6 @@ task UnzipConditionFile {
 
 	command <<<
 		set -euxo pipefail
-
-		condition_name=$(basename "~{condition_zip_file}" .tar | cut -d "_" -f 1)
-		printf "${condition_name}" >> condition_name.txt
-
 		tar -xf "~{condition_zip_file}"
 	>>>
 
@@ -220,13 +217,12 @@ task UnzipConditionFile {
 	}
 
 	output {
-		String condition_name = read_string("condition_name.txt")
-		Array[File] var_weights = "~{basename}/~{basename}.harmonized_weights.txt"
-		File fitted_model_params = "~{basename}/~{basename}.fitted_model_params.tsv"
-		File pcs = "~{basename}/~{basename}.pc"
-		File pc_loadings = "~{basename}/~{basename}.pc.loadings"
-		File pc_meansd = "~{basename}/~{basename}.pc.meansd"
-		File score_weights = "~{basename}/~{basename}.score_weights.txt"
-		File scoring_sites = "~{basename}/~{basename}.sscore.vars"
+		Array[File] var_weights = glob("~{condition_name}/*.var_weights.tsv")
+		File fitted_model_params = "~{condition_name}/~{condition_name}.fitted_model_params.tsv"
+		File pcs = "~{condition_name}/~{condition_name}.pc"
+		File pc_loadings = "~{condition_name}/~{condition_name}.pc.loadings"
+		File pc_meansd = "~{condition_name}/~{condition_name}.pc.meansd"
+		File score_weights = "~{condition_name}/~{condition_name}.score_weights.txt"
+		File scoring_sites = "~{condition_name}/~{condition_name}.sscore.vars"
 	}
 }

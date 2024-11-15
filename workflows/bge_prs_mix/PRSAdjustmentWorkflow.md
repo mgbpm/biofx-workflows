@@ -5,7 +5,7 @@
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | File | condition_name | Yes | Name of condition/disease | |
-| File | var_weights | Required if chromosome encoding is not provided | PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
+| File | var_weight_file | Required if chromosome encoding is not provided | PGS variant weight file, with 3 columns: variant ID, effect allele, and score | |
 | File | fitted_model_params | Yes | Adjustment model parameters fitted to input population | |
 | File | prs_mix_raw_score | Yes | PRS Mix scores for all subjects | |
 | String | weights_chr_encoding | No | Chromosome encoding string; used to perform PCA if pca_projections is not provided | |

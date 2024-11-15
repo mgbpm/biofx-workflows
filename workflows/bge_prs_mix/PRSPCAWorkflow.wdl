@@ -12,7 +12,7 @@ workflow PRSPCAWorkflow {
 		File pc_meansd
 		File population_pcs
 		File pruning_sites_for_pca
-		File? var_weights
+		File? var_weight_file
 		String? weights_chr_encoding
 		Int? plink_mem
 		# Docker images
@@ -23,7 +23,7 @@ workflow PRSPCAWorkflow {
 	}
 
 	if (!defined(weights_chr_encoding)) {
-		if (!defined(var_weights)) {
+		if (!defined(var_weight_file)) {
 			call Utilities.FailTask as VarWeightsFail {
 				input:
 					error_message = "Must have variant weights file for determining chromosome encoding."
@@ -31,7 +31,7 @@ workflow PRSPCAWorkflow {
 		}
 		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
-				weights = select_first([var_weights]),
+				weights = select_first([var_weight_file]),
 				docker_image = python_docker_image
 		}
 	}
