@@ -33,6 +33,7 @@ workflow PRSOrchestrationWorkflow {
 		File condition_yaml
 		File? pruning_sites_for_pca
 		String ubuntu_docker_image = "ubuntu:21.10"
+		String python_docker_image = "python:3.11"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
 		String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
 		String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
@@ -174,7 +175,7 @@ workflow PRSOrchestrationWorkflow {
 			input:
 				prs_scores = select_first([AdjustPRSScores.adjusted_scores, input_scores]),
 				condition_yaml = condition_yaml,
-				ubuntu_docker_image = ubuntu_docker_image
+				python_docker_image = python_docker_image
 		}
 	}
 
