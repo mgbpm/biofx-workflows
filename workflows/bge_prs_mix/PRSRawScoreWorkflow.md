@@ -4,7 +4,6 @@
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| String | condition_name | Yes | Name of condition/disease related to the variant weight files | |
 | Array[File] | var_weights | Yes | Array of different PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
 | File | scoring_sites | Yes | Sites to use in scoring the VCF | |
 | File | input_vcf | Yes | Joint or single-sample VCF to score | |

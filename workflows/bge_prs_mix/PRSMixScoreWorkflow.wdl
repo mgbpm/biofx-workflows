@@ -54,7 +54,7 @@ task CalculateMixScore {
 
 			# Add the raw score from each file to the sum of raw scores
 			for c in '~{sep="' '" raw_scores}'; do
-				pgs_id=$(basename $c .txt | cut -d "_" -f 1)
+				pgs_id=$(basename $c .var_weights.tsv | cut -d "_" -f 2)
 				score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f 2)
 				raw_score=$(grep "${line}" $c | cut -f 4)
 				weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
@@ -65,7 +65,7 @@ task CalculateMixScore {
 			weighted_avg=$(awk -v x=${score_sum} -v y="~{raw_scores_len}" 'BEGIN {print x/y}')
 
 			# Print info for the sample
-			printf "${line}\t0\t${weighted_avg}\t${score_sum}\n" >> "~{output_basename}_prs_mix_score.sscore"
+			printf "${line}\t0\t${weighted_avg}\t${score_sum}\n" >> "~{output_basename}.prs_mix_score.sscore"
 
 		done < sample_ids.txt
 	>>>
@@ -79,6 +79,6 @@ task CalculateMixScore {
 
 	output {
 		File sample_ids_list = "sample_ids.txt"
-		File prs_mix_raw_score = "~{output_basename}_prs_mix_score.sscore"
+		File prs_mix_raw_score = "~{output_basename}.prs_mix_score.sscore"
 	}
 }

@@ -5,7 +5,6 @@ import "../../steps/PRSTasks.wdl"
 workflow PRSRawScoreWorkflow {
 	input {
 		# PRS inputs
-		String condition_name
 		Array[File] var_weights
 		File scoring_sites
 		File input_vcf
@@ -27,7 +26,7 @@ workflow PRSRawScoreWorkflow {
 				chromosome_encoding = ChrEncoding.chromosome_encoding,
 				sites = scoring_sites,
 				weights = var_weights[i],
-				basename = condition_name,
+				basename = sub(basename(var_weights[i]), ".var_weights.tsv", ""),
 				docker_image = plink_docker_image
 		}
 	}
