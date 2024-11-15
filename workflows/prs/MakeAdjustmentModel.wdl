@@ -152,9 +152,10 @@ workflow MakeAdjustmentModel {
   }
 
   output {
-    File    adjustment_model_manifest  = BundleAdjustmentModel.manifest
-    Boolean converged                  = TrainModel.fit_converged
-    File    scores                     = TrainModel.adjusted_population_scores
+    File    adjustment_model_manifest = BundleAdjustmentModel.manifest
+    Boolean converged                 = TrainModel.fit_converged
+    File    raw_reference_scores      = TrainModel.raw_population_scores
+    File    adjusted_reference_scores = TrainModel.adjusted_population_scores
   }
 }
 
