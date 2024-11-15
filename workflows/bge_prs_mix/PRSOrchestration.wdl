@@ -14,7 +14,8 @@ workflow PRSOrchestrationWorkflow {
 		File? glimpse_reference_chunks
 		Array[File]? input_crams
         Array[File]? input_crai
-		Array[String] sample_ids
+		Array[String]? sample_ids
+		String? vcf_basename
 		Boolean impute_reference_only_variants = false
         Boolean call_indels = false
         Int? n_burnin
@@ -78,37 +79,33 @@ workflow PRSOrchestrationWorkflow {
 		# Run GLIMPSE to get imputed low-pass variants
 		call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
 			input:
-				reference_chunks = glimpse_reference_chunks,
-				crams = input_crams,
-				cram_indices = input_crai,
-				sample_ids = sample_ids,
-				fasta = ref_fasta,
-				fasta_index = ref_fai,
-				output_basename = "",
-				ref_dict = ref_dict,
+				reference_chunks = select_first([glimpse_reference_chunks]),
+				crams = select_first([input_crams]),
+				cram_indices = select_first([input_crai]),
+				sample_ids = select_first([sample_ids]),
+				fasta = select_first([ref_fasta]),
+				fasta_index = select_first([ref_fai]),
+				ref_dict = select_first([ref_dict]),
+				output_basename = select_first([vcf_basename], "PRS_Glimpse"),
 				impute_reference_only_variants = impute_reference_only_variants,
 				call_indels = call_indels,
-				n_burnin = n_burnin,
-				n_main = n_main,
-				effective_population_size = effective_population_size,
+				n_burnin = select_first([n_burnin]),
+				n_main = select_first([n_main]),
+				effective_population_size = select_first([effective_population_size]),
 				collect_qc_metrics = collect_glimpse_qc,
 				preemptible = 9,
 				docker = glimpse_docker_image,
 				docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
 				cpu_ligate = 4,
 				mem_gb_ligate = 4,
-				monitoring_script = glimpse_monitoring_script
+				monitoring_script = select_first([glimpse_monitoring_script])
 		}
 	}
 
 	scatter (i in range(length(condition_zip_files))) {
-
-		String condition_name = basename(condition_zip_files[i], ".tar")
-
 		call UnzipConditionFile{
 			input:
 				condition_zip_file = condition_zip_files[i],
-				basename = condition_name,
 				docker_image = ubuntu_docker_image
 		}
 
@@ -116,11 +113,10 @@ workflow PRSOrchestrationWorkflow {
 			# Get PRS raw scores for each condition
 			call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
 				input:
-					condition_name = condition_name,
+					condition_name = UnzipConditionFile.condition_name,
 					var_weights = UnzipConditionFile.var_weights,
 					scoring_sites = UnzipConditionFile.scoring_sites,
 					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
-					python_docker_image = python_docker_image
 					plink_docker_image = plink_docker_image
 			}
 		}
@@ -129,7 +125,7 @@ workflow PRSOrchestrationWorkflow {
 			# Get the PRS mix raw score for each condition
 			call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
 				input:
-					condition_name = condition_name,
+					condition_name = UnzipConditionFile.condition_name,
 					raw_scores = PRSRawScores.prs_raw_scores,
 					score_weights = UnzipConditionFile.score_weights,
 					ubuntu_docker_image = ubuntu_docker_image
@@ -140,7 +136,7 @@ workflow PRSOrchestrationWorkflow {
 			# Perform PCA with population model
 			call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
 				input:
-					condition_name = condition_name,
+					condition_name = UnzipConditionFile.condition_name,
 					var_weights = UnzipConditionFile.var_weights,
 					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
 					pc_loadings = UnzipConditionFile.pc_loadings,
@@ -148,7 +144,6 @@ workflow PRSOrchestrationWorkflow {
 					population_pcs = UnzipConditionFile.pcs,
 					pruning_sites_for_pca = pruning_sites_for_pca,
 					chr_encoding = select_first([PRSRawScores.chromosome_encoding]),
-					python_docker_image = python_docker_image,
 					plink_docker_image = plink_docker_image,
 					flash_pca_docker_image = flash_pca_docker_image,
 					tidyverse_docker_image = tidyverse_docker_image
@@ -159,7 +154,7 @@ workflow PRSOrchestrationWorkflow {
 			# Adjust PRS mix score for each condition
 			call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
 				input:
-					condition_name = condition_name,
+					condition_name = UnzipConditionFile.condition_name,
 					var_weights = UnzipConditionFile.var_weights,
 					pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
 					prs_mix_raw_score = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
@@ -202,7 +197,6 @@ workflow PRSOrchestrationWorkflow {
 task UnzipConditionFile {
 	input {
 		File condition_zip_file
-		String basename
 		String docker_image
 		Int disk_size = ceil(size(condition_zip_file, "GB") * 2) + 10
 		Int mem_size = 2
@@ -211,6 +205,10 @@ task UnzipConditionFile {
 
 	command <<<
 		set -euxo pipefail
+
+		condition_name=$(basename "~{condition_zip_file}" .tar | cut -d "_" -f 1)
+		printf "${condition_name}" >> condition_name.txt
+
 		tar -xf "~{condition_zip_file}"
 	>>>
 
@@ -222,6 +220,7 @@ task UnzipConditionFile {
 	}
 
 	output {
+		String condition_name = read_string("condition_name.txt")
 		Array[File] var_weights = "~{basename}/~{basename}.harmonized_weights.txt"
 		File fitted_model_params = "~{basename}/~{basename}.fitted_model_params.tsv"
 		File pcs = "~{basename}/~{basename}.pc"

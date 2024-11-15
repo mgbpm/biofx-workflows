@@ -9,7 +9,8 @@ This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percent
 | File | glimpse_reference_chunks | Required if running GLIMPSE imputation is desired | | |
 | Array[File] | input_crams | Required if running GLIMPSE imputation is desired | Sample input CRAMs to run through GLIMPSE imputation | |
 | Array[File] | input_crai | Required if running GLIMPSE imputation is desired | Sample input CRAM indices to run through GLIMPSE imputation; must be in same order as input_crams | |
-| Array[String] | sample_ids | Yes | Sample ids for samples in input_crams | |
+| Array[String] | sample_ids | Required if running GLIMPSE imputation is desired | Sample ids for samples in input_crams | |
+| String | vcf_basename | Required if running GLIMPSE imputation is desired | Base name for GLIMPSE imputation output VCF | |
 | Boolean | impute_reference_only_variants | No | | false |
 | Boolean | call_indels | No | | false |
 | Int | n_burnin | No | | |
