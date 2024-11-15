@@ -30,6 +30,7 @@ workflow PRSOrchestrationWorkflow {
 
 		# PRS INPUTS
 		Array[File] condition_zip_files
+		File condition_yaml
 		File? pruning_sites_for_pca
 		String ubuntu_docker_image = "ubuntu:21.10"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
@@ -172,7 +173,7 @@ workflow PRSOrchestrationWorkflow {
 		call PRSSummaryWorkflow.PRSSummaryWorkflow as SummarizeScores {
 			input:
 				prs_scores = select_first([AdjustPRSScores.adjusted_scores, input_scores]),
-				sample_ids = select_first([PRSMixScores.sample_ids[0], sample_ids]),
+				condition_yaml = condition_yaml,
 				ubuntu_docker_image = ubuntu_docker_image
 		}
 	}
