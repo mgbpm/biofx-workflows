@@ -1,7 +1,7 @@
 version 1.0
 
-import "MakeAdjustmentModel.wdl"
-import "ScoreVcfWorkflow.wdl"
+import "MakeAdjustmentModelWorkflow.wdl"
+import "ScoreQueryVcfWorkflow.wdl"
 
 workflow RunPRS {
 
@@ -14,7 +14,7 @@ workflow RunPRS {
     String? query_name
   }
 
-  call MakeAdjustmentModel.MakeAdjustmentModel {
+  call MakeAdjustmentModelWorkflow.MakeAdjustmentModel {
     input:
         weights       = weights
       , pca_variants  = pca_variants
@@ -26,7 +26,7 @@ workflow RunPRS {
   String resolved_query_name = select_first([query_name,
                                              basename(query_vcf, ".vcf.gz")])
 
-  call ScoreVcfWorkflow.ScoreVcf {
+  call ScoreQueryVcfWorkflow.ScoreQueryVcf {
     input:
         query_vcf                 = query_vcf
       , adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
@@ -41,10 +41,10 @@ workflow RunPRS {
 
     # -------------------------------------------------------------------------
 
-    File    raw_query_scores          = ScoreVcf.raw_scores
-    File    adjusted_query_scores     = ScoreVcf.adjusted_scores
-    File    pc_projection             = ScoreVcf.pc_projection
-    File    pc_plot                   = ScoreVcf.pc_plot
+    File    raw_query_scores          = ScoreQueryVcf.raw_scores
+    File    adjusted_query_scores     = ScoreQueryVcf.adjusted_scores
+    File    pc_projection             = ScoreQueryVcf.pc_projection
+    File    pc_plot                   = ScoreQueryVcf.pc_plot
   }
 }
 

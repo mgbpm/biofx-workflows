@@ -5,7 +5,7 @@ import "PCATasks.wdl"
 import "HelperTasks.wdl"
 import "Structs.wdl"
 
-workflow ScoreVcf {
+workflow ScoreQueryVcf {
   input {
     File   query_vcf
     File   adjustment_model_manifest
