@@ -30,7 +30,7 @@ workflow MakeAdjustmentModel {
 
   call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
     input:
-      vcf = reference_vcf
+        vcf = reference_vcf
   }
 
   call HelperTasks.GetBaseMemory as GetMemoryForReference {
@@ -53,7 +53,7 @@ workflow MakeAdjustmentModel {
 
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
         input:
-          vcf = select_first([query_vcf])
+            vcf = select_first([query_vcf])
       }
 
       call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
@@ -82,16 +82,14 @@ workflow MakeAdjustmentModel {
 
   call HelperTasks.GetBaseMemory {
     input:
-      nvariants = GetRegions.nvariants
+        nvariants = GetRegions.n_reference_variants
   }
 
-  if (defined(GetRegions.reference_regions)) {
-    call HelperTasks.SubsetVcf as SubsetReferenceVcf {
-      input:
-          inputvcf = RenameChromosomesInReferenceVcf.renamed
-        , regions  = select_first([GetRegions.reference_regions])
-        , label    = "reference"
-    }
+  call HelperTasks.SubsetVcf as SubsetReferenceVcf {
+    input:
+        inputvcf = RenameChromosomesInReferenceVcf.renamed
+      , regions  = GetRegions.reference_regions
+      , label    = "reference"
   }
 
   call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
@@ -101,9 +99,7 @@ workflow MakeAdjustmentModel {
       , pruning_sites   = RenameChromosomesInPcaVariants.renamed
       , basename        = name
       , mem             = GetBaseMemory.gigabytes
-      , subset_to_sites = select_first([ExtractQueryVariants.ids,
-                                        RenameChromosomesInQueryVariants.renamed])
-
+      , subset_to_sites = GetRegions.query_variants
   }
 
   call PCATasks.PerformPCA {
@@ -170,38 +166,39 @@ task GetRegions {
     Boolean debug        = false
   }
 
-  String        WORKDIR             = "WORK"
-  String        ARCHIVE             = WORKDIR + ".tgz"
-  String        OUTPUTDIR           = "OUTPUT"
-  String        QUERY_REGIONS       = OUTPUTDIR + "/query_regions.tsv"
-  String        REFERENCE_REGIONS   = OUTPUTDIR + "/reference_regions.tsv"
-  String        KEPT_QUERY_VARIANTS = OUTPUTDIR + "/kept_query_variants.txt"
-  String        NVARIANTS           = OUTPUTDIR + "/nvariants"
-  String        WARNINGS            = OUTPUTDIR + "/WARNINGS"
-  Array[String] WORKFILES           = [
-                                          WORKDIR + "/WEIGHTS"
-                                        , WORKDIR + "/PCA"
-                                        , WORKDIR + "/QUERY"
-                                        , WORKDIR + "/REFERENCE"
-                                        , WORKDIR + "/PQ"
-                                        , WORKDIR + "/PR"
-                                        , WORKDIR + "/NIXQ"
-                                        , WORKDIR + "/NIXR"
-                                        , WORKDIR + "/NIX"
-                                        , WORKDIR + "/WQ"
-                                        , WORKDIR + "/WR"
-                                        , WORKDIR + "/WQ_U_WR"
-                                        , WORKDIR + "/EXTRA"
-                                        , WORKDIR + "/PQR"
-                                        , WORKDIR + "/WANTED"
-                                        , WORKDIR + "/QS"
-                                        , WORKDIR + "/RS"
-                                        , WORKDIR + "/QSP"
-                                        , WORKDIR + "/RSP"
-                                        , WORKDIR + "/REGIONS"
-                                      ]
+  String        WORKDIR                 = "WORK"
+  String        ARCHIVE                 = WORKDIR + ".tgz"
+  String        OUTPUTDIR               = "OUTPUT"
+  String        QUERY_REGIONS           = OUTPUTDIR + "/query_regions.tsv"
+  String        REFERENCE_REGIONS       = OUTPUTDIR + "/reference_regions.tsv"
+  String        KEPT_QUERY_VARIANTS     = OUTPUTDIR + "/kept_query_variants.txt"
+  String        KEPT_REFERENCE_VARIANTS = OUTPUTDIR + "/kept_query_variants.txt"
+  String        N_QUERY_VARIANTS        = OUTPUTDIR + "/n_query_variants"
+  String        N_REFERENCE_VARIANTS    = OUTPUTDIR + "/n_reference_variants"
+  String        WARNINGS                = OUTPUTDIR + "/WARNINGS"
+  Array[String] WORKFILES               = [
+                                              WORKDIR + "/WEIGHTS"
+                                            , WORKDIR + "/PCA"
+                                            , WORKDIR + "/QUERY"
+                                            , WORKDIR + "/REFERENCE"
+                                            , WORKDIR + "/PQ"
+                                            , WORKDIR + "/PR"
+                                            , WORKDIR + "/NIXQ"
+                                            , WORKDIR + "/NIXR"
+                                            , WORKDIR + "/WQ"
+                                            , WORKDIR + "/WR"
+                                            , WORKDIR + "/EXTRA_FOR_Q"
+                                            , WORKDIR + "/EXTRA_FOR_R"
+                                            , WORKDIR + "/PQR"
+                                            , WORKDIR + "/WANTED_Q"
+                                            , WORKDIR + "/WANTED_R"
+                                            , WORKDIR + "/QS"
+                                            , WORKDIR + "/RS"
+                                            , WORKDIR + "/QSP"
+                                            , WORKDIR + "/RSP"
+                                          ]
   Int           multiplier          = if debug then 20 else 10
-  Int           storage             = 20 + multiplier * ceil(  size(weights     , "GB")
+  Int           storage             = 30 + multiplier * ceil(  size(weights     , "GB")
                                                              + size(pca_variants, "GB")
                                                              + size(query       , "GB")
                                                              + size(reference   , "GB"))
@@ -337,12 +334,7 @@ task GetRegions {
   #     exit 0
   # fi
 
-  NIX="${WORKDIR}/NIX"
-  printf -- "${TEMPLATE}" "${NIX}"
-  sort "${NIXQ}" "${NIXR}" > "${NIX}"
-  printf -- 'done\n'
-
-  if [[ -s ${NIX} ]]
+  if [[ -s ${NIXQ} ]] || [[ -s ${NIXR} ]]
   then
 
       (
@@ -395,10 +387,11 @@ task GetRegions {
 
   WR="${WORKDIR}/WR"
   WQ="${WORKDIR}/WQ"
-  WQ_U_WR="${WORKDIR}/WQ_U_WR"
-  EXTRA="${WORKDIR}/EXTRA"
+  EXTRA_FOR_Q="${WORKDIR}/EXTRA_FOR_Q"
+  EXTRA_FOR_R="${WORKDIR}/EXTRA_FOR_R"
   PQR="${WORKDIR}/PQR"
-  WANTED="${WORKDIR}/WANTED"
+  WANTED_Q="${WORKDIR}/WANTED_Q"
+  WANTED_R="${WORKDIR}/WANTED_R"
 
   printf -- "${TEMPLATE}" "${WR}"
   comm -1 -2 "${REFERENCE}" "${WEIGHTS}" > "${WR}"
@@ -408,16 +401,12 @@ task GetRegions {
   comm -1 -2 "${QUERY}" "${WEIGHTS}" > "${WQ}"
   printf -- 'done\n'
 
-  # FIXME: THE ALGORITHM BELOW PRODUCES A SINGLE SET OF REGIONS, BUT THIS IS
-  # NEITHER NECESSARY NOR DESIRABLE.  CHANGE THE CODE TO GENERATE THE REGIONS
-  # FILES FOR QUERY AND REFERENCE SEPARATELY.
-
-  printf -- "${TEMPLATE}" "${WQ_U_WR}"
-  sort --unique "${WQ}" "${WR}" > "${WQ_U_WR}"
+  printf -- "${TEMPLATE}" "${EXTRA_FOR_Q}"
+  comm -2 -3 "${WQ}" "${NIXQ}" > "${EXTRA_FOR_Q}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${EXTRA}"
-  comm -2 -3 "${WQ_U_WR}" "${NIX}" > "${EXTRA}"
+  printf -- "${TEMPLATE}" "${EXTRA_FOR_R}"
+  comm -2 -3 "${WR}" "${NIXR}" > "${EXTRA_FOR_R}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${PQR}"
@@ -429,13 +418,16 @@ task GetRegions {
       error 'No variant in the PCA variants file is mentioned in both the query and reference VCFs'
   fi
 
-  printf -- "${TEMPLATE}" "${WANTED}"
-  sort --unique "${PQR}" "${EXTRA}" > "${WANTED}"
+  printf -- "${TEMPLATE}" "${WANTED_Q}"
+  sort --unique "${PQR}" "${EXTRA_FOR_Q}" > "${WANTED_Q}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" '~{KEPT_QUERY_VARIANTS}'
-  sort --unique "${PQR}" <( comm -2 -3 "${WQ}" "${NIX}" ) > '~{KEPT_QUERY_VARIANTS}'
+  printf -- "${TEMPLATE}" "${WANTED_R}"
+  sort --unique "${PQR}" "${EXTRA_FOR_R}" > "${WANTED_R}"
   printf -- 'done\n'
+
+  mkdir --verbose --parents "$( dirname '~{KEPT_QUERY_VARIANTS}' )"
+  cp --verbose "${WANTED_Q}" '~{KEPT_QUERY_VARIANTS}'
 
   # ---------------------------------------------------------------------------
 
@@ -445,11 +437,11 @@ task GetRegions {
   RSP="${WORKDIR}/RSP"
 
   printf -- "${TEMPLATE}" "${QS}"
-  comm -1 -2 "${QUERY}" "${WANTED}" > "${QS}"
+  comm -1 -2 "${QUERY}" "${WANTED_Q}" > "${QS}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${RS}"
-  comm -1 -2 "${REFERENCE}" "${WANTED}" > "${RS}"
+  comm -1 -2 "${REFERENCE}" "${WANTED_R}" > "${RS}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${QSP}"
@@ -471,30 +463,28 @@ task GetRegions {
 
   # ----------------------------------------------------------------------------
 
-  REGIONS="${WORKDIR}/REGIONS"
+  REGIONS="${WORKDIR}/REGIONS_Q"
+  REGIONS="${WORKDIR}/REGIONS_R"
 
-  printf -- "${TEMPLATE}" "${REGIONS}"
-
-  tr : $'\t' < "${WANTED}"        \
+  printf -- "${TEMPLATE}" '~{QUERY_REGIONS}'
+  tr : $'\t' < "${WANTED_Q}"      \
     | cut --fields=1,2            \
     | sort                        \
           --field-separator=$'\t' \
           --key=1,1V              \
           --key=2,2n              \
-    > "${REGIONS}"
+    > '~{QUERY_REGIONS}'
   printf -- 'done\n'
 
-  # if [[ -s ${NIXQ} ]]
-  # then
-  #     cp "${REGIONS}" '~{QUERY_REGIONS}'
-  # fi
-  cp "${REGIONS}" '~{QUERY_REGIONS}'
-
-  # if [[ -s ${NIXR} ]]
-  # then
-  #     cp "${REGIONS}" '~{REFERENCE_REGIONS}'
-  # fi
-  cp "${REGIONS}" '~{REFERENCE_REGIONS}'
+  printf -- "${TEMPLATE}" '~{REFERENCE_REGIONS}'
+  tr : $'\t' < "${WANTED_R}"      \
+    | cut --fields=1,2            \
+    | sort                        \
+          --field-separator=$'\t' \
+          --key=1,1V              \
+          --key=2,2n              \
+    > '~{REFERENCE_REGIONS}'
+  printf -- 'done\n'
 
   printf -- '\n\n## WORKDIR:\n'
   find '~{WORKDIR}' -type f | xargs ls -ltr
@@ -511,7 +501,8 @@ task GetRegions {
 
   # ---------------------------------------------------------------------------
 
-  wc --lines < "${REGIONS}" > '~{NVARIANTS}'
+  wc --lines < "${WANTED_Q}" > '~{N_QUERY_VARIANTS}'
+  wc --lines < "${WANTED_R}" > '~{N_REFERENCE_VARIANTS}'
 
   # ---------------------------------------------------------------------------
 
@@ -529,15 +520,16 @@ task GetRegions {
   >>>
 
   output {
-    # File? QUERY_REGIONS
-    File         query_regions     = QUERY_REGIONS
-    File         reference_regions = REFERENCE_REGIONS
-    File         query_variants    = KEPT_QUERY_VARIANTS
-    File?        warnings          = WARNINGS
-    Int          nvariants         = read_int(NVARIANTS)
+    File         query_regions        = QUERY_REGIONS
+    File         reference_regions    = REFERENCE_REGIONS
+    File         query_variants       = KEPT_QUERY_VARIANTS
+    File         reference_variants   = KEPT_REFERENCE_VARIANTS
+    Int          n_query_variants     = read_int(N_QUERY_VARIANTS)
+    Int          n_reference_variants = read_int(N_REFERENCE_VARIANTS)
+    File?        warnings             = WARNINGS
 
-    Array[File?] workfiles         = WORKFILES
-    File?        workfiles_tgz     = ARCHIVE
+    Array[File?] workfiles            = WORKFILES
+    File?        workfiles_tgz        = ARCHIVE
   }
 
   runtime {
