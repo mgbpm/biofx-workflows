@@ -289,14 +289,6 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
-  - name: PRSScoreVcfWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/prs/ScoreVcfWorkflow.wdl
-    filters:
-      branches:
-        - /.+/
-      tags:
-        - PRS_*
   - name: PerformPCA
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/PerformPCA.wdl
@@ -329,22 +321,6 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
-  - name: PRSRunPRS
-    subclass: WDL
-    primaryDescriptorPath: /workflows/prs/RunPRS.wdl
-    filters:
-      branches:
-        - /.+/
-      tags:
-        - PRS_*
-  - name: PRSMakeAdjustmentModel
-    subclass: WDL
-    primaryDescriptorPath: /workflows/prs/MakeAdjustmentModel.wdl
-    filters:
-      branches:
-        - /.+/
-      tags:
-        - PRS_*
   - name: PRSPerformPopulationPCA
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/PerformPopulationPCA.wdl
@@ -353,3 +329,27 @@ workflows:
         - /.+/
       tags:
         - ignore-all-tags
+  - name: PRSMakeAdjustmentModel
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/MakeAdjustmentModelWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
+  - name: PRSScoreQueryVcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/ScoreQueryVcfWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
+  - name: PRSRunPRS
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/RunPRSWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
