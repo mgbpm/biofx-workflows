@@ -3,7 +3,6 @@ version 1.0
 import "PCATasks.wdl"
 import "ScoringTasks.wdl"
 import "TrainAncestryAdjustmentModel.wdl"
-import "Structs.wdl"
 import "HelperTasks.wdl"
 
 workflow MakeAdjustmentModel {
@@ -550,7 +549,7 @@ task GetRegions {
 
 task BundleAdjustmentModel {
   input {
-    AdjustmentModelData model_data
+    Object model_data
   }
 
   command {}
