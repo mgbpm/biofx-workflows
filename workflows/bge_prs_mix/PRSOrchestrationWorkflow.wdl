@@ -70,11 +70,15 @@ workflow PRSOrchestrationWorkflow {
 		String PCProjectionsInputError = "If not running PCA, PC projections files need to be provided."
 	}
 
+	if (run_pca) {
+		String PruningSitesInputError = "If running PCA, provide a pruning sites file."
+	}
+
 	if ((!run_scoring || !run_mix_scoring) && !defined(input_scores)) {
 		String InputScoreError = "If not scoring VCF, scores need to be provided."
 	}
 
-	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, PCProjectionsInputError, InputScoreError, "No error"])
+	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, PCProjectionsInputError, InputScoreError, PruningSitesInputError, "No error"])
 
 	if (input_check_result != "No error") {
 		call Utilities.FailTask as FailInputCheck {
