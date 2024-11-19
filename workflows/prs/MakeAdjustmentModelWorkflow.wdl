@@ -94,12 +94,14 @@ workflow MakeAdjustmentModel {
       , label    = "reference"
   }
 
+  String reference_basename = basename(reference_vcf, ".vcf.gz")
+
   call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
     input:
         vcf             = select_first([SubsetReferenceVcf.result,
                                         RenameChromosomesInReferenceVcf.renamed])
       , pruning_sites   = RenameChromosomesInPcaVariants.renamed
-      , basename        = name
+      , basename        = reference_basename
       , mem             = GetBaseMemory.gigabytes
       , subset_to_sites = GetRegions.query_variants
   }
@@ -109,7 +111,7 @@ workflow MakeAdjustmentModel {
         bed      = ReferenceBed.bed
       , bim      = ReferenceBed.bim
       , fam      = ReferenceBed.fam
-      , basename = name
+      , basename = reference_basename
       , mem      = GetMemoryForReference.gigabytes
   }
 
