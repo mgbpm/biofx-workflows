@@ -132,7 +132,6 @@ workflow PRSOrchestrationWorkflow {
 						var_weights = UnzipConditionFile.var_weights,
 						scoring_sites = UnzipConditionFile.scoring_sites,
 						input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
-						chromosome_encoding = GetChrEncoding.chromosome_encoding,
 						plink_docker_image = plink_docker_image
 				}
 			}
