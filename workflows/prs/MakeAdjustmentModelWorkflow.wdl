@@ -11,9 +11,8 @@ workflow MakeAdjustmentModel {
     File   weights
     File   pca_variants
     File   reference_vcf
+    File   query_file
     String name
-    File?  query_variants
-    File?  query_vcf
   }
 
   call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
@@ -44,16 +43,18 @@ workflow MakeAdjustmentModel {
       , mem = GetMemoryForReference.gigabytes
   }
 
-  if (defined(query_vcf)) {
+  Boolean isvcf = basename(query_file) != basename(query_file, ".vcf.gz")
+
+  if (isvcf) {
 
       call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
         input:
-            vcf = select_first([query_vcf])
+            vcf = query_file
       }
 
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
         input:
-            vcf = select_first([query_vcf])
+            vcf = query_file
       }
 
       call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
@@ -63,10 +64,11 @@ workflow MakeAdjustmentModel {
       }
   }
 
-  if (!defined(query_vcf)) {
+  if (!isvcf) {
+
       call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
         input:
-            tsv        = select_first([query_variants])
+            tsv        = query_file
           , skipheader = false
       }
   }
@@ -125,7 +127,7 @@ workflow MakeAdjustmentModel {
         named_weight_set    = named_weight_set
       , population_pcs      = PerformPCA.pcs
       , population_vcf      = RenameChromosomesInReferenceVcf.renamed
-      , population_basename = name
+      , population_basename = basename(reference_vcf, ".vcf.gz")
       , sites               = GetRegions.query_variants
   }
 

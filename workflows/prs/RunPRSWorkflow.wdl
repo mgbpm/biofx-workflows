@@ -19,7 +19,7 @@ workflow RunPRS {
         weights       = weights
       , pca_variants  = pca_variants
       , reference_vcf = reference_vcf
-      , query_vcf     = query_vcf
+      , query_file    = query_vcf
       , name          = model_name
   }
 
