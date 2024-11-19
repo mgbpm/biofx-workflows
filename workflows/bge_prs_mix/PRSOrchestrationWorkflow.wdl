@@ -124,10 +124,6 @@ workflow PRSOrchestrationWorkflow {
 					condition_name = condition_name,
 					docker_image = ubuntu_docker_image
 			}
-			call PRSTasks.DetermineChromosomeEncoding as GetChrEncoding {
-				input:
-					weights = UnzipConditionFile.var_weights[0]
-			}
 
 			if (run_scoring) {
 				# Get PRS raw scores for each condition
@@ -153,6 +149,12 @@ workflow PRSOrchestrationWorkflow {
 			}
 
 			if (run_pca) {
+				if (!run_scoring) {
+					call PRSTasks.DetermineChromosomeEncoding as GetChrEncoding {
+						input:
+							weights = UnzipConditionFile.var_weights[0]
+					}
+				}
 				# Perform PCA with population model
 				call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
 					input:
@@ -162,7 +164,7 @@ workflow PRSOrchestrationWorkflow {
 						pc_meansd = UnzipConditionFile.pc_meansd,
 						population_pcs = UnzipConditionFile.pcs,
 						pruning_sites_for_pca = select_first([pruning_sites_for_pca]),
-						weights_chr_encoding = GetChrEncoding.chromosome_encoding,
+						weights_chr_encoding = select_first([select_first([PRSRawScores.chromosome_encoding])[0], GetChrEncoding.chromosome_encoding]),
 						plink_docker_image = plink_docker_image,
 						flash_pca_docker_image = flash_pca_docker_image,
 						tidyverse_docker_image = tidyverse_docker_image
@@ -174,7 +176,7 @@ workflow PRSOrchestrationWorkflow {
 				call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
 					input:
 						condition_name = condition_name,
-						weights_chr_encoding = GetChrEncoding.chromosome_encoding,
+						weights_chr_encoding = select_first([select_first([PRSRawScores.chromosome_encoding])[0], GetChrEncoding.chromosome_encoding]),
 						pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
 						prs_raw_scores = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
 						fitted_model_params = UnzipConditionFile.fitted_model_params,
