@@ -62,7 +62,7 @@ For debugging purposes, there are several boolean values that can be used to tur
 | File | glimpse_qc_metrics | If run_glimpse is true and when collect_glimpse_qc = "true" | QC metrics from running GLIMPSE |
 | Array[File] | glimpse_phase_monitoring | If run_glimpse is true | |
 | File | glimpse_ligate_monitoring | If run_glimpse is true | |
-| Array[File] | prs_raw_scores | If run_scoring is true | PRS raw scores |
+| Array[File] | prs_raw_scores | Always | PRS raw scores |
 | File | prs_mix_raw_score | If run_mix_scoring is true | PRS mix raw scores |
 | File | prs_adjusted_score | If run_adjustment is true | PRS scores or mix scores adjusted with population models |
 | File | pc_projection | If run_pca is true | PCA projection array |
