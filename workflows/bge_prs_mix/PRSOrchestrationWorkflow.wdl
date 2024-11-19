@@ -61,12 +61,20 @@ workflow PRSOrchestrationWorkflow {
 			String GlimpseReferenceInputError = "Missing one or more reference files for GLIMPSE: fasta, fai, and/or dict."
 		}
 	}
-	
+
 	if (!run_glimpse && !defined(input_vcf)) {
 		String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS modules."
 	}
 
-	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
+	if (!run_pca && !defined(pc_projections)) {
+		String PCProjectionsInputError = "If not running PCA, PC projections files need to be provided."
+	}
+
+	if ((!run_scoring || !run_mix_scoring) && !defined(input_scores)) {
+		String InputScoreError = "If not scoring VCF, scores need to be provided."
+	}
+
+	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, PCProjectionsInputError, InputScoreError, "No error"])
 
 	if (input_check_result != "No error") {
 		call Utilities.FailTask as FailInputCheck {
