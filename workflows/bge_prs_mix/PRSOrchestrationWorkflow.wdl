@@ -149,33 +149,35 @@ workflow PRSOrchestrationWorkflow {
 				}
 			}
 
-			if (run_pca) {
-				# Perform PCA with population model
-				call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
-					input:
-						condition_name = condition_name,
-						input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
-						pc_loadings = UnzipConditionFile.pc_loadings,
-						pc_meansd = UnzipConditionFile.pc_meansd,
-						population_pcs = UnzipConditionFile.pcs,
-						pruning_sites_for_pca = select_first([pruning_sites_for_pca]),
-						weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
-						plink_docker_image = plink_docker_image,
-						flash_pca_docker_image = flash_pca_docker_image,
-						tidyverse_docker_image = tidyverse_docker_image
+			if (defined(PRSRawScores.chromosome_encoding)) {
+				if (run_pca) {
+					# Perform PCA with population model
+					call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
+						input:
+							condition_name = condition_name,
+							input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
+							pc_loadings = UnzipConditionFile.pc_loadings,
+							pc_meansd = UnzipConditionFile.pc_meansd,
+							population_pcs = UnzipConditionFile.pcs,
+							pruning_sites_for_pca = select_first([pruning_sites_for_pca]),
+							weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
+							plink_docker_image = plink_docker_image,
+							flash_pca_docker_image = flash_pca_docker_image,
+							tidyverse_docker_image = tidyverse_docker_image
+					}
 				}
-			}
 
-			if (run_adjustment) {
-				# Adjust PRS mix score for each condition
-				call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
-					input:
-						condition_name = condition_name,
-						weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
-						pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
-						prs_raw_scores = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
-						fitted_model_params = UnzipConditionFile.fitted_model_params,
-						tidyverse_docker_image = tidyverse_docker_image
+				if (run_adjustment) {
+					# Adjust PRS mix score for each condition
+					call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
+						input:
+							condition_name = condition_name,
+							weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
+							pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
+							prs_raw_scores = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
+							fitted_model_params = UnzipConditionFile.fitted_model_params,
+							tidyverse_docker_image = tidyverse_docker_image
+					}
 				}
 			}
 		}
