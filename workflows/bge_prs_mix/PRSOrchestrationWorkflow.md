@@ -45,13 +45,7 @@ For debugging purposes, there are several boolean values that can be used to tur
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | Boolean | run_glimpse | No | Whether or not to run GLIMPSE imputation | true |
-| Boolean | run_scoring | No | Whether or not to find PRS raw scores | true |
-| Boolean | run_mix_scoring | No | Whether or not to calculate PRS mix raw score | true |
-| Boolean | run_pca | No | Whether or not to run PCA with PRS results | true |
-| Boolean | run_adjustment | No | Whether or not adjust PRS raw scores | true |
-| Boolean | run_summary | No | Whether or not to find the percentile or bin category of samples' PRS scores | true |
 | File | input_vcf | Required if not running GLIMPSE | VCF with samples to substitute for GLIMPSE VCF output | |
-| Array[File] | pc_projections | Required if not running PCA | PCA projections to substitute for PCA workflow output; need PCA projections for each condition input | |
 
 ## Output Parameters
 
@@ -63,7 +57,8 @@ For debugging purposes, there are several boolean values that can be used to tur
 | Array[File] | glimpse_phase_monitoring | If run_glimpse is true | |
 | File | glimpse_ligate_monitoring | If run_glimpse is true | |
 | Array[File] | prs_raw_scores | Always | PRS raw scores |
-| File | prs_mix_raw_score | If run_mix_scoring is true | PRS mix raw scores |
-| File | prs_adjusted_score | If run_adjustment is true | PRS scores or mix scores adjusted with population models |
-| File | pc_projection | If run_pca is true | PCA projection array |
-| File | pc_plot | If run_pca is true | PCA plot from projection array |
+| File | prs_mix_raw_score | Always | PRS mix raw scores |
+| File | prs_adjusted_score | Always | PRS scores or mix scores adjusted with population models |
+| File | pc_projection | Always | PCA projection array |
+| File | pc_plot | Always | PCA plot from projection array |
+| Array[File] | individuals_risk_summaries | Always | Array of CSV files, where each CSV is a summary of PRS scores for an individual |
