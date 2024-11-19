@@ -55,122 +55,125 @@ workflow PRSOrchestrationWorkflow {
 	# Run input checks
 	if (run_glimpse) {
 		if (!defined(glimpse_reference_chunks) || !defined(input_crams) || !defined(input_crai)) {
-			call Utilities.FailTask as GlimpseInputFail {
-				input:
-					error_message = "Missing one or more GLIMPSE inputs: ref chunks, input crams, and/or input crai."
-			}
+			String GlimpseInputError = "Missing one or more GLIMPSE inputs: ref chunks, input crams, and/or input crai."
 		}
 		if (!defined(ref_fasta) || !defined(ref_fai) || !defined(ref_dict)) {
-			call Utilities.FailTask as GlimpseReferenceInputFail {
-				input:
-					error_message = "Missing one or more reference files for GLIMPSE: fasta, fai, and/or dict."
-			}
+			String GlimpseReferenceInputError = "Missing one or more reference files for GLIMPSE: fasta, fai, and/or dict."
 		}
 	}
+	
 	if (!run_glimpse && !defined(input_vcf)) {
-		call Utilities.FailTask as InputVcfFail {
-			input:
-				error_message = "If GLIMPSE is not being run, please input a VCF for running PRS modules."
-		}
+		String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS modules."
+	}
+
+	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
+
+	if (input_check_result != "No error") {
+		call Utilities.FailTask as FailInputCheck {
+            input:
+                error_message = input_check_result
+        }
 	}
 
 
-	if (run_glimpse) {
-		# Run GLIMPSE to get imputed low-pass variants
-		call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
-			input:
-				reference_chunks = select_first([glimpse_reference_chunks]),
-				crams = select_first([input_crams]),
-				cram_indices = select_first([input_crai]),
-				sample_ids = select_first([sample_ids]),
-				fasta = select_first([ref_fasta]),
-				fasta_index = select_first([ref_fai]),
-				ref_dict = select_first([ref_dict]),
-				output_basename = select_first([vcf_basename, "PRS_Glimpse"]),
-				impute_reference_only_variants = impute_reference_only_variants,
-				call_indels = call_indels,
-				n_burnin = select_first([n_burnin]),
-				n_main = select_first([n_main]),
-				effective_population_size = select_first([effective_population_size]),
-				collect_qc_metrics = collect_glimpse_qc,
-				preemptible = 9,
-				docker = glimpse_docker_image,
-				docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
-				cpu_ligate = 4,
-				mem_gb_ligate = 4,
-				monitoring_script = select_first([glimpse_monitoring_script])
-		}
-	}
-
-	scatter (i in range(length(condition_zip_files))) {
-		String condition_name = sub(basename(condition_zip_files[i]), "_[[0-9]]+\\.tar$", "")
-		call UnzipConditionFile{
-			input:
-				condition_zip_file = condition_zip_files[i],
-				condition_name = condition_name,
-				docker_image = ubuntu_docker_image
-		}
-
-		if (run_scoring) {
-			# Get PRS raw scores for each condition
-			call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
+	if (input_check_result = "No error") {
+		if (run_glimpse) {
+			# Run GLIMPSE to get imputed low-pass variants
+			call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
 				input:
-					var_weights = UnzipConditionFile.var_weights,
-					scoring_sites = UnzipConditionFile.scoring_sites,
-					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
-					plink_docker_image = plink_docker_image
+					reference_chunks = select_first([glimpse_reference_chunks]),
+					crams = select_first([input_crams]),
+					cram_indices = select_first([input_crai]),
+					sample_ids = select_first([sample_ids]),
+					fasta = select_first([ref_fasta]),
+					fasta_index = select_first([ref_fai]),
+					ref_dict = select_first([ref_dict]),
+					output_basename = select_first([vcf_basename, "PRS_Glimpse"]),
+					impute_reference_only_variants = impute_reference_only_variants,
+					call_indels = call_indels,
+					n_burnin = select_first([n_burnin]),
+					n_main = select_first([n_main]),
+					effective_population_size = select_first([effective_population_size]),
+					collect_qc_metrics = collect_glimpse_qc,
+					preemptible = 9,
+					docker = glimpse_docker_image,
+					docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
+					cpu_ligate = 4,
+					mem_gb_ligate = 4,
+					monitoring_script = select_first([glimpse_monitoring_script])
 			}
 		}
 
-		if (run_mix_scoring) {
-			# Get the PRS mix raw score for each condition
-			call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
+		scatter (i in range(length(condition_zip_files))) {
+			String condition_name = sub(basename(condition_zip_files[i]), "_[[0-9]]+\\.tar$", "")
+			call UnzipConditionFile{
 				input:
+					condition_zip_file = condition_zip_files[i],
 					condition_name = condition_name,
-					raw_scores = select_first([PRSRawScores.prs_raw_scores, input_scores]),
-					score_weights = UnzipConditionFile.score_weights,
-					ubuntu_docker_image = ubuntu_docker_image
+					docker_image = ubuntu_docker_image
+			}
+
+			if (run_scoring) {
+				# Get PRS raw scores for each condition
+				call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
+					input:
+						var_weights = UnzipConditionFile.var_weights,
+						scoring_sites = UnzipConditionFile.scoring_sites,
+						input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
+						plink_docker_image = plink_docker_image
+				}
+			}
+
+			if (run_mix_scoring) {
+				# Get the PRS mix raw score for each condition
+				call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
+					input:
+						condition_name = condition_name,
+						raw_scores = select_first([PRSRawScores.prs_raw_scores, input_scores]),
+						score_weights = UnzipConditionFile.score_weights,
+						ubuntu_docker_image = ubuntu_docker_image
+				}
+			}
+
+			if (run_pca) {
+				# Perform PCA with population model
+				call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
+					input:
+						condition_name = condition_name,
+						input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
+						pc_loadings = UnzipConditionFile.pc_loadings,
+						pc_meansd = UnzipConditionFile.pc_meansd,
+						population_pcs = UnzipConditionFile.pcs,
+						pruning_sites_for_pca = select_first([pruning_sites_for_pca]),
+						weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
+						plink_docker_image = plink_docker_image,
+						flash_pca_docker_image = flash_pca_docker_image,
+						tidyverse_docker_image = tidyverse_docker_image
+				}
+			}
+
+			if (run_adjustment) {
+				# Adjust PRS mix score for each condition
+				call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
+					input:
+						condition_name = condition_name,
+						weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
+						pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
+						prs_raw_scores = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
+						fitted_model_params = UnzipConditionFile.fitted_model_params,
+						tidyverse_docker_image = tidyverse_docker_image
+				}
 			}
 		}
 
-		if (run_pca) {
-			# Perform PCA with population model
-			call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
+		if (run_summary) {
+			# Categorize each condition's score into bins; report percentile & bin
+			call PRSSummaryWorkflow.PRSSummaryWorkflow as SummarizeScores {
 				input:
-					condition_name = condition_name,
-					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
-					pc_loadings = UnzipConditionFile.pc_loadings,
-					pc_meansd = UnzipConditionFile.pc_meansd,
-					population_pcs = UnzipConditionFile.pcs,
-					pruning_sites_for_pca = select_first([pruning_sites_for_pca]),
-					weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
-					plink_docker_image = plink_docker_image,
-					flash_pca_docker_image = flash_pca_docker_image,
-					tidyverse_docker_image = tidyverse_docker_image
+					prs_scores = select_first([AdjustPRSScores.adjusted_scores, input_scores]),
+					condition_yaml = condition_yaml,
+					python_docker_image = python_docker_image
 			}
-		}
-
-		if (run_adjustment) {
-			# Adjust PRS mix score for each condition
-			call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
-				input:
-					condition_name = condition_name,
-					weights_chr_encoding = select_first([PRSRawScores.chromosome_encoding])[0],
-					pca_projections = select_first([PerformPCA.pc_projection, pc_projections]),
-					prs_raw_scores = select_first([PRSMixScores.prs_mix_raw_score, PRSRawScores.prs_raw_scores, input_scores]),
-					fitted_model_params = UnzipConditionFile.fitted_model_params,
-					tidyverse_docker_image = tidyverse_docker_image
-			}
-		}
-	}
-
-	if (run_summary) {
-		# Categorize each condition's score into bins; report percentile & bin
-		call PRSSummaryWorkflow.PRSSummaryWorkflow as SummarizeScores {
-			input:
-				prs_scores = select_first([AdjustPRSScores.adjusted_scores, input_scores]),
-				condition_yaml = condition_yaml,
-				python_docker_image = python_docker_image
 		}
 	}
 
