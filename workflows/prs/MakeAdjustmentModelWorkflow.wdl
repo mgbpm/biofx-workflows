@@ -135,18 +135,18 @@ workflow MakeAdjustmentModel {
   call BundleAdjustmentModel {
     input:
         model_data = object {
-            parameters           : TrainModel.fitted_params
-          , training_variants    : TrainModel.sites_used_in_scoring
+            parameters           : "" + TrainModel.fitted_params
+          , training_variants    : "" + TrainModel.sites_used_in_scoring
 
-          , principal_components : PerformPCA.pcs
-          , loadings             : PerformPCA.pc_loadings
-          , meansd               : PerformPCA.mean_sd
+          , principal_components : "" + PerformPCA.pcs
+          , loadings             : "" + PerformPCA.pc_loadings
+          , meansd               : "" + PerformPCA.mean_sd
 
-          , weights              : RenameChromosomesInWeights.renamed
-          , pca_variants         : RenameChromosomesInPcaVariants.renamed
+          , weights              : "" + RenameChromosomesInWeights.renamed
+          , pca_variants         : "" + RenameChromosomesInPcaVariants.renamed
 
-          , base_memory          : GetMemoryForReference.gigabytes
-          , query_regions        : GetRegions.query_regions
+          , base_memory          : "" + GetMemoryForReference.gigabytes
+          , query_regions        : "" + GetRegions.query_regions
         }
   }
 
