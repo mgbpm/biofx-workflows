@@ -177,7 +177,7 @@ workflow PRSOrchestrationWorkflow {
 			# Categorize each condition's score into bins; report percentile & bin
 			call PRSSummaryWorkflow.PRSSummaryWorkflow as SummarizeScores {
 				input:
-					prs_scores = AdjustPRSScores.adjusted_scores,
+					prs_scores = select_first([AdjustPRSScores.adjusted_scores]),
 					condition_yaml = condition_yaml,
 					python_docker_image = python_docker_image
 			}
