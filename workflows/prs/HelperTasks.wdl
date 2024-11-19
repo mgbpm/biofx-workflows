@@ -234,40 +234,18 @@ task SubsetVcf {
 
   cleanup() {
 
-      bcftools                   \
-          norm                   \
-          --multiallelics -any   \
-          --no-version           \
-          --output-type v        \
-    | bcftools                   \
-          annotate               \
-          --remove 'INFO,FORMAT' \
-          --no-version           \
-          --output-type v        \
-    | perl -lne '
-        BEGIN { $, = "\t"; }
-        @::F = split( $,, $_, -1 );
-        if (/^#/) {
-          if (/^##contig=<ID=/) {
-            unless ( $done ) {
-              $done = 1;
-              for $chromosome ( 1 .. 22, q(X) ) {
-                print qq(##contig=<ID=$chromosome>);
-              }
-            }
-          }
-          else {
-            print;
-          }
-        }
-        else {
-          $::F[ 2 ] = join(
-            q(:),
-            @::F[ 0, 1, 3, 4 ]
-          );
-          print @::F;
-        }
-      '
+      bcftools                             \
+          norm                             \
+          --multiallelics -any             \
+          --no-version                     \
+          --output-type v                  \
+    | bcftools                             \
+          annotate                         \
+          --no-version                     \
+          --output-type v                  \
+          --remove 'INFO,FORMAT'           \
+          --set-id '%CHROM:%POS:%REF:%ALT'
+
   }
 
   if ~{if nocleanup then "true" else "false"}
