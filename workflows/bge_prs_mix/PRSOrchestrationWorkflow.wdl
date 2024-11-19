@@ -84,7 +84,7 @@ workflow PRSOrchestrationWorkflow {
 	}
 
 
-	if (input_check_result = "No error") {
+	if (input_check_result == "No error") {
 		if (run_glimpse) {
 			# Run GLIMPSE to get imputed low-pass variants
 			call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
