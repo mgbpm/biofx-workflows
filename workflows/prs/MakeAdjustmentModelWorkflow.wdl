@@ -553,7 +553,13 @@ task BundleAdjustmentModel {
     AdjustmentModelData model_data
   }
 
-  command {}
+  command <<<
+  exec >&2
+  printf -- '\nPWD=\047%s\047\n\n' "${PWD}"
+  find "${PWD}" -type f                        \
+    | xargs stat --format=$'%Y\t%y\t%s\t%n'    \
+    | sort --field-separator=$'\t' --key=1,1nr
+  >>>
 
   output {
     File manifest = write_json(model_data)
