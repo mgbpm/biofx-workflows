@@ -52,7 +52,6 @@ For debugging purposes, there are several boolean values that can be used to tur
 | Boolean | run_summary | No | Whether or not to find the percentile or bin category of samples' PRS scores | true |
 | File | input_vcf | Required if not running GLIMPSE | VCF with samples to substitute for GLIMPSE VCF output | |
 | Array[File] | pc_projections | Required if not running PCA | PCA projections to substitute for PCA workflow output; need PCA projections for each condition input | |
-| File | input_scores | Required if not running PRS raw scores or PRS mix raw scores | PRS scores (raw, mix, or adjusted) | |
 
 ## Output Parameters
 
