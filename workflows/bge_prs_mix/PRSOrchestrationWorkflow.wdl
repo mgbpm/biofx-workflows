@@ -70,7 +70,7 @@ workflow PRSOrchestrationWorkflow {
 		String PCProjectionsInputError = "If not running PCA, PC projections files need to be provided."
 	}
 
-	if (run_pca) {
+	if (run_pca && !defined(pruning_sites_for_pca)) {
 		String PruningSitesInputError = "If running PCA, provide a pruning sites file."
 	}
 
