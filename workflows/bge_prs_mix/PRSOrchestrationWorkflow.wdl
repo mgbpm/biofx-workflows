@@ -61,15 +61,7 @@ workflow PRSOrchestrationWorkflow {
 		String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS modules."
 	}
 
-	if (!run_pca && !defined(pc_projections)) {
-		String PCProjectionsInputError = "If not running PCA, PC projections files need to be provided."
-	}
-
-	if (run_pca && !defined(pruning_sites_for_pca)) {
-		String PruningSitesInputError = "If running PCA, provide a pruning sites file."
-	}
-
-	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, PCProjectionsInputError, PruningSitesInputError, "No error"])
+	String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
 
 	if (input_check_result != "No error") {
 		call Utilities.FailTask as FailInputCheck {
