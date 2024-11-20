@@ -132,26 +132,40 @@ workflow MakeAdjustmentModel {
       , sites               = GetRegions.query_variants
   }
 
-  call BundleAdjustmentModel {
-    input:
-        model_data = object {
-            parameters           : "" + TrainModel.fitted_params
-          , training_variants    : "" + TrainModel.sites_used_in_scoring
-
-          , principal_components : "" + PerformPCA.pcs
-          , loadings             : "" + PerformPCA.pc_loadings
-          , meansd               : "" + PerformPCA.mean_sd
-
-          , weights              : "" + RenameChromosomesInWeights.renamed
-          , pca_variants         : "" + RenameChromosomesInPcaVariants.renamed
-
-          , base_memory          :      GetMemoryForReference.gigabytes
-          , query_regions        : "" + GetRegions.query_regions
-        }
-  }
+  # call BundleAdjustmentModel {
+  #   input:
+  #       model_data = object {
+  #           parameters           : "" + TrainModel.fitted_params
+  #         , training_variants    : "" + TrainModel.sites_used_in_scoring
+  # 
+  #         , principal_components : "" + PerformPCA.pcs
+  #         , loadings             : "" + PerformPCA.pc_loadings
+  #         , meansd               : "" + PerformPCA.mean_sd
+  # 
+  #         , weights              : "" + RenameChromosomesInWeights.renamed
+  #         , pca_variants         : "" + RenameChromosomesInPcaVariants.renamed
+  # 
+  #         , base_memory          :      GetMemoryForReference.gigabytes
+  #         , query_regions        : "" + GetRegions.query_regions
+  #       }
+  # }
 
   output {
-    File    adjustment_model_manifest = BundleAdjustmentModel.manifest
+    # File    adjustment_model_manifest = BundleAdjustmentModel.manifest
+    File    adjustment_model_manifest = write_json(object {
+                    parameters           : "" + TrainModel.fitted_params
+                  , training_variants    : "" + TrainModel.sites_used_in_scoring
+
+                  , principal_components : "" + PerformPCA.pcs
+                  , loadings             : "" + PerformPCA.pc_loadings
+                  , meansd               : "" + PerformPCA.mean_sd
+
+                  , weights              : "" + RenameChromosomesInWeights.renamed
+                  , pca_variants         : "" + RenameChromosomesInPcaVariants.renamed
+
+                  , base_memory          :      GetMemoryForReference.gigabytes
+                  , query_regions        : "" + GetRegions.query_regions
+                })
     Boolean converged                 = TrainModel.fit_converged
     File    raw_reference_scores      = TrainModel.raw_population_scores
     File    adjusted_reference_scores = TrainModel.adjusted_population_scores
