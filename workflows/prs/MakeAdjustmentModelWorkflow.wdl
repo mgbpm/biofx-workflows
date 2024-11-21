@@ -438,9 +438,6 @@ task GetRegions {
   sort --unique "${PQR}" "${EXTRA_FOR_R}" > "${WANTED_R}"
   printf -- 'done\n'
 
-  mkdir --verbose --parents "$( dirname '~{KEPT_QUERY_VARIANTS}' )"
-  cp --verbose "${WANTED_Q}" '~{KEPT_QUERY_VARIANTS}'
-
   # ---------------------------------------------------------------------------
 
   QS="${WORKDIR}/QS"
@@ -498,17 +495,21 @@ task GetRegions {
     > '~{REFERENCE_REGIONS}'
   printf -- 'done\n'
 
+  mkdir --verbose --parents "$( dirname '~{KEPT_QUERY_VARIANTS}' )"
+  cp --verbose "${WANTED_Q}" '~{KEPT_QUERY_VARIANTS}'
+
   printf -- '\n\n## WORKDIR:\n'
   find '~{WORKDIR}' -type f | xargs ls -ltr
+
+  (
+      exec >&2
+      printf -- '\n\n### LINE COUNTS:\n'
+      find '~{WORKDIR}' -type f | xargs ls -1tr | xargs wc --lines
+  )
 
   if ~{if debug then "true" else "false"}
   then
       tar -cvzf '~{ARCHIVE}' '~{WORKDIR}'
-      (
-          exec >&2
-          printf -- '\n\n### LINE COUNTS:\n'
-          find '~{WORKDIR}' -type f | xargs ls -1tr | xargs wc --lines
-      )
   fi
 
   # ---------------------------------------------------------------------------
