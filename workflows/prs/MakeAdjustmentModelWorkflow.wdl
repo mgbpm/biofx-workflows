@@ -45,7 +45,6 @@ workflow MakeAdjustmentModel {
   Boolean isvcf = basename(query_file) != basename(query_file, ".vcf.gz")
 
   if (isvcf) {
-
       call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
         input:
             vcf = query_file
@@ -64,7 +63,6 @@ workflow MakeAdjustmentModel {
   }
 
   if (!isvcf) {
-
       call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
         input:
             tsv        = query_file
@@ -72,37 +70,27 @@ workflow MakeAdjustmentModel {
       }
   }
 
-  call GetRegions {
+  File query_variants = select_first([ExtractQueryVariants.ids,
+                                      RenameChromosomesInQueryVariants.renamed])
+
+  call MaybeTrimPcaVariants {
     input:
-        weights      = RenameChromosomesInWeights.renamed
-      , pca_variants = RenameChromosomesInPcaVariants.renamed
-      , query        = select_first([ExtractQueryVariants.ids,
-                                     RenameChromosomesInQueryVariants.renamed])
+        pca_variants = RenameChromosomesInPcaVariants.renamed
       , reference    = ExtractReferenceVariants.ids
+      , query        = query_variants
   }
 
-  call HelperTasks.GetBaseMemory {
-    input:
-        nvariants = GetRegions.n_reference_variants
-  }
-
-  call HelperTasks.SubsetVcf as SubsetReferenceVcf {
-    input:
-        inputvcf = RenameChromosomesInReferenceVcf.renamed
-      , regions  = GetRegions.reference_regions
-      , label    = "reference"
-  }
-
+  File   kept_pca_variants  = select_first([MaybeTrimPcaVariants.kept_pca_variants, 
+                                            RenameChromosomesInPcaVariants.renamed])
   String reference_basename = basename(reference_vcf, ".vcf.gz")
 
   call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
     input:
-        vcf             = select_first([SubsetReferenceVcf.result,
-                                        RenameChromosomesInReferenceVcf.renamed])
-      , pruning_sites   = RenameChromosomesInPcaVariants.renamed
+        vcf             = RenameChromosomesInReferenceVcf.renamed
+      , pruning_sites   = kept_pca_variants
       , basename        = reference_basename
-      , mem             = GetBaseMemory.gigabytes
-      , subset_to_sites = GetRegions.query_variants
+      , mem             = GetMemoryForReference.gigabytes
+      , subset_to_sites = query_variants
   }
 
   call PCATasks.PerformPCA {
@@ -128,8 +116,8 @@ workflow MakeAdjustmentModel {
         named_weight_set    = named_weight_set
       , population_pcs      = PerformPCA.pcs
       , population_vcf      = RenameChromosomesInReferenceVcf.renamed
-      , population_basename = basename(reference_vcf, ".vcf.gz")
-      , sites               = GetRegions.query_variants
+      , population_basename = reference_basename
+      , sites               = query_variants
   }
 
   call BundleAdjustmentModel {
@@ -144,18 +132,18 @@ workflow MakeAdjustmentModel {
 
     input:
         model_data = object {
-            parameters           : "" + TrainModel.fitted_params
-          , training_variants    : "" + TrainModel.sites_used_in_scoring
+            parameters            : "" + TrainModel.fitted_params
+          , training_variants     : "" + TrainModel.sites_used_in_scoring
 
-          , principal_components : "" + PerformPCA.pcs
-          , loadings             : "" + PerformPCA.pc_loadings
-          , meansd               : "" + PerformPCA.mean_sd
+          , principal_components  : "" + PerformPCA.pcs
+          , loadings              : "" + PerformPCA.pc_loadings
+          , meansd                : "" + PerformPCA.mean_sd
 
-          , weights              : "" + RenameChromosomesInWeights.renamed
-          , pca_variants         : "" + RenameChromosomesInPcaVariants.renamed
+          , weights               : "" + RenameChromosomesInWeights.renamed
+          , pca_variants          : "" + kept_pca_variants
+          , original_pca_variants : "" + pca_variants
 
-          , base_memory          :      GetMemoryForReference.gigabytes
-          , query_regions        : "" + GetRegions.query_regions
+          , base_memory           :      GetMemoryForReference.gigabytes
         }
   }
 
@@ -169,49 +157,33 @@ workflow MakeAdjustmentModel {
 
 # -----------------------------------------------------------------------------
 
-task GetRegions {
+task MaybeTrimPcaVariants {
   input {
-    File    weights
     File    pca_variants
-    File    query
     File    reference
+    File    query
     Boolean debug        = false
   }
 
   String        WORKDIR                 = "WORK"
   String        ARCHIVE                 = WORKDIR + ".tgz"
   String        OUTPUTDIR               = "OUTPUT"
-  String        QUERY_REGIONS           = OUTPUTDIR + "/query_regions.tsv"
-  String        REFERENCE_REGIONS       = OUTPUTDIR + "/reference_regions.tsv"
-  String        KEPT_QUERY_VARIANTS     = OUTPUTDIR + "/kept_query_variants.txt"
-  String        KEPT_REFERENCE_VARIANTS = OUTPUTDIR + "/kept_reference_variants.txt"
-  String        N_QUERY_VARIANTS        = OUTPUTDIR + "/n_query_variants"
-  String        N_REFERENCE_VARIANTS    = OUTPUTDIR + "/n_reference_variants"
+  String        KEPT_PCA_VARIANTS       = OUTPUTDIR + "/kept_pca_variants.txt"
   String        WARNINGS                = OUTPUTDIR + "/WARNINGS"
   Array[String] WORKFILES               = [
-                                              WORKDIR + "/WEIGHTS"
-                                            , WORKDIR + "/PCA"
+                                              WORKDIR + "/PCA"
                                             , WORKDIR + "/QUERY"
                                             , WORKDIR + "/REFERENCE"
                                             , WORKDIR + "/PQ"
                                             , WORKDIR + "/PR"
                                             , WORKDIR + "/NIXQ"
                                             , WORKDIR + "/NIXR"
-                                            , WORKDIR + "/WQ"
-                                            , WORKDIR + "/WR"
-                                            , WORKDIR + "/EXTRA_FOR_Q"
-                                            , WORKDIR + "/EXTRA_FOR_R"
-                                            , WORKDIR + "/PQR"
-                                            , WORKDIR + "/WANTED_Q"
-                                            , WORKDIR + "/WANTED_R"
-                                            , WORKDIR + "/QS"
-                                            , WORKDIR + "/RS"
-                                            , WORKDIR + "/QSP"
-                                            , WORKDIR + "/RSP"
+                                            , WORKDIR + "/NIX"
+                                            , WORKDIR + "/TEMP_PCA"
+                                            , WORKDIR + "/WANTED_PCA"
                                           ]
   Int           multiplier          = if debug then 20 else 10
-  Int           storage             = 30 + multiplier * ceil(  size(weights     , "GB")
-                                                             + size(pca_variants, "GB")
+  Int           storage             = 30 + multiplier * ceil(  size(pca_variants, "GB")
                                                              + size(query       , "GB")
                                                              + size(reference   , "GB"))
 
@@ -241,7 +213,6 @@ task GetRegions {
 
   WORKDIR='~{WORKDIR}'
   OUTPUTDIR='~{OUTPUTDIR}'
-  UNSORTEDWEIGHTS='~{weights}'     # weights file (with headers row)
   UNSORTEDPCA='~{pca_variants}'    # pca_variants file (no header row)
   UNSORTEDREFERENCE='~{reference}' # CHROM:POS:REF:ALT from reference vcf
   UNSORTEDQUERY='~{query}'         # CHROM:POS:REF:ALT from query vcf
@@ -255,38 +226,20 @@ task GetRegions {
   TEMPLATE="Creating %-${WIDTH}s ... "
   unset WIDTH
 
-  WEIGHTS="${WORKDIR}/WEIGHTS"
   PCA="${WORKDIR}/PCA"
   REFERENCE="${WORKDIR}/REFERENCE"
   QUERY="${WORKDIR}/QUERY"
 
-  printf -- "${TEMPLATE}" "${WEIGHTS}"
-  # The perl segment of the following pipeline prints the first line only if
-  # it ends in a numeric expression (i.e. the file does not have a headers row)
-  cut --fields=1 "${UNSORTEDWEIGHTS}"       \
-    | perl -lne '
-        BEGIN {
-          $::WEIGHT = qr/
-             \b-?
-             (?:\d+|\d*\.\d+|\d+\.\d*)
-             (?:[eE][+-]?\d+)?\b
-          /x;
-        }
-        print if $. > 1 || /$::WEIGHT\s*$/' \
-    | sort --unique                         \
-    > "${WEIGHTS}"
-  printf -- 'done\n'
-
   printf -- "${TEMPLATE}" "${PCA}"
-  cut --fields=1 "${UNSORTEDPCA}" | sort --unique > "${PCA}"
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" "${REFERENCE}"
-  sort --unique "${UNSORTEDREFERENCE}" > "${REFERENCE}"
+  sort --unique "${UNSORTEDPCA}" > "${PCA}"
   printf -- 'done\n'
 
   printf -- "${TEMPLATE}" "${QUERY}"
   sort --unique "${UNSORTEDQUERY}" > "${QUERY}"
+  printf -- 'done\n'
+
+  printf -- "${TEMPLATE}" "${REFERENCE}"
+  sort --unique "${UNSORTEDREFERENCE}" > "${REFERENCE}"
   printf -- 'done\n'
 
   # ---------------------------------------------------------------------------
@@ -341,165 +294,90 @@ task GetRegions {
   comm -2 -3 "${PR}" "${PQ}" > "${NIXR}"
   printf -- 'done\n'
 
-  # if ! [[ -s ${NIXQ} ]] && ! [[ -s ${NIXR} ]]
-  # then
-  #     exit 0
-  # fi
+  NIX="${WORKDIR}/NIX"
+  printf -- "${TEMPLATE}" "${NIX}"
+  sort "${NIXQ}" "${NIXR}" > "${NIX}"
+  printf -- 'done\n'
 
-  if [[ -s ${NIXQ} ]] || [[ -s ${NIXR} ]]
+  if [[ ! -s ${NIX} ]]
   then
-
-      (
-          sortvariants() {
-              local variants="${1}"
-              sort                    \
-                  --field-separator=: \
-                  --key=1,1V          \
-                  --key=2,2n          \
-                  --key=3,3           \
-                  --key=4,4           \
-                  "${variants}"
-          }
-
-          SEPARATOR=''
-          maybewarn() {
-              local nixx="${1}"
-              local label0="${2}"
-              local label1
-              if [[ ${label0} == query ]]
-              then
-                  label1=reference
-              else
-                  label1=query
-              fi
-              if [[ -s ${nixx} ]]
-              then
-                  printf -- "${SEPARATOR}"
-                  if [[ -z "${SEPARATOR}" ]]
-                  then
-                      SEPARATOR=$'\n'
-                  fi
-                  printf -- 'WARNING: '
-                  printf -- 'the following PCA variants from the '
-                  printf -- '%s VCF do not appear in the %s VCF, '  \
-                            "${label0}" "${label1}"
-                  printf -- 'and will be removed from the '
-                  printf -- 'analysis.\n'
-                  sortvariants "${nixx}"
-              fi
-          }
-
-          exec >>'~{WARNINGS}'
-          maybewarn "${NIXQ}" query
-          maybewarn "${NIXR}" reference
-      )
+      exit 0
   fi
+
+  (
+      sortvariants() {
+          local variants="${1}"
+          sort                    \
+              --field-separator=: \
+              --key=1,1V          \
+              --key=2,2n          \
+              --key=3,3           \
+              --key=4,4           \
+              "${variants}"
+      }
+
+      SEPARATOR=''
+      maybewarn() {
+          local nixx="${1}"
+          local label0="${2}"
+          local label1
+          if [[ ${label0} == query ]]
+          then
+              label1=reference
+          else
+              label1=query
+          fi
+          if [[ -s ${nixx} ]]
+          then
+              printf -- "${SEPARATOR}"
+              if [[ -z "${SEPARATOR}" ]]
+              then
+                  SEPARATOR=$'\n'
+              fi
+              printf -- 'WARNING: '
+              printf -- 'the following PCA variants from the '
+              printf -- '%s VCF do not appear in the %s VCF, '  \
+                        "${label0}" "${label1}"
+              printf -- 'and will be removed from the '
+              printf -- 'analysis.\n'
+              sortvariants "${nixx}"
+          fi
+      }
+
+      exec >>'~{WARNINGS}'
+      maybewarn "${NIXQ}" query
+      maybewarn "${NIXR}" reference
+  )
 
   # ---------------------------------------------------------------------------
 
-  WR="${WORKDIR}/WR"
-  WQ="${WORKDIR}/WQ"
-  EXTRA_FOR_Q="${WORKDIR}/EXTRA_FOR_Q"
-  EXTRA_FOR_R="${WORKDIR}/EXTRA_FOR_R"
-  PQR="${WORKDIR}/PQR"
-  WANTED_Q="${WORKDIR}/WANTED_Q"
-  WANTED_R="${WORKDIR}/WANTED_R"
-
-  printf -- "${TEMPLATE}" "${WR}"
-  comm -1 -2 "${REFERENCE}" "${WEIGHTS}" > "${WR}"
+  TEMP_PCA="${WORKDIR}/TEMP_PCA"
+  printf -- "${TEMPLATE}" "${TEMP_PCA}"
+  comm -2 -3 "${PCA}" "${NIX}" > "${TEMP_PCA}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${WQ}"
-  comm -1 -2 "${QUERY}" "${WEIGHTS}" > "${WQ}"
+  WANTED_PCA="${WORKDIR}/WANTED_PCA"
+  printf -- "${TEMPLATE}" "${WANTED_PCA}"
+  join                                                \
+      -t $'\t'                                        \
+      "${TEMP_PCA}"                                   \
+      <(
+         perl -lpe '$_ = qq($_\t$.)' "${UNSORTEDPCA}" \
+           | sort                                     \
+                 --field-separator=$'\t'              \
+                 --key=1,1
+       )                                              \
+    | sort                                            \
+          --field-separator=$'\t'                     \
+          --key=2,2n                                  \
+    | cut --fields=1                                  \
+    > "${WANTED_PCA}"
   printf -- 'done\n'
 
-  printf -- "${TEMPLATE}" "${EXTRA_FOR_Q}"
-  comm -2 -3 "${WQ}" "${NIXQ}" > "${EXTRA_FOR_Q}"
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" "${EXTRA_FOR_R}"
-  comm -2 -3 "${WR}" "${NIXR}" > "${EXTRA_FOR_R}"
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" "${PQR}"
-  comm -1 -2 "${PQ}" "${PR}" > "${PQR}"
-  printf -- 'done\n'
-
-  if [[ ! -s ${PQR} ]]
-  then
-      error 'No variant in the PCA variants file is mentioned in both the query and reference VCFs'
-  fi
-
-  printf -- "${TEMPLATE}" "${WANTED_Q}"
-  sort --unique "${PQR}" "${EXTRA_FOR_Q}" > "${WANTED_Q}"
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" "${WANTED_R}"
-  sort --unique "${PQR}" "${EXTRA_FOR_R}" > "${WANTED_R}"
-  printf -- 'done\n'
+  mkdir --verbose --parents "$( dirname '~{KEPT_PCA_VARIANTS}' )"
+  cp --verbose "${WANTED_PCA}" '~{KEPT_PCA_VARIANTS}'
 
   # ---------------------------------------------------------------------------
-
-  QS="${WORKDIR}/QS"
-  RS="${WORKDIR}/RS"
-  QSP="${WORKDIR}/QSP"
-  RSP="${WORKDIR}/RSP"
-
-  printf -- "${TEMPLATE}" "${QS}"
-  comm -1 -2 "${QUERY}" "${WANTED_Q}" > "${QS}"
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" "${RS}"
-  comm -1 -2 "${REFERENCE}" "${WANTED_R}" > "${RS}"
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" "${QSP}"
-  comm -1 -2 "${PCA}" "${QS}" > "${QSP}"
-  printf -- 'done\n'
-  printf -- "${TEMPLATE}" "${RSP}"
-  comm -1 -2 "${PCA}" "${RS}" > "${RSP}"
-  printf -- 'done\n'
-
-  if ! diff "${QSP}" "${RSP}" > /dev/null
-  then
-      (
-          exec >&2
-          printf -- 'INTERNAL ERROR: UNEXPECTED MISMATCHES:'
-          diff "${QSP}" "${RSP}" || true
-      )
-      exit 1
-  fi
-
-  # ----------------------------------------------------------------------------
-
-  REGIONS="${WORKDIR}/REGIONS_Q"
-  REGIONS="${WORKDIR}/REGIONS_R"
-
-  printf -- "${TEMPLATE}" '~{QUERY_REGIONS}'
-  tr : $'\t' < "${WANTED_Q}"      \
-    | cut --fields=1,2            \
-    | sort                        \
-          --field-separator=$'\t' \
-          --key=1,1V              \
-          --key=2,2n              \
-    > '~{QUERY_REGIONS}'
-  printf -- 'done\n'
-
-  printf -- "${TEMPLATE}" '~{REFERENCE_REGIONS}'
-  tr : $'\t' < "${WANTED_R}"      \
-    | cut --fields=1,2            \
-    | sort                        \
-          --field-separator=$'\t' \
-          --key=1,1V              \
-          --key=2,2n              \
-    > '~{REFERENCE_REGIONS}'
-  printf -- 'done\n'
-
-  mkdir --verbose --parents "$( dirname '~{KEPT_QUERY_VARIANTS}' )"
-  cp --verbose "${WANTED_Q}" '~{KEPT_QUERY_VARIANTS}'
-
-  mkdir --verbose --parents "$( dirname '~{KEPT_REFERENCE_VARIANTS}' )"
-  cp --verbose "${WANTED_R}" '~{KEPT_REFERENCE_VARIANTS}'
 
   printf -- '\n\n## WORKDIR:\n'
   find '~{WORKDIR}' -type f | xargs ls -ltr
@@ -510,15 +388,12 @@ task GetRegions {
       find '~{WORKDIR}' -type f | xargs ls -1tr | xargs wc --lines
   )
 
+  # ---------------------------------------------------------------------------
+
   if ~{if debug then "true" else "false"}
   then
       tar -cvzf '~{ARCHIVE}' '~{WORKDIR}'
   fi
-
-  # ---------------------------------------------------------------------------
-
-  wc --lines < "${WANTED_Q}" > '~{N_QUERY_VARIANTS}'
-  wc --lines < "${WANTED_R}" > '~{N_REFERENCE_VARIANTS}'
 
   # ---------------------------------------------------------------------------
 
@@ -536,12 +411,7 @@ task GetRegions {
   >>>
 
   output {
-    File         query_regions        = QUERY_REGIONS
-    File         reference_regions    = REFERENCE_REGIONS
-    File         query_variants       = KEPT_QUERY_VARIANTS
-    File         reference_variants   = KEPT_REFERENCE_VARIANTS
-    Int          n_query_variants     = read_int(N_QUERY_VARIANTS)
-    Int          n_reference_variants = read_int(N_REFERENCE_VARIANTS)
+    File?        kept_pca_variants    = KEPT_PCA_VARIANTS
     File?        warnings             = WARNINGS
 
     Array[File?] workfiles            = WORKFILES
