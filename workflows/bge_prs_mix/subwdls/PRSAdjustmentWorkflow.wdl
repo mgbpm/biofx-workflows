@@ -1,6 +1,8 @@
 version 1.0
 
-import "../../steps/PRSTasks.wdl"
+import "../tasks/ScoringTasks.wdl"
+import "../tasks/PCATasks.wdl"
+import "../tasks/HelperTasks.wdl"
 import "../../steps/Utilities.wdl"
 
 workflow PRSAdjustmentWorkflow {
@@ -41,7 +43,7 @@ workflow PRSAdjustmentWorkflow {
 					error_message = "Must have variant weights file for determining chromosome encoding."
 			}
 		}
-		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
+		call ScoringTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
 				weights = select_first([var_weight_file]),
 				docker_image = python_docker_image
@@ -50,7 +52,7 @@ workflow PRSAdjustmentWorkflow {
 
 	# Run PCA if projections not provided
 	if (!defined(pca_projections)) {
-		call PRSTasks.ArrayVcfToPlinkDataset as GetPlinkDataset {
+		call PCATasks.ArrayVcfToPlinkDataset as GetPlinkDataset {
 			input:
 			vcf = select_first([input_vcf]),
 			pruning_sites = select_first([pruning_sites_for_pca]),
@@ -58,7 +60,7 @@ workflow PRSAdjustmentWorkflow {
 			basename = condition_name,
 			docker_image = plink_docker_image
 		}
-		call PRSTasks.ProjectArray as ProjectPCA {
+		call PCATasks.ProjectArray as ProjectPCA {
 			input:
 				bim = GetPlinkDataset.bim,
 				bed = GetPlinkDataset.bed,
@@ -68,7 +70,7 @@ workflow PRSAdjustmentWorkflow {
 				basename = condition_name + "_pca",
 				docker_image = flash_pca_docker_image
 		}
-		call PRSTasks.MakePCAPlot as PCAPlot {
+		call PCATasks.MakePCAPlot as PCAPlot {
 			input:
 				population_pcs = select_first([population_pcs]),
 				target_pcs = ProjectPCA.projections,
@@ -77,7 +79,7 @@ workflow PRSAdjustmentWorkflow {
 	}
 
 	# Adjust score with model and PCA
-	call PRSTasks.AdjustScores as GetAdjustedScores {
+	call ScoringTasks.AdjustScores as GetAdjustedScores {
 		input:
 			fitted_model_params = fitted_model_params,
 			pcs = select_first([pca_projections, ProjectPCA.projections]),

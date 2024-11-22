@@ -1,6 +1,6 @@
 version 1.0
 
-import "../../steps/PRSTasks.wdl"
+import "../tasks/ScoringTasks.wdl"
 
 workflow PRSRawScoreWorkflow {
 	input {
@@ -15,13 +15,13 @@ workflow PRSRawScoreWorkflow {
 	}
 
 	scatter (i in range(length(var_weights))) {
-		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
+		call ScoringTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
 				weights = var_weights[i],
 				docker_image = python_docker_image
 		}
 
-		call PRSTasks.ScoreVcf as ScoreVCF {
+		call ScoringTasks.ScoreVcf as ScoreVCF {
 			input:
 				vcf = query_vcf,
 				chromosome_encoding = ChrEncoding.chromosome_encoding,

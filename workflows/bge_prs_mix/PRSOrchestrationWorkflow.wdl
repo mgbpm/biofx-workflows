@@ -1,7 +1,6 @@
 version 1.0
 
 import "../../steps/Utilities.wdl"
-import "../../steps/PRSTasks.wdl"
 import "../lowpassimputation/Glimpse2Imputation.wdl"
 import "PRSRawScoreWorkflow.wdl"
 import "PRSMixScoreWorkflow.wdl"

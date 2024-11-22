@@ -1,6 +1,8 @@
 version 1.0
 
-import "../../steps/PRSTasks.wdl"
+import "../tasks/ScoringTasks.wdl"
+import "../tasks/PCATasks.wdl"
+import "../tasks/HelperTasks.wdl"
 import "../../steps/Utilities.wdl"
 
 workflow PRSPCAWorkflow {
@@ -29,7 +31,7 @@ workflow PRSPCAWorkflow {
 					error_message = "Must have variant weights file for determining chromosome encoding."
 			}
 		}
-		call PRSTasks.DetermineChromosomeEncoding as ChrEncoding {
+		call ScoringTasks.DetermineChromosomeEncoding as ChrEncoding {
 			input:
 				weights = select_first([var_weight_file]),
 				docker_image = python_docker_image
@@ -37,13 +39,13 @@ workflow PRSPCAWorkflow {
 	}
 
 	if (!defined(plink_mem)) {
-		call PRSTasks.GetBaseMemory as PlinkMemory {
+		call HelperTasks.GetBaseMemory as PlinkMemory {
 			input:
 				vcf = input_vcf
 		}
 	}
 
-	call PRSTasks.ArrayVcfToPlinkDataset as GetPlinkDataset {
+	call PCATasks.ArrayVcfToPlinkDataset as GetPlinkDataset {
 		input:
 		vcf = input_vcf,
 		pruning_sites = pruning_sites_for_pca,
@@ -52,7 +54,7 @@ workflow PRSPCAWorkflow {
 		docker_image = plink_docker_image,
 		mem_size = select_first([PlinkMemory.gigabytes, plink_mem])
 	}
-	call PRSTasks.ProjectArray as ProjectPCA {
+	call PCATasks.ProjectArray as ProjectPCA {
 		input:
 			bim = GetPlinkDataset.bim,
 			bed = GetPlinkDataset.bed,
@@ -62,7 +64,7 @@ workflow PRSPCAWorkflow {
 			basename = condition_name + "_pca",
 			docker_image = flash_pca_docker_image
 	}
-	call PRSTasks.MakePCAPlot as PCAPlot {
+	call PCATasks.MakePCAPlot as PCAPlot {
 		input:
 			population_pcs = population_pcs,
 			target_pcs = ProjectPCA.projections,
