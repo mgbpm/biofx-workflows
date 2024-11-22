@@ -51,6 +51,8 @@
 
 ## SubsetVcf
 
+### Input Parameters
+
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | File | inputvcf | Yes | VCF for subsetting | |
@@ -58,3 +60,10 @@
 | String | label | No | Label for the data | "data" |
 | Boolean | nocleanup | No | Implement clean-up process | false |
 | String | docker_image | No | Docker image for bcftools | "biocontainers/bcftools:v1.9-1-deb_cv1" |
+
+### Output Parameters
+
+| Type | Name | When | Description |
+| :--- | :--- | :--- |
+| File | result | Always | Subsetted VCF |
+| Int | nregions | Always | Number of regions in VCF |
