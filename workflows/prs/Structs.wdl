@@ -51,7 +51,7 @@ struct AdjustmentModelData {
 
   File  weights
   File  pca_variants
+  File  original_pca_variants
 
   Int   base_memory
-  File? query_regions
 }

@@ -19,32 +19,17 @@ workflow ScoreQueryVcf {
         vcf = query_vcf
   }
 
-  if (defined(model_data.query_regions)) {
-    call HelperTasks.SubsetVcf as SubsetQueryVcf {
-      input:
-          inputvcf = RenameChromosomesInQueryVcf.renamed
-        , regions  = select_first([model_data.query_regions])
-        , label    = "query"
-    }
-
+  call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
+    input:
+        vcf = RenameChromosomesInQueryVcf.renamed
   }
-
-  if (!defined(model_data.query_regions)) {
-    call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
-      input:
-          vcf = RenameChromosomesInQueryVcf.renamed
-    }
-  }
-
-  File resolved_query_vcf = select_first([SubsetQueryVcf.result,
-                                          RenameChromosomesInQueryVcf.renamed])
 
   Int  base_memory        = select_first([GetBaseMemoryFromVcf.gigabytes,
                                           model_data.base_memory])
 
   call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
     input:
-        vcf = resolved_query_vcf
+        vcf = RenameChromosomesInQueryVcf.renamed
       , mem = base_memory
   }
 
@@ -62,7 +47,7 @@ workflow ScoreQueryVcf {
 
   call ScoringTasks.ScoreVcf as ScoreQueryVcf {
     input:
-        vcf                 = resolved_query_vcf
+        vcf                 = RenameChromosomesInQueryVcf.renamed
       , weights             = model_data.weights
       , sites               = model_data.training_variants
       , chromosome_encoding = "MT"
@@ -72,7 +57,7 @@ workflow ScoreQueryVcf {
 
   call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
     input:
-        vcf           = resolved_query_vcf
+        vcf           = RenameChromosomesInQueryVcf.renamed
       , pruning_sites = model_data.pca_variants
       , mem           = base_memory
       , basename      = "query"
