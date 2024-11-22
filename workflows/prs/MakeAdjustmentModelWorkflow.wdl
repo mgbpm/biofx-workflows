@@ -184,7 +184,7 @@ task GetRegions {
   String        QUERY_REGIONS           = OUTPUTDIR + "/query_regions.tsv"
   String        REFERENCE_REGIONS       = OUTPUTDIR + "/reference_regions.tsv"
   String        KEPT_QUERY_VARIANTS     = OUTPUTDIR + "/kept_query_variants.txt"
-  String        KEPT_REFERENCE_VARIANTS = OUTPUTDIR + "/kept_query_variants.txt"
+  String        KEPT_REFERENCE_VARIANTS = OUTPUTDIR + "/kept_reference_variants.txt"
   String        N_QUERY_VARIANTS        = OUTPUTDIR + "/n_query_variants"
   String        N_REFERENCE_VARIANTS    = OUTPUTDIR + "/n_reference_variants"
   String        WARNINGS                = OUTPUTDIR + "/WARNINGS"
@@ -497,6 +497,9 @@ task GetRegions {
 
   mkdir --verbose --parents "$( dirname '~{KEPT_QUERY_VARIANTS}' )"
   cp --verbose "${WANTED_Q}" '~{KEPT_QUERY_VARIANTS}'
+
+  mkdir --verbose --parents "$( dirname '~{KEPT_REFERENCE_VARIANTS}' )"
+  cp --verbose "${WANTED_R}" '~{KEPT_REFERENCE_VARIANTS}'
 
   printf -- '\n\n## WORKDIR:\n'
   find '~{WORKDIR}' -type f | xargs ls -ltr
