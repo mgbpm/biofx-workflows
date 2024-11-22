@@ -7,7 +7,7 @@ workflow PRSRawScoreWorkflow {
 		# PRS inputs
 		Array[File] var_weights
 		File scoring_sites
-		File input_vcf
+		File query_vcf
 		Int scoring_mem = 8
 		# Docker images
 		String python_docker_image = "python:3.9.10"
@@ -23,7 +23,7 @@ workflow PRSRawScoreWorkflow {
 
 		call PRSTasks.ScoreVcf as ScoreVCF {
 			input:
-				vcf = input_vcf,
+				vcf = query_vcf,
 				chromosome_encoding = ChrEncoding.chromosome_encoding,
 				sites = scoring_sites,
 				weights = var_weights[i],

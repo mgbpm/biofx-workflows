@@ -45,7 +45,7 @@ For debugging purposes, there are several boolean values that can be used to tur
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | Boolean | run_glimpse | No | Whether or not to run GLIMPSE imputation | true |
-| File | input_vcf | Required if not running GLIMPSE | VCF with samples to substitute for GLIMPSE VCF output | |
+| File | query_vcf | Required if not running GLIMPSE | VCF with samples to substitute for GLIMPSE VCF output | |
 
 ## Output Parameters
 

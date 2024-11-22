@@ -44,7 +44,7 @@ workflow PRSOrchestrationWorkflow {
 
 		# DEBUGGING INPUTS
 		Boolean run_glimpse = true
-		File? input_vcf
+		File? query_vcf
 	}
 
 	# Run input checks
@@ -57,7 +57,7 @@ workflow PRSOrchestrationWorkflow {
 		}
 	}
 
-	if (!run_glimpse && !defined(input_vcf)) {
+	if (!run_glimpse && !defined(query_vcf)) {
 		String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS modules."
 	}
 
@@ -112,7 +112,7 @@ workflow PRSOrchestrationWorkflow {
 				input:
 					var_weights = UnzipConditionFile.var_weights,
 					scoring_sites = UnzipConditionFile.scoring_sites,
-					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
+					query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
 					scoring_mem = prs_scoring_mem,
 					plink_docker_image = plink_docker_image
 			}
@@ -130,7 +130,7 @@ workflow PRSOrchestrationWorkflow {
 			call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
 				input:
 					condition_name = condition_name,
-					input_vcf = select_first([RunGlimpse.imputed_vcf, input_vcf]),
+					query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
 					pc_loadings = UnzipConditionFile.pc_loadings,
 					pc_meansd = UnzipConditionFile.pc_meansd,
 					population_pcs = UnzipConditionFile.pcs,
