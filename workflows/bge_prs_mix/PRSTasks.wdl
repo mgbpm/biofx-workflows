@@ -29,17 +29,17 @@ task ScoreVcf {
         --new-id-max-allele-len 1000 missing ~{"--extract " + sites} ~{"--exclude " + exclude_sites} --out ~{basename} --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
     >>>
 
-    output {
-        File score = "~{basename}.sscore"
-        File log = "~{basename}.log"
-        File sites_scored = "~{basename}.sscore.vars"
-    }
-
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
+    }
+
+    output {
+        File score = "~{basename}.sscore"
+        File log = "~{basename}.log"
+        File sites_scored = "~{basename}.sscore.vars"
     }
 }
 
@@ -546,17 +546,17 @@ task TrainAncestryModel {
         EOF
     >>>
 
-    output {
-        File fitted_params = "~{output_basename}_fitted_model_params.tsv"
-        File adjusted_population_scores = "population_adjusted_scores.tsv"
-        Boolean fit_converged = read_boolean("fit_converged.txt")
-    }
-
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
+    }
+
+    output {
+        File fitted_params = "~{output_basename}_fitted_model_params.tsv"
+        File adjusted_population_scores = "population_adjusted_scores.tsv"
+        Boolean fit_converged = read_boolean("fit_converged.txt")
     }
 }
 
@@ -615,16 +615,16 @@ task AdjustScores {
         EOF
     >>>
 
-    output {
-        File adjusted_scores = "adjusted_scores.tsv"
-    }
-
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
     }
+
+    output {
+        File adjusted_scores = "adjusted_scores.tsv"
+    }   
 }
 
 task MakePCAPlot {
@@ -657,15 +657,15 @@ task MakePCAPlot {
         EOF
     >>>
 
-    output {
-        File pca_plot = "PCA_plot.png"
-    }
-
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
+    }
+
+    output {
+        File pca_plot = "PCA_plot.png"
     }
 }
 
@@ -695,15 +695,15 @@ task ExtractIDsPlink {
             --memory ~{plink_mem} ~{"--output-chr " + chromosome_encoding}
     >>>
 
-    output {
-        File ids = "plink2.snplist"
-    }
-
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
+    }
+
+    output {
+        File ids = "plink2.snplist"
     }
 }
 
@@ -776,6 +776,13 @@ task PerformPCA {
         --outmeansd ~{basename}.pc.meansd
     >>>
 
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+        memory: mem_size + " GB"
+        preemptible: preemptible
+    }
+
     output {
         File pcs = "~{basename}.pc"
         File pc_variance = "~{basename}.pc.variance"
@@ -783,13 +790,6 @@ task PerformPCA {
         File mean_sd = "~{basename}.pc.meansd"
         File eigenvectors = "eigenvectors.txt"
         File eigenvalues = "eigenvalues.txt"
-    }
-
-    runtime {
-        docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " HDD"
-        memory: mem_size + " GB"
-        preemptible: preemptible
     }
 }
 
@@ -849,16 +849,16 @@ task ProjectArray {
             -v \
             ~{"--div " + divisor}
     >>>
-  
-    output {
-        File projections = "projections.txt"
-    }
-  
+
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
+    }
+
+    output {
+        File projections = "projections.txt"
     }
 }
 
@@ -885,22 +885,21 @@ task ArrayVcfToPlinkDataset {
         --new-id-max-allele-len 1000 missing --out ~{basename} --make-bed --rm-dup force-first ~{"--output-chr " + chromosome_encoding} --memory ~{plink_mem}
     >>>
 
-    output {
-        File bed = "~{basename}.bed"
-        File bim = "~{basename}.bim"
-        File fam = "~{basename}.fam"
-    }
-
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         memory: mem_size + " GB"
         preemptible: preemptible
     }
+
+    output {
+        File bed = "~{basename}.bed"
+        File bim = "~{basename}.bim"
+        File fam = "~{basename}.fam"
+    } 
 }
 
 task GetBaseMemory {
-
     # NB: This task computes the memory (in gigabytes) required by vcf,
     # according to the recommendations given in
     # https://www.cog-genomics.org/plink/2.0/other#memory
@@ -909,9 +908,9 @@ task GetBaseMemory {
         File? vcf
         Int? nvariants
         String docker_image = "python:3.11"
-        Int disk_size = 20 + 2 * ceil(size(vcf, "GB"))
     }
- 
+
+    Int     storage   = 20 + 2 * ceil(size(vcf, "GB"))
     Boolean ERROR     = defined(vcf) == defined(nvariants)
     String  OUTPUTDIR = "OUTPUT"
     String  NVARIANTS = OUTPUTDIR + "/nvariants.txt"
@@ -924,34 +923,34 @@ task GetBaseMemory {
         # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
         # set -o xtrace
 
-    if ~{if ERROR then "true" else "false"}
-    then
-        printf -- 'INTERNAL ERROR: too few or too many arguments specified' >&2
-        exit 1
-    fi
+        if ~{if ERROR then "true" else "false"}
+        then
+            printf -- 'INTERNAL ERROR: too few or too many arguments specified' >&2
+            exit 1
+        fi
 
-    # --------------------------------------------------------------------------
+        # --------------------------------------------------------------------------
 
-    mkdir --verbose --parents '~{OUTPUTDIR}'
+        mkdir --verbose --parents '~{OUTPUTDIR}'
 
-    NVARIANTS=~{if defined(nvariants)
-                then nvariants
-                else "\"$( zgrep --count --invert-match '^#' '" + vcf + "' | tee '" + NVARIANTS + "' )\""}
+        NVARIANTS=~{if defined(nvariants)
+                    then nvariants
+                    else "\"$( zgrep --count --invert-match '^#' '" + vcf + "' | tee '" + NVARIANTS + "' )\""}
 
-    python3 <<EOF > '~{GIGABYTES}'
-    import math
-    print(8 + max(0, math.ceil((${NVARIANTS} - 50000000)/10000000)))
-    EOF
+        python3 <<EOF > '~{GIGABYTES}'
+        import math
+        print(8 + max(0, math.ceil((${NVARIANTS} - 50000000)/10000000)))
+        EOF
     >>>
+
+    runtime {
+        disks : "local-disk ~{storage} HDD"
+        docker: "~{docker_image}"
+    }
 
     output {
         Int gigabytes  = read_int(GIGABYTES)
         Int nvariants_ = if defined(nvariants) then nvariants else read_int(NVARIANTS)
-    }
-
-    runtime {
-        docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " HDD"
     }
 }
 
@@ -961,11 +960,11 @@ task RenameChromosomesInTsv {
         Boolean skipheader
         File lookup = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
         String docker_image = "python:3.11"
-        Int disk_size = 20 + 2 * ceil(size(tsv, "GB"))
     }
 
+    Int    storage   = 20 + 2 * ceil(size(tsv, "GB"))
     String OUTPUTDIR = "OUTPUT"
-    String RENAMED   = OUTPUTDIR + "/renamed_" + basename(tsv) 
+    String RENAMED   = OUTPUTDIR + "/renamed_" + basename(tsv)
 
     command <<<
         python3 <<EOF
@@ -988,11 +987,10 @@ task RenameChromosomesInTsv {
 
 
         def main():
-
-            def rename(chromosomename,
-                        _lookup=read_lookup(),
-                        _parse_re=re.compile(r'^([\da-z]+)(.*)',
-                        flags=re.I)):
+            def rename(
+                chromosomename,
+                _lookup=read_lookup(),
+                _parse_re=re.compile(r'^([\da-z]+)(.*)', flags=re.I)):
 
                 match = _parse_re.search(chromosomename)
 
@@ -1009,9 +1007,7 @@ task RenameChromosomesInTsv {
             os.makedirs(os.path.dirname(outputtsv), exist_ok=True)
 
             with open(outputtsv, 'w') as writer:
-
                 with open(inputtsv) as reader:
-
                     skipheader = ~{if skipheader then "True" else "False"}
 
                     if skipheader:
@@ -1027,19 +1023,17 @@ task RenameChromosomesInTsv {
         # --------------------------------------------------------------------------
 
         main()
-
         EOF
     >>>
+
+    runtime {
+        disks : "local-disk ~{storage} HDD"
+        docker: "~{docker_image}"
+    }
 
     output {
         File renamed = RENAMED
     }
-
-    runtime {
-        docker: "~{docker_image}"
-        disks : "local-disk " + disk_size + " HDD"
-    }
-
 }
 
 task RenameChromosomesInVcf {
@@ -1047,9 +1041,9 @@ task RenameChromosomesInVcf {
         File vcf
         File rename = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
         String docker_image = "biocontainers/bcftools:v1.9-1-deb_cv1"
-        Int disk_size = 20 + 2 * ceil(size(vcf, "GB"))
     }
 
+    Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
     String OUTPUTDIR = "OUTPUT"
     String RENAMED   = OUTPUTDIR + "/renamed_" + basename(vcf)
 
@@ -1080,15 +1074,112 @@ task RenameChromosomesInVcf {
             --output-type=z          \
             --rename-chr='~{rename}' \
             "${INPUTVCF}"
-
     >>>
+
+    runtime {
+        disks : "local-disk ~{storage} HDD"
+        docker: "~{docker_image}"
+    }
 
     output {
         File renamed = RENAMED
     }
+}
+
+task SubsetVcf {
+    input {
+        File inputvcf
+        File regions
+        String label = "data"
+        Boolean nocleanup = false
+        String docker_image = "biocontainers/bcftools:v1.9-1-deb_cv1"
+    }
+
+    String OUTPUTDIR = "OUTPUT"
+    String OUTPUTVCF = OUTPUTDIR + "/" + label + ".vcf.gz"
+    String NREGIONS  = OUTPUTDIR + "/NREGIONS"
+    Int    storage   = 20 + 3 * ceil(size(inputvcf, "GB"))
+
+    command <<<
+        set -o pipefail
+        set -o errexit
+        set -o nounset
+        export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+        set -o xtrace
+
+        # ---------------------------------------------------------------------------
+
+        printf -- 'SPECIFIED STORAGE: %d GB\n\n' '~{storage}'
+        printf -- 'INITIAL STORAGE UTILIZATION:\n'
+        df --human
+        printf -- '\n'
+
+        # ---------------------------------------------------------------------------
+
+        mkdir --verbose --parents '~{OUTPUTDIR}'
+        WORKDIR="$( mktemp --directory )"
+        INPUTVCF="${WORKDIR}/input.vcf.gz"
+
+        ln --symbolic --verbose '~{inputvcf}' "${INPUTVCF}"
+
+        bcftools index      \
+            --force         \
+            --tbi           \
+            "${INPUTVCF}"
+
+        cleanup() {
+
+            bcftools                             \
+                norm                             \
+                --multiallelics -any             \
+                --no-version                     \
+                --output-type v                  \
+        | bcftools                             \
+                annotate                         \
+                --no-version                     \
+                --output-type v                  \
+                --remove 'INFO,FORMAT'           \
+                --set-id '%CHROM:%POS:%REF:%ALT'
+
+        }
+
+        if ~{if nocleanup then "true" else "false"}
+        then
+            POSTPROCESS=cat
+        else
+            POSTPROCESS=cleanup
+        fi
+
+        bcftools                             \
+            view                             \
+            --no-version                     \
+            --output-type v                  \
+            --regions-file '~{regions}'      \
+            "${INPUTVCF}"                    \
+          | "${POSTPROCESS}"                 \
+          | bcftools                         \
+                view                         \
+                --no-version                 \
+                --output-type z              \
+                --output-file '~{OUTPUTVCF}'
+
+        wc --lines < '~{regions}' > '~{NREGIONS}'
+
+        # ---------------------------------------------------------------------------
+
+        printf -- 'FINAL STORAGE UTILIZATION:\n'
+        df --human
+
+        # ---------------------------------------------------------------------------
+    >>>
 
     runtime {
         docker: "~{docker_image}"
-        disks : "local-disk " + disk_size + " HDD"
+        disks : "local-disk ~{storage} HDD"
+    }
+
+    output {
+        File result   = OUTPUTVCF
+        Int  nregions = read_int(NREGIONS)
     }
 }
