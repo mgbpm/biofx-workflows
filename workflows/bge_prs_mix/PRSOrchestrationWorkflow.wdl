@@ -30,7 +30,7 @@ workflow PRSOrchestrationWorkflow {
 		File? ref_dict
 
 		# PRS INPUTS
-		Array[File] condition_zip_files
+		Array[File] condition_jsons
 		File condition_yaml
 		File pruning_sites_for_pca
 		Int prs_scoring_mem = 8
@@ -97,20 +97,15 @@ workflow PRSOrchestrationWorkflow {
 			}
 		}
 
-		scatter (i in range(length(condition_zip_files))) {
-			String condition_name = sub(basename(condition_zip_files[i]), "_[[0-9]]+\\.tar$", "")
-			call UnzipConditionFile{
-				input:
-					condition_zip_file = condition_zip_files[i],
-					condition_name = condition_name,
-					docker_image = ubuntu_docker_image
-			}
+		scatter (i in range(length(condition_jsons))) {
+			String condition_name = sub(basename(condition_jsons[i]), "_[[0-9]]+\\.json$", "")
+			AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
 			# Get PRS raw scores for each condition
 			call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
 				input:
-					var_weights = UnzipConditionFile.var_weights,
-					scoring_sites = UnzipConditionFile.scoring_sites,
+					var_weights = model_data.var_weights,
+					scoring_sites = model_data.training_variants,
 					query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
 					scoring_mem = prs_scoring_mem,
 					plink_docker_image = plink_docker_image
@@ -121,7 +116,7 @@ workflow PRSOrchestrationWorkflow {
 				input:
 					condition_name = condition_name,
 					raw_scores = PRSRawScores.prs_raw_scores,
-					score_weights = UnzipConditionFile.score_weights,
+					score_weights = model_data.score_weights,
 					ubuntu_docker_image = ubuntu_docker_image
 			}
 
@@ -130,9 +125,9 @@ workflow PRSOrchestrationWorkflow {
 				input:
 					condition_name = condition_name,
 					query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-					pc_loadings = UnzipConditionFile.pc_loadings,
-					pc_meansd = UnzipConditionFile.pc_meansd,
-					population_pcs = UnzipConditionFile.pcs,
+					pc_loadings = model_data.loadings,
+					pc_meansd = model_data.meansd,
+					population_pcs = model_data.principal_components,
 					pruning_sites_for_pca = pruning_sites_for_pca,
 					weights_chr_encoding = PRSRawScores.chromosome_encoding[0],
 					plink_docker_image = plink_docker_image,
@@ -147,7 +142,7 @@ workflow PRSOrchestrationWorkflow {
 					weights_chr_encoding = PRSRawScores.chromosome_encoding[0],
 					pca_projections = PerformPCA.pc_projection,
 					prs_raw_scores = PRSMixScores.prs_mix_raw_score,
-					fitted_model_params = UnzipConditionFile.fitted_model_params,
+					fitted_model_params = model_data.parameters,
 					tidyverse_docker_image = tidyverse_docker_image
 			}
 		}
@@ -178,38 +173,5 @@ workflow PRSOrchestrationWorkflow {
 
 		# Individual Outputs
 		Array[File]? individuals_risk_summaries = SummarizeScores.individual_risk_summaries
-	}
-}
-
-task UnzipConditionFile {
-	input {
-		File condition_zip_file
-		String condition_name
-		String docker_image
-		Int disk_size = ceil(size(condition_zip_file, "GB") * 2) + 10
-		Int mem_size = 2
-		Int preemptible = 1
-	}
-
-	command <<<
-		set -euxo pipefail
-		tar -xf "~{condition_zip_file}"
-	>>>
-
-	runtime {
-		docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " HDD"
-        memory: mem_size + " GB"
-        preemptible: preemptible
-	}
-
-	output {
-		Array[File] var_weights = glob("~{condition_name}/*.var_weights.tsv")
-		File fitted_model_params = "~{condition_name}/~{condition_name}.fitted_model_params.tsv"
-		File pcs = "~{condition_name}/~{condition_name}.pc"
-		File pc_loadings = "~{condition_name}/~{condition_name}.pc.loadings"
-		File pc_meansd = "~{condition_name}/~{condition_name}.pc.meansd"
-		File score_weights = "~{condition_name}/~{condition_name}.score_weights.txt"
-		File scoring_sites = "~{condition_name}/~{condition_name}.sscore.vars"
 	}
 }
