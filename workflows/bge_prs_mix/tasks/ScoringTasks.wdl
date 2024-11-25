@@ -252,8 +252,8 @@ task AddInteractionTermsToScore {
 	}
 
 	output {
-		File scores_with_interactions = basename + "_scores_with_interactions.tsv"
-		File sites_used_in_interaction_score = basename + "_sites_used_in_interaction_score.ids"
+		File scores_with_interactions = "~{basename}_scores_with_interactions.tsv"
+		File sites_used_in_interaction_score = "~{basename}_sites_used_in_interaction_score.ids"
 	}
 }
 
