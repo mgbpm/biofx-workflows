@@ -142,7 +142,8 @@ workflow MakeMixModel {
 				principal_components : "" + PerformPCA.pcs,
 				loadings : "" + PerformPCA.pc_loadings,
 				meansd : "" + PerformPCA.mean_sd,
-				weights : "" + RenameChromosomesInWeights.renamed,
+				score_weights : "" + score_weights,
+				var_weights : "" + RenameChromosomesInWeights.renamed,
 				pca_variants : "" + RenameChromosomesInPcaVariants.renamed,
 				base_memory : GetMemoryForReference.gigabytes,
 				query_regions : "" + GetRegions.query_regions
