@@ -8,7 +8,7 @@ import "../../steps/Utilities.wdl"
 import "PRSRawScoreWorkflow.wdl"
 import "PRSMixScoreWorkflow.wdl"
 
-workflow TrainPRSMixModel {
+workflow TrainPRSMixModelWorkflow {
 	input {
 		# Scoring inputs
 		String condition_name
@@ -56,6 +56,7 @@ workflow TrainPRSMixModel {
 
 	output {
 		File fitted_params = TrainAncestryModel.fitted_params
+		Array[File] sites_used_in_scoring = ScorePopulationVCF.sites_scored
 		Array[File] raw_population_scores = ScorePopulationVCF.prs_raw_scores
 		File mixed_population_scores = GetMixScore.prs_mix_raw_score
 		File adjusted_population_scores = TrainAncestryModel.adjusted_population_scores

@@ -33,7 +33,7 @@ workflow PRSOrchestrationWorkflow {
 		Array[File] condition_zip_files
 		File condition_yaml
 		File pruning_sites_for_pca
-		Int prs_scoring_mem = 16
+		Int prs_scoring_mem = 8
 		String ubuntu_docker_image = "ubuntu:21.10"
 		String python_docker_image = "python:3.11"
 		String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"

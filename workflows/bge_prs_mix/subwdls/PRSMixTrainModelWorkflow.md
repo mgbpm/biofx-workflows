@@ -22,6 +22,6 @@
 | :--- | :--- | :--- | :--- |
 | File | fitted_params | Always | Trained ancestry model parameters |
 | Array[File] | raw_population_scores | Always | Raw PRS scores from scoring population VCF with each variant weights file |
-| File | mix_population_scores | Always | Raw PRS mix scores from population VCF |
+| File | mixed_population_scores | Always | Raw PRS mix scores from population VCF |
 | File | adjusted_population_scores | Always | Adjusted population scores from the model |
 | Boolean | fit_converged | Always | |
