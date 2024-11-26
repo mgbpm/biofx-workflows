@@ -13,8 +13,8 @@ workflow BamsurgeonWorkflow {
         # Mutation to run
         String mutation_type
         # Input BAM files
-        File input_bai_file
-        File input_bam_file
+        File input_bai
+        File input_bam
         # Input for target BED file
         Array[MutationBED] mutation_bed_input
         # Reference files
@@ -63,11 +63,9 @@ workflow BamsurgeonWorkflow {
         Float sim_err = 0.0
         File? insert_library
         Boolean keep_secondary_reads = false
-        # Bamsurgeon docker image
+        # Docker images
         String bamsurgeon_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bamsurgeon:20240229"
-        # SAMtools docker image
         String samtools_docker_image = "biocontainers/samtools:v1.9-4-deb_cv1"
-        # IGV docker image
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
 
         ## PGX/RISK INPUTS
@@ -89,149 +87,173 @@ workflow BamsurgeonWorkflow {
         String? workspace_name
     }
 
-    ## Test that mutation_type is either snv, indel, or sv
+    # Test that mutation_type is either snv, indel, or sv
     if ((mutation_type != "snv") && (mutation_type != "indel") && (mutation_type != "sv")) {
-        call Utilities.FailTask as InputParameterError {
-            input:
-                error_message = "Acceptable mutation types to introduce are 'snv', 'indel' or 'sv.'"
-        }
+        String InputParameterError = "Acceptable mutation types to introduce are 'snv', 'indel' or 'sv.'"
     }
-    ## Test that the BAM index is properly named
-    if (basename(input_bai_file) != (basename(input_bam_file)) + ".bai") {
-        call Utilities.FailTask as BAMIndexNameError {
-            input:
-                error_message = "BAM index should have BAM name + '.bai'"
-        }
+    # Test that the BAM index is properly named
+    if (basename(input_bai) != (basename(input_bam)) + ".bai") {
+        String BamIndexNameError = "BAM index should have BAM name + '.bai'"
     }
-    ## Test that the inputs for PGx/Risk are included
+    # Test that the inputs for PGx/Risk are included
     if (run_pgx || run_risk) {
         if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
-            call Utilities.FailTask as PGxAndRiskInputsError {
-                input:
-                    error_message = "ref_dict, dbsnp_vcf, and dbsnp_vcf_index must be defined to run PGx and/or Risk."
-            }
+            String PGxRiskInputsError = "ref_dict, dbsnp_vcf, and dbsnp_vcf_index must be defined to run PGx and/or Risk."
         }
     }
+    # Test that the workspace name is included to run Risk
     if (run_risk && !defined(workspace_name)) {
-        call Utilities.FailTask as WorkspaceNameError {
+        String WorkspaceNameError = "Workspace name must be defined to run Risk pipeline."
+    }
+    # Fail the workflow if there is an error
+    String input_error_message = select_first([
+        InputParameterError,
+        BamIndexNameError,
+        PGxRiskInputsError,
+        WorkspaceNameError
+        ""
+    ])
+    if (input_error_message != "") {
+        call Utilities.FailTask as InputFailure {
             input:
-                error_message = "Workspace name must be defined to run Risk pipeline."
+                error_message = input_error_message
         }
     }
 
-    ## Create input files for bamsurgeon
-    call RunBamsurgeonTask as RunBamsurgeon {
-        input:
-            mutation_bed_input = mutation_bed_input,
-            input_bam_file = input_bam_file,
-            input_bai_file = input_bai_file,
-            snv_frac = snv_frac,
-            mut_frac = mut_frac,
-            nums_snvs = nums_snvs,
-            cnv_file = cnv_file,
-            cover_diff = cover_diff,
-            haplo_size = haplo_size,
-            min_depth = min_depth,
-            max_depth = max_depth,
-            min_mut_reads = min_mut_reads,
-            avoid_reads = avoid_reads,
-            ignore_snps = ignore_snps,
-            ignore_ref = ignore_ref,
-            ignore_sanity_check = ignore_sanity_check,
-            single_ended = single_ended,
-            max_open_files = max_open_files,
-            tag_reads = tag_reads,
-            ignore_pileup = ignore_pileup,
-            seed = seed,
-            det_base_changes = det_base_changes,
-            max_lib_size = max_lib_size,
-            kmer_size = kmer_size,
-            sv_frac = sv_frac,
-            min_contig_gen = min_contig_gen,
-            donor_bam = donor_bam,
-            donor_bai = donor_bai,
-            mean_insert_size = mean_insert_size,
-            insert_size_stdev = insert_size_stdev,
-            sim_err = sim_err,
-            insert_library = insert_library,
-            keep_secondary_reads = keep_secondary_reads,
-            ref_fasta = ref_fasta,
-            ref_amb = ref_amb,
-            ref_ann = ref_ann,
-            ref_bwt = ref_bwt,
-            ref_fai = ref_fai,
-            ref_pac = ref_pac,
-            ref_sa = ref_sa,
-            mutation_type = mutation_type,
-            output_bam_name = output_files_base + ".bam",
-            docker_image = bamsurgeon_docker_image
-    }
-    call IndexBAMTask as IndexBAM {
-        input:
-            input_bam = RunBamsurgeon.mut_bam,
-            docker_image = samtools_docker_image
-    }
-    ## Generate IGV report
-    call IgvReport.IgvReportFromGenomePanelsBedTask as MutIGVReport {
-        input:
-            bed_file = RunBamsurgeon.target_bed,
-            sample_bam = IndexBAM.output_bam,
-            sample_bai = IndexBAM.output_bai,
-            ref_fasta = ref_fasta,
-            ref_fasta_index = ref_fai,
-            output_basename = output_files_base + "_IGVreport",
-            docker_image = igvreport_docker_image
-    }
-    ## Run PGx & Risk
-    if (run_pgx) {
-        call PGxWorkflow.PGxWorkflow as RunPGx {
-            input:
-                input_cram = IndexBAM.output_bam,
-                input_crai = IndexBAM.output_bai,
-                sample_id = output_files_base,
-                accession_id = output_files_base,
-                test_code = pgx_test_code,
-                reference_fasta = ref_fasta,
-                reference_fasta_fai = ref_fai,
-                reference_dict = select_first([ref_dict]),
-                roi_bed = pgx_roi_bed,
-                dbsnp = select_first([dbsnp_vcf]),
-                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
-                workflow_fileset = pgx_workflow_fileset,
-                mgbpmbiofx_docker_image = pgx_docker_image
+    if (input_error_message == "") {
+        # Fetch bam and bai if files are from Wasabi
+        String bam_location = sub("" + input_bam, "/" + basename(input_bam), "")
+        if (("s3" + sub(bam_location, "s3", "")) == bam_location) {
+            call FileUtils.FetchFilesTask as FetchFiles {
+                input:
+                    data_location = bam_location,
+                    recursive = true,
+                    file_types = [ "bam", "bai" ],
+                    file_match_keys = [ basename(input_bam, ".bam") ],
+                    docker_image = orchutils_docker_image,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name
+            }
         }
-    }
-    if (run_risk) {
-        call RiskAllelesWorkflow.RiskAllelesWorkflow as RunRisk {
+
+        # Mutate input bam with bamsurgeon
+        call RunBamsurgeonTask as RunBamsurgeon {
             input:
-                input_cram = IndexBAM.output_bam,
-                input_crai = IndexBAM.output_bai,
-                sample_id = output_files_base,
-                accession_id = output_files_base,
-                test_code = risk_alleles_test_code,
-                reference_fasta = ref_fasta,
-                reference_fasta_fai = ref_fai,
-                reference_dict = select_first([ref_dict]),
-                roi_bed = risk_alleles_roi_bed,
-                dbsnp = select_first([dbsnp_vcf]),
-                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
-                workflow_fileset = risk_alleles_workflow_fileset,
-                gcp_project_id = gcp_project_id,
-                workspace_name = select_first([workspace_name]),
-                mgbpmbiofx_docker_image = risk_alleles_docker_image
+                mutation_bed_input = mutation_bed_input,
+                input_bam = input_bam,
+                input_bai = input_bai,
+                snv_frac = snv_frac,
+                mut_frac = mut_frac,
+                nums_snvs = nums_snvs,
+                cnv_file = cnv_file,
+                cover_diff = cover_diff,
+                haplo_size = haplo_size,
+                min_depth = min_depth,
+                max_depth = max_depth,
+                min_mut_reads = min_mut_reads,
+                avoid_reads = avoid_reads,
+                ignore_snps = ignore_snps,
+                ignore_ref = ignore_ref,
+                ignore_sanity_check = ignore_sanity_check,
+                single_ended = single_ended,
+                max_open_files = max_open_files,
+                tag_reads = tag_reads,
+                ignore_pileup = ignore_pileup,
+                seed = seed,
+                det_base_changes = det_base_changes,
+                max_lib_size = max_lib_size,
+                kmer_size = kmer_size,
+                sv_frac = sv_frac,
+                min_contig_gen = min_contig_gen,
+                donor_bam = donor_bam,
+                donor_bai = donor_bai,
+                mean_insert_size = mean_insert_size,
+                insert_size_stdev = insert_size_stdev,
+                sim_err = sim_err,
+                insert_library = insert_library,
+                keep_secondary_reads = keep_secondary_reads,
+                ref_fasta = ref_fasta,
+                ref_amb = ref_amb,
+                ref_ann = ref_ann,
+                ref_bwt = ref_bwt,
+                ref_fai = ref_fai,
+                ref_pac = ref_pac,
+                ref_sa = ref_sa,
+                mutation_type = mutation_type,
+                output_bam_name = output_files_base + ".bam",
+                docker_image = bamsurgeon_docker_image
+        }
+
+        # Index mutated bam
+        call IndexBAMTask as IndexBAM {
+            input:
+                input_bam = RunBamsurgeon.mut_bam,
+                docker_image = samtools_docker_image
+        }
+
+        # Generate IGV report
+        call IgvReport.IgvReportFromGenomePanelsBedTask as MutIGVReport {
+            input:
+                bed_file = RunBamsurgeon.target_bed,
+                sample_bam = IndexBAM.output_bam,
+                sample_bai = IndexBAM.output_bai,
+                ref_fasta = ref_fasta,
+                ref_fasta_index = ref_fai,
+                output_basename = output_files_base + "_IGVreport",
+                docker_image = igvreport_docker_image
+        }
+
+        # Run PGx & Risk
+        if (run_pgx) {
+            call PGxWorkflow.PGxWorkflow as RunPGx {
+                input:
+                    input_cram = IndexBAM.output_bam,
+                    input_crai = IndexBAM.output_bai,
+                    sample_id = output_files_base,
+                    accession_id = output_files_base,
+                    test_code = pgx_test_code,
+                    reference_fasta = ref_fasta,
+                    reference_fasta_fai = ref_fai,
+                    reference_dict = select_first([ref_dict]),
+                    roi_bed = pgx_roi_bed,
+                    dbsnp = select_first([dbsnp_vcf]),
+                    dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                    workflow_fileset = pgx_workflow_fileset,
+                    mgbpmbiofx_docker_image = pgx_docker_image
+            }
+        }
+        if (run_risk) {
+            call RiskAllelesWorkflow.RiskAllelesWorkflow as RunRisk {
+                input:
+                    input_cram = IndexBAM.output_bam,
+                    input_crai = IndexBAM.output_bai,
+                    sample_id = output_files_base,
+                    accession_id = output_files_base,
+                    test_code = risk_alleles_test_code,
+                    reference_fasta = ref_fasta,
+                    reference_fasta_fai = ref_fai,
+                    reference_dict = select_first([ref_dict]),
+                    roi_bed = risk_alleles_roi_bed,
+                    dbsnp = select_first([dbsnp_vcf]),
+                    dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                    workflow_fileset = risk_alleles_workflow_fileset,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = select_first([workspace_name]),
+                    mgbpmbiofx_docker_image = risk_alleles_docker_image
+            }
         }
     }
 
     output {
         # Bamsurgeon intermediary files
-        File target_bed = RunBamsurgeon.target_bed
-        File bamsurgeon_script = RunBamsurgeon.bamsurgeon_script
+        File? target_bed = RunBamsurgeon.target_bed
+        File? bamsurgeon_script = RunBamsurgeon.bamsurgeon_script
         # Bamsurgeon outputs
-        File mutated_bam = IndexBAM.output_bam
-        File mutated_bai = IndexBAM.output_bai
-        File mutated_vcf = RunBamsurgeon.mut_vcf
+        File? mutated_bam = IndexBAM.output_bam
+        File? mutated_bai = IndexBAM.output_bai
+        File? mutated_vcf = RunBamsurgeon.mut_vcf
         # IGV report
-        File igv_report = MutIGVReport.igv_report
+        File? igv_report = MutIGVReport.igv_report
         # PGx output
         File? pgx_summary_report = RunPGx.summary_report
         File? pgx_details_report = RunPGx.details_report
@@ -267,8 +289,8 @@ task RunBamsurgeonTask {
         # Input array
         Array[MutationBED] mutation_bed_input
         # Input BAM and index
-        File input_bam_file
-        File input_bai_file
+        File input_bam
+        File input_bai
         # Inputs to create bash and BED files
         Float snv_frac = 1
         Float mut_frac = 0.5
@@ -313,7 +335,7 @@ task RunBamsurgeonTask {
         String output_bam_name
         # Docker inputs
         String docker_image
-        Int disk_size = ceil((size(input_bam_file, "GB") * 2.5)) + ceil(size(input_bai_file, "GB")) + ceil(size(ref_fasta, "GB")) + ceil(size(ref_amb, "GB")) + ceil(size(ref_ann, "GB")) + ceil(size(ref_bwt, "GB")) + ceil(size(ref_fai, "GB")) + ceil(size(ref_pac, "GB")) + ceil(size(ref_sa, "GB")) + 10
+        Int disk_size = ceil((size(input_bam, "GB") * 2.5)) + ceil(size(input_bai, "GB")) + ceil(size(ref_fasta, "GB")) + ceil(size(ref_amb, "GB")) + ceil(size(ref_ann, "GB")) + ceil(size(ref_bwt, "GB")) + ceil(size(ref_fai, "GB")) + ceil(size(ref_pac, "GB")) + ceil(size(ref_sa, "GB")) + 10
         Int mem_size = 8
         Int preemptible = 1
     }
@@ -326,10 +348,10 @@ task RunBamsurgeonTask {
         mkdir --parents OUTPUT
 
         # Move BAM and index to input dir
-        input_bam_name=$(basename "~{input_bam_file}")
-        input_bai_name=$(basename "~{input_bai_file}")
-        mv "~{input_bam_file}" "INPUT/${input_bam_name}"
-        mv "~{input_bai_file}" "INPUT/${input_bai_name}"
+        input_bam_name=$(basename "~{input_bam}")
+        input_bai_name=$(basename "~{input_bai}")
+        mv "~{input_bam}" "INPUT/${input_bam_name}"
+        mv "~{input_bai}" "INPUT/${input_bai_name}"
     
         # Create the BED file for bamsurgeon to use
         $MGBPMBIOFXPATH/bamsurgeon/bin/create_bed.py \

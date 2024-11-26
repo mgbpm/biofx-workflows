@@ -35,16 +35,13 @@ workflow insiMWorkflow {
         # File naming inputs
         String sample_name
         String mutation_name
-        # insiM docker image
+        # Docker images
         String insim_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/insim:testing"
-        # Picard docker image
         String picard_docker_image = "biocontainers/picard:v1.139_cv3"
-        # BWA docker image
         String bwa_docker_image = "biocontainers/bwa:v0.7.17_cv1"
-        # SAMtools docker image
         String samtools_docker_image = "biocontainers/samtools:v1.9-4-deb_cv1"
-        # IGV docker image
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20231129"
 
         ## PGX/RISK INPUTS
         # Toggle PGx/Risk
@@ -65,159 +62,207 @@ workflow insiMWorkflow {
         String? workspace_name
     }
 
-    ## Run tests on inputs to ensure their compatibility
     # Test for assay type
     if ((assay_type != "capture") && (assay_type != "amplicon")) {
-        String AssayTypeFail = "Assay type should either be 'capture' or 'amplicon'."
+        String AssayTypeError = "Assay type should either be 'capture' or 'amplicon'."
     }
     # Test for mutation type
-    if ((mutation_type != "snv") && (mutation_type != "ins") && (mutation_type != "del") && (mutation_type != "dup") && (mutation_type != "mix")) {
-        String MutationTypeFail = "Acceptable mutation types are 'snv', 'ins', 'del', 'dup', or 'mix.'"
+    if (
+        (mutation_type != "snv") && 
+        (mutation_type != "ins") && 
+        (mutation_type != "del") && 
+        (mutation_type != "dup") && 
+        (mutation_type != "mix")
+        ) {
+        String MutationTypeError = "Acceptable mutation types are 'snv', 'ins', 'del', 'dup', or 'mix.'"
     }
     # Test for VAF if mutation type is not "mix"
     if ((mutation_type != "mix") && (!defined(vaf))) {
-        String VAFFail = "VAF input is required for non-'mix' (snv, ins, del, dup) mutations."
+        String VafError = "VAF input is required for non-'mix' (snv, ins, del, dup) mutations."
     }
     # Test for input ampbed_array and amp_read_length when input is an amplicon assay
     if ((assay_type == "amplicon") && (!defined(amp_read_length))) {
-        String AmpReadLengthFail = "Amplicon read length not defined"
+        String AmpReadLengthError = "Amplicon read length not defined"
+    }
+    # Test that the BAM index is properly named
+    if (
+        (basename(input_bai, ".bai") != basename(input_bam, ".bam")) || 
+        (basename(input_bai) != (basename(input_bam) + ".bai"))
+        ) {
+        String BamIndexError = "BAM index should have same basename as BAM or have BAM name + 'bai'."
+    }
+    # Test that the inputs for PGx/Risk are included
+    if (run_pgx || run_risk) {
+        if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
+            String PGxRiskInputError = "ref_dict, dbsnp_vcf, and dbsnp_vcf_index must be defined to run PGx and/or Risk."
+        }
+    }
+    # Test that the workspace name is included to run Risk
+    if (run_risk && !defined(workspace_name)) {
+        String WorkspaceNameError = "Workspace name must be defined to run Risk pipeline."
     }
     # Fail the workflow if there is an error
-    String input_error_message = select_first([AssayTypeFail, MutationTypeFail, VAFFail, AmpReadLengthFail, ""])
+    String input_error_message = select_first([
+        AssayTypeError, 
+        MutationTypeError, 
+        VafError, 
+        AmpReadLengthError, 
+        BamIndexError, 
+        PGxRiskInputError, 
+        WorkspaceNameError, 
+        ""
+    ])
     if (input_error_message != "") {
-        call Utilities.FailTask as InputParameterError {
+        call Utilities.FailTask as InputFailure {
             input:
                 error_message = input_error_message
         }
     }
 
-    ## Mutate input BAM based on assay type
-    String output_basename = sample_name + "_" + mutation_name + ".bam"
-    if (assay_type == 'amplicon') {
-        call MutateAmpliconAssayTask as MutateAmplicon {
+    if (input_error_message == "") {
+        # Fetch bam and bai if files are from Wasabi
+        String bam_location = sub("" + input_bam, "/" + basename(input_bam), "")
+        if (("s3" + sub(bam_location, "s3", "")) == bam_location) {
+            call FileUtils.FetchFilesTask as FetchFiles {
+                input:
+                    data_location = bam_location,
+                    recursive = true,
+                    file_types = [ "bam", "bai" ],
+                    file_match_keys = [ basename(input_bam, ".bam") ],
+                    docker_image = orchutils_docker_image,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name
+            }
+        }
+
+        String output_basename = sample_name + "_" + mutation_name + ".bam"
+
+        # Mutate input BAM based on assay type
+        if (assay_type == 'amplicon') {
+            call MutateAmpliconAssayTask as MutateAmplicon {
+                input:
+                    input_bam = select_first([FetchFiles.bam, input_bam]),
+                    input_bai = select_first([FetchFiles.bai, input_bai]),
+                    assay_type = assay_type,
+                    targets = targets,
+                    mutation_type = mutation_type,
+                    ref_fasta = ref_fasta,
+                    amp_read_length = amp_read_length,
+                    vaf = vaf,
+                    inslen = inslen,
+                    insseq = insseq,
+                    ampbed = ampbed,
+                    output_basename = output_basename,
+                    docker_image = insim_docker_image
+            }
+        }
+        if (assay_type == 'capture') {
+            call MutateCaptureAssayTask as MutateCapture {
+                input:
+                    input_bam = select_first([FetchFiles.bam, input_bam]),
+                    input_bai = select_first([FetchFiles.bai, input_bai]),
+                    assay_type = assay_type,
+                    targets = targets,
+                    mutation_type = mutation_type,
+                    ref_fasta = ref_fasta,
+                    vaf = vaf,
+                    inslen = inslen,
+                    insseq = insseq,
+                    output_basename = output_basename,
+                    docker_image = insim_docker_image
+            }
+        }
+
+        # Convert FASTQ to SAM
+        call ConvertToSAMTask as ConvertToSAM {
             input:
-                input_bam = input_bam,
-                input_bai = input_bai,
-                assay_type = assay_type,
-                targets = targets,
-                mutation_type = mutation_type,
                 ref_fasta = ref_fasta,
-                amp_read_length = amp_read_length,
-                vaf = vaf,
-                inslen = inslen,
-                insseq = insseq,
-                ampbed = ampbed,
+                ref_fai = ref_fai,
+                ref_amb = ref_amb,
+                ref_ann = ref_ann,
+                ref_bwt = ref_bwt,
+                ref_pac = ref_pac,
+                ref_sa = ref_sa,
+                in_fastq1 = select_first([MutateCapture.output_fastq1, MutateAmplicon.output_fastq1]),
+                in_fastq2 = select_first([MutateCapture.output_fastq2, MutateAmplicon.output_fastq2]),
                 output_basename = output_basename,
-                docker_image = insim_docker_image
+                docker_image = bwa_docker_image
         }
-    }
-    if (assay_type == 'capture') {
-        call MutateCaptureAssayTask as MutateCapture {
+        # Convert SAM to BAM
+        call ConvertToBAMTask as ConvertToBAM {
             input:
-                input_bam = input_bam,
-                input_bai = input_bai,
-                assay_type = assay_type,
-                targets = targets,
-                mutation_type = mutation_type,
+                input_sam = ConvertToSAM.output_sam,
+                output_basename = output_basename,
+                docker_image = picard_docker_image
+        }
+        # Index final BAM
+        call IndexBAMTask as IndexBAM {
+            input:
+                output_basename = output_basename,
+                input_bam = ConvertToBAM.output_dedup_bam,
+                docker_image = samtools_docker_image
+        }
+
+        # Generate IGV report
+        call IgvReport.IgvReportFromGenomePanelsBedTask as MutIGVReport {
+            input:
+                bed_file = select_first([MutateAmplicon.target_bed, MutateCapture.target_bed]),
+                sample_bam = ConvertToBAM.output_dedup_bam,
+                sample_bai = IndexBAM.output_bai,
                 ref_fasta = ref_fasta,
-                vaf = vaf,
-                inslen = inslen,
-                insseq = insseq,
-                output_basename = output_basename,
-                docker_image = insim_docker_image
+                ref_fasta_index = ref_fai,
+                output_basename = sample_name + "_" + mutation_name + "_IGVreport",
+                docker_image = igvreport_docker_image
         }
-    }
 
-    ## Convert mutations to BAM
-    # Convert FASTQ to SAM
-    call ConvertToSAMTask as ConvertToSAM {
-        input:
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_amb = ref_amb,
-            ref_ann = ref_ann,
-            ref_bwt = ref_bwt,
-            ref_pac = ref_pac,
-            ref_sa = ref_sa,
-            in_fastq1 = select_first([MutateCapture.output_fastq1, MutateAmplicon.output_fastq1]),
-            in_fastq2 = select_first([MutateCapture.output_fastq2, MutateAmplicon.output_fastq2]),
-            output_basename = output_basename,
-            docker_image = bwa_docker_image
-    }
-    # Convert SAM to BAM
-    call ConvertToBAMTask as ConvertToBAM {
-        input:
-            input_sam = ConvertToSAM.output_sam,
-            output_basename = output_basename,
-            docker_image = picard_docker_image
-    }
-    # Index final BAM
-    call IndexBAMTask as IndexBAM {
-        input:
-            output_basename = output_basename,
-            input_bam = ConvertToBAM.output_dedup_bam,
-            docker_image = samtools_docker_image
-    }
-
-    ## Generate IGV report
-    call IgvReport.IgvReportFromGenomePanelsBedTask as MutIGVReport {
-        input:
-            bed_file = select_first([MutateAmplicon.target_bed, MutateCapture.target_bed]),
-            sample_bam = ConvertToBAM.output_dedup_bam,
-            sample_bai = IndexBAM.output_bai,
-            ref_fasta = ref_fasta,
-            ref_fasta_index = ref_fai,
-            output_basename = sample_name + "_" + mutation_name + "_IGVreport",
-            docker_image = igvreport_docker_image
-    }
-
-     ## Run PGx & Risk
-    if (run_pgx) {
-        call PGxWorkflow.PGxWorkflow as MutBamPGx {
-            input:
-                input_cram = ConvertToBAM.output_dedup_bam,
-                input_crai = IndexBAM.output_bai,
-                sample_id = sample_name + "_" + mutation_name,
-                accession_id = sample_name + "_" + mutation_name,
-                test_code = pgx_test_code,
-                reference_fasta = ref_fasta,
-                reference_fasta_fai = ref_fai,
-                reference_dict = select_first([ref_dict]),
-                roi_bed = pgx_roi_bed,
-                dbsnp = select_first([dbsnp_vcf]),
-                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
-                workflow_fileset = pgx_workflow_fileset,
-                mgbpmbiofx_docker_image = pgx_docker_image
+        # Run PGx & Risk
+        if (run_pgx) {
+            call PGxWorkflow.PGxWorkflow as MutBamPGx {
+                input:
+                    input_cram = ConvertToBAM.output_dedup_bam,
+                    input_crai = IndexBAM.output_bai,
+                    sample_id = sample_name + "_" + mutation_name,
+                    accession_id = sample_name + "_" + mutation_name,
+                    test_code = pgx_test_code,
+                    reference_fasta = ref_fasta,
+                    reference_fasta_fai = ref_fai,
+                    reference_dict = select_first([ref_dict]),
+                    roi_bed = pgx_roi_bed,
+                    dbsnp = select_first([dbsnp_vcf]),
+                    dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                    workflow_fileset = pgx_workflow_fileset,
+                    mgbpmbiofx_docker_image = pgx_docker_image
+            }
         }
-    }
-    if (run_risk) {
-        call RiskAllelesWorkflow.RiskAllelesWorkflow as MutBamRisk {
-            input:
-                input_cram = ConvertToBAM.output_dedup_bam,
-                input_crai = IndexBAM.output_bai,
-                sample_id = sample_name + "_" + mutation_name,
-                accession_id = sample_name + "_" + mutation_name,
-                test_code = risk_alleles_test_code,
-                reference_fasta = ref_fasta,
-                reference_fasta_fai = ref_fai,
-                reference_dict = select_first([ref_dict]),
-                roi_bed = risk_alleles_roi_bed,
-                dbsnp = select_first([dbsnp_vcf]),
-                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
-                workflow_fileset = risk_alleles_workflow_fileset,
-                gcp_project_id = gcp_project_id,
-                workspace_name = select_first([workspace_name]),
-                mgbpmbiofx_docker_image = risk_alleles_docker_image
+        if (run_risk) {
+            call RiskAllelesWorkflow.RiskAllelesWorkflow as MutBamRisk {
+                input:
+                    input_cram = ConvertToBAM.output_dedup_bam,
+                    input_crai = IndexBAM.output_bai,
+                    sample_id = sample_name + "_" + mutation_name,
+                    accession_id = sample_name + "_" + mutation_name,
+                    test_code = risk_alleles_test_code,
+                    reference_fasta = ref_fasta,
+                    reference_fasta_fai = ref_fai,
+                    reference_dict = select_first([ref_dict]),
+                    roi_bed = risk_alleles_roi_bed,
+                    dbsnp = select_first([dbsnp_vcf]),
+                    dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                    workflow_fileset = risk_alleles_workflow_fileset,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = select_first([workspace_name]),
+                    mgbpmbiofx_docker_image = risk_alleles_docker_image
+            }
         }
     }
 
     output {
         # Files from converting to BAM
-        File output_dedup_bam = ConvertToBAM.output_dedup_bam
-        File output_dedup_metrics = ConvertToBAM.metrics_file
-        File output_dedup_bai = IndexBAM.output_bai
+        File? output_dedup_bam = ConvertToBAM.output_dedup_bam
+        File? output_dedup_metrics = ConvertToBAM.metrics_file
+        File? output_dedup_bai = IndexBAM.output_bai
         # IGV report
-        File mut_igv_report = MutIGVReport.igv_report
+        File? mut_igv_report = MutIGVReport.igv_report
         # PGx output
         File? pgx_summary_report = MutBamPGx.summary_report
         File? pgx_details_report = MutBamPGx.details_report
