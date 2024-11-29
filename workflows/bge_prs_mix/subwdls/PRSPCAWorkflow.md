@@ -6,10 +6,7 @@
 | :--- | :--- | :---: | :--- | :--- |
 | File | condition_name | Yes | Name of condition/disease | |
 | File | input_vcf | Yes | Imputed VCF or VCF with genome data | |
-| File | pc_loadings | Yes | | |
-| File | pc_meansd | Yes | | |
-| File | population_pcs | Yesd | PCA for population | |
-| File | pruning_sites_for_pca | Yes | Pruning sites used to perform PCA | |
+| File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | File | var_weight_file | Required if chromosome encoding is not provided | PGS variant weight file, with 3 columns: variant ID, effect allele, and score | |
 | String | weights_chr_encoding | No | Chromosome encoding string | |
 | File | python_docker_image | No | Python Docker image | "python:3.9.10" |
