@@ -18,7 +18,7 @@ workflow PRSRawScoreWorkflow {
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
     # Clean up the query VCF
-    call HelperTasks.RenameChromosomesInVcf as RenameVcfChromosomes {
+    call HelperTasks.RenameChromosomesInVcf as RenameVcf {
         input:
             vcf = input_vcf
     }
@@ -26,13 +26,13 @@ workflow PRSRawScoreWorkflow {
     if (defined(model_data.query_regions)) {
         call HelperTasks.SubsetVcf as SubsetQueryVcf {
             input:
-                inputvcf = RenameVcfChromosomes.renamed,
-                regions  = select_first([model_data.query_regions]),
-                label    = "query"
+                inputvcf = RenameVcf.renamed,
+                regions = select_first([model_data.query_regions]),
+                label = "query"
         }
     }
 
-    File resolved_query_vcf = select_first([SubsetQueryVcf.result, RenameChromosomesInQueryVcf.renamed])
+    File resolved_query_vcf = select_first([SubsetQueryVcf.result, RenameVcf.renamed])
 
     Int base_memory = select_first([GetBaseMemoryFromVcf.gigabytes, model_data.base_memory])
 
