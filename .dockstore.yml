@@ -328,15 +328,6 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - Glimpse2SplitReference_*
-  - name: PRSAdjustmentWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSAdjustmentWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/subwdls/PRSAdjustmentWorkflow.md
-    filters:
-      branches:
-        - /.*[a-zA-Z0-9].*/
-      tags:
-        - PRSMix_*
   - name: PRSSummaryWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSSummaryWorkflow.wdl

@@ -7,12 +7,13 @@ import "../../steps/Utilities.wdl"
 
 workflow PRSPCAWorkflow {
     input {
-        # PCA inputs
+        # PCA and adjustment inputs
         String condition_name
         File input_vcf
         File adjustment_model_manifest
         File? var_weight_file
         String? weights_chr_encoding
+        File? prs_raw_scores
         # Docker images
         String python_docker_image = "python:3.9.10"
         String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
@@ -83,9 +84,20 @@ workflow PRSPCAWorkflow {
             target_pcs = ProjectPCA.projections,
             docker_image = tidyverse_docker_image
     }
+
+    if (defined(prs_raw_scores)) {
+        call ScoringTasks.AdjustScores as GetAdjustedScores {
+            input:
+                fitted_model_params = model_data.parameters,
+                pcs = ProjectPCA.projections,
+                scores = prs_raw_scores,
+                docker_image = tidyverse_docker_image
+        }
+    }
     
     output {
         File pc_projection = ProjectPCA.projections
         File pc_plot = PCAPlot.pca_plot
+        File adjusted_scores = GetAdjustedScores.adjusted_scores
     }
 }
