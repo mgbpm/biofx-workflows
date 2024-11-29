@@ -328,15 +328,6 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - Glimpse2SplitReference_*
-  - name: PRSSummaryWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSSummaryWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/subwdls/PRSSummaryWorkflow.md
-    filters:
-      branches:
-        - /.*[a-zA-Z0-9].*/
-      tags:
-        - PRSMix_*
   - name: PRSMixScoreWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSMixScoreWorkflow.wdl
