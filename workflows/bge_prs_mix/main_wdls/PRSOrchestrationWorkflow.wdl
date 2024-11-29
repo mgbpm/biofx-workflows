@@ -33,7 +33,6 @@ workflow PRSOrchestrationWorkflow {
         Array[File] condition_jsons
         File condition_yaml
         File pruning_sites_for_pca
-        Int prs_scoring_mem = 8
         String ubuntu_docker_image = "ubuntu:21.10"
         String python_docker_image = "python:3.11"
         String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
@@ -99,15 +98,13 @@ workflow PRSOrchestrationWorkflow {
 
         scatter (i in range(length(condition_jsons))) {
             String condition_name = sub(basename(condition_jsons[i]), "_[[0-9]]+\\.json$", "")
-            AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
             # Get PRS raw scores for each condition
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
-                    var_weights = model_data.var_weights,
-                    scoring_sites = model_data.training_variants,
+                    adjustment_model_manifest = condition_jsons[i],
                     query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    scoring_mem = prs_scoring_mem,
+                    python_docker_image = python_docker_image,
                     plink_docker_image = plink_docker_image
             }
 
@@ -125,24 +122,12 @@ workflow PRSOrchestrationWorkflow {
                 input:
                     condition_name = condition_name,
                     query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    pc_loadings = model_data.loadings,
-                    pc_meansd = model_data.meansd,
-                    population_pcs = model_data.principal_components,
-                    pruning_sites_for_pca = pruning_sites_for_pca,
+                    adjustment_model_manifest = condition_jsons[i],
+                    prs_raw_scores = PRSMixScores.prs_mix_raw_score,
                     weights_chr_encoding = PRSRawScores.chromosome_encoding[0],
+                    python_docker_image = python_docker_image,
                     plink_docker_image = plink_docker_image,
                     flash_pca_docker_image = flash_pca_docker_image,
-                    tidyverse_docker_image = tidyverse_docker_image
-            }
-
-            # Adjust PRS mix score for each condition
-            call PRSAdjustmentWorkflow.PRSAdjustmentWorkflow as AdjustPRSScores {
-                input:
-                    condition_name = condition_name,
-                    weights_chr_encoding = PRSRawScores.chromosome_encoding[0],
-                    pca_projections = PerformPCA.pc_projection,
-                    prs_raw_scores = PRSMixScores.prs_mix_raw_score,
-                    fitted_model_params = model_data.parameters,
                     tidyverse_docker_image = tidyverse_docker_image
             }
         }

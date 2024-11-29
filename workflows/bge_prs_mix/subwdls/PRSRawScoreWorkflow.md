@@ -4,7 +4,6 @@
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| Array[File] | var_weights | Yes | Array of different PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
 | File | input_vcf | Yes | Joint or single-sample VCF to score | |
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | Int | scoring_mem | No | Memory usage for scoring the input VCF | 8 |

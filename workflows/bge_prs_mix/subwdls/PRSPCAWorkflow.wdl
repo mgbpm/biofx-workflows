@@ -98,6 +98,6 @@ workflow PRSPCAWorkflow {
     output {
         File pc_projection = ProjectPCA.projections
         File pc_plot = PCAPlot.pca_plot
-        File adjusted_scores = GetAdjustedScores.adjusted_scores
+        File? adjusted_scores = GetAdjustedScores.adjusted_scores
     }
 }
