@@ -142,14 +142,20 @@ workflow BiobankScrubWorkflow {
 
   if (CheckScrubResults.isok && CheckConcatenationResults.isok) {
 
-    call MakePushBatches {
+    call MakePushReleaseBatches {
       input:
         rundir       = rundir,
         docker_image = docker_image
     }
 
-    scatter (batch in MakePushBatches.batches) {
-      call PushScrubbed {
+    call MakePushShardsBatches {
+      input:
+        rundir       = rundir,
+        docker_image = docker_image
+    }
+
+    scatter (batch in MakePushReleaseBatches.batches) {
+      call PushScrubbed as PushScrubbedRelease {
         input:
           rundir          = rundir,
           release_datadir = select_first([
@@ -161,13 +167,26 @@ workflow BiobankScrubWorkflow {
       }
     }
 
+    scatter (batch in MakePushShardsBatches.batches) {
+      call PushScrubbed as PushScrubbedShards {
+        input:
+          rundir          = rundir,
+          release_datadir = select_first([
+                                          release_datadir,
+                                          current_datadir
+                                         ]),
+          batch           = batch,
+          docker_image    = docker_image
+      }
+    }
   }
 
   call Summarize {
     input:
       scrub_results         = ScrubBatch.results,
       concatenation_results = ConcatenateShards.results,
-      push_results          = select_first([PushScrubbed.results, []]),
+      push_release_results  = select_first([PushScrubbedRelease.results, []]),
+      push_shards_results   = select_first([PushScrubbedShards.results , []]),
       docker_image          = docker_image
   }
 
@@ -179,7 +198,7 @@ workflow BiobankScrubWorkflow {
 
 # -----------------------------------------------------------------------------
 
-task  ValidateInputs {
+task ValidateInputs {
   input {
     Object inputs
   }
@@ -217,7 +236,7 @@ task  ValidateInputs {
   }
 }
 
-task  MaybeInitializeRundir {
+task MaybeInitializeRundir {
   input {
     String rundir
     Object inputs
@@ -263,7 +282,7 @@ task  MaybeInitializeRundir {
 }
 
 
-task  ListDatasetIds {
+task ListDatasetIds {
   input {
     String  base_datadir
     String  docker_image
@@ -296,7 +315,7 @@ task  ListDatasetIds {
 }
 
 
-task  FindNonCompliant {
+task FindNonCompliant {
   input {
     String  current_datadir  # url to current data directory
     String  initial_datadir  # url to initial data directory
@@ -350,7 +369,7 @@ task  FindNonCompliant {
 }
 
 
-task  MakeScrubBatches {
+task MakeScrubBatches {
   input {
     Array[Object]   non_compliant   # each object in this array has
                                     # members path and type
@@ -394,7 +413,7 @@ task  MakeScrubBatches {
 }
 
 
-task  ScrubBatch {
+task ScrubBatch {
   input {
     File            withdrawn_list
     String          initial_datadir
@@ -522,7 +541,7 @@ task  ScrubBatch {
 }
 
 
-task  CollectShards {
+task CollectShards {
   input {
     String          rundir              # url to a run directory
     Array[Object]   non_compliant       # each object in this array has
@@ -575,7 +594,7 @@ task  CollectShards {
 }
 
 
-task  ConcatenateShards {
+task ConcatenateShards {
   # ...
   input {
     Int             storage        # required disk size (in GB)
@@ -674,7 +693,7 @@ task CheckBatchedResults {
 }
 
 
-task  MakePushBatches {
+task MakePushReleaseBatches {
 
   input {
     String   rundir
@@ -695,7 +714,7 @@ task  MakePushBatches {
 
   mkdir --parents '~{OUTPUTDIR}'
 
-  make_push_batches.py '~{rundir}' | tee '~{STDOUT}'
+  make_push_release_batches.py '~{rundir}' | tee '~{STDOUT}'
 
   >>>
 
@@ -709,7 +728,42 @@ task  MakePushBatches {
   }
 }
 
-task  PushScrubbed {
+task MakePushShardsBatches {
+
+  input {
+    String   rundir
+    String   docker_image
+  }
+
+  String   OUTPUTDIR  = "OUTPUT"
+  String   STDOUT     = OUTPUTDIR + "/STDOUT"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  /mgbpmbiofx/packages/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p mgb-lmm-gcp-infrast-1651079146 -w prod-biobank-scrub -r '~{rundir}'
+
+  mkdir --parents '~{OUTPUTDIR}'
+
+  make_push_shards_batches.py '~{rundir}' | tee '~{STDOUT}'
+
+  >>>
+
+  output {
+    Array[Array[String]]   batches = read_json(STDOUT)
+  }
+
+  runtime {
+    preemptible: 2
+    docker:      docker_image
+  }
+}
+
+task PushScrubbed {
 
   input {
     String          rundir
@@ -753,12 +807,13 @@ task  PushScrubbed {
   }
 }
 
-task  Summarize {
+task Summarize {
 
   input {
     Array[Object]   scrub_results
     Array[Object]   concatenation_results
-    Array[Object]   push_results
+    Array[Object]   push_release_results
+    Array[Object]   push_shards_results
     String          docker_image
   }
 
@@ -786,10 +841,15 @@ task  Summarize {
       '~{write_json(concatenation_results)}' \
     > "${CONCATENATIONRESULTS}"
 
-  PUSHRESULTS="${RESULTSDIR}/push.json"
-  consolidate_batched_results.py     \
-      '~{write_json(push_results)}' \
-    > "${PUSHRESULTS}"
+  PUSHRELEASERESULTS="${RESULTSDIR}/push_release.json"
+  consolidate_batched_results.py            \
+      '~{write_json(push_release_results)}' \
+    > "${PUSHRELEASERESULTS}"
+
+  PUSHSHARDSRESULTS="${RESULTSDIR}/push_shards.json"
+  consolidate_batched_results.py           \
+      '~{write_json(push_shards_results)}' \
+    > "${PUSHSHARDSRESULTS}"
 
   mkdir --parents '~{OUTPUTDIR}'
 
@@ -797,13 +857,14 @@ task  Summarize {
       --logging-level=DEBUG     \
       "${SCRUBRESULTS}"         \
       "${CONCATENATIONRESULTS}" \
-      "${PUSHRESULTS}"          \
+      "${PUSHRELEASERESULTS}"   \
+      "${PUSHSHARDSRESULTS}"    \
     | tee '~{STDOUT}'
 
   >>>
 
   output {
-    File   results = STDOUT
+    File results = STDOUT
   }
 
   runtime {
