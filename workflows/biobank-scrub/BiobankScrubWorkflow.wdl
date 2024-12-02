@@ -14,7 +14,7 @@ struct RundirInitialized {
 
 # -----------------------------------------------------------------------------
 
-workflow BiobankScrubWorkflow {
+workflow BiobankScrub {
   input {
     String   runid
     String   operator

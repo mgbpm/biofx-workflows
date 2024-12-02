@@ -2,7 +2,7 @@ version 1.0
 
 # -----------------------------------------------------------------------------
 
-workflow BiobankShardingWorkflow {
+workflow BiobankSharding {
   input {
   # Int      shard_area       = 50000000
     Int      shard_area       = 500000000
