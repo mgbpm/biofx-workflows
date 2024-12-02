@@ -4,86 +4,351 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /steps/DepthOfCoverage.wdl
     readMePath: /steps/DepthOfCoverage.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - DepthOfCoverage_*
   - name: AlamutBatchWorkflow
     subclass: WDL
     primaryDescriptorPath: /steps/AlamutBatch.wdl
     readMePath: /steps/AlamutBatch.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AlamutBatch_*
   - name: BgwgsWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsWorkflow.wdl
     readMePath: /workflows/bgwgs/BgwgsWorkflow.md
     filters:
       branches:
-        - master
-        - /.*bgwgs.*/
+        - /.*[a-zA-Z0-9].*/
       tags:
         - BGWGS_*
   - name: CopySampleFilesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/CopySampleFilesWorkflow.wdl
     readMePath: /workflows/orchestration/CopySampleFilesWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: DownloadOutputsWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/DownloadOutputsWorkflow.wdl
     readMePath: /workflows/orchestration/DownloadOutputsWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: DownloadOutputsSetWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/orchestration/DownloadOutputsSetWorkflow.wdl
     readMePath: /workflows/orchestration/DownloadOutputsSetWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: UnitTestWorkflowSingleParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: UnitTestWorkflowSingleSample
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: UnitTestWorkflowSingleAlternate
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: UnitTestWorkflowMultiParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: UnitTestWorkflowMultiSample
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: UnitTestWorkflowMultiAlternate
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowMany.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: E2ETestWorkflowOne
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowOne.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: E2ETestWorkflowSet
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/E2ETestWorkflowSet.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: TestWorkflowFailure
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/TestWorkflowFailure.wdl
     readMePath: /workflows/qatesting/QATestingWorkflows.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: GATKWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/GATKWorkflow.wdl
     readMePath: /workflows/pgxrisk/GATKWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: PGxWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/PGxWorkflow.wdl
     readMePath: /workflows/pgxrisk/PGxWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PGX_*
   - name: RiskAllelesWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/RiskAllelesWorkflow.wdl
     readMePath: /workflows/pgxrisk/RiskAllelesWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - RISK_*
+  - name: BahrainSamplePrepWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainSamplePrep.wdl
+    readMePath: /workflows/bahrain_project/BahrainSamplePrep.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainSampleLoadingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainSampleLoading.wdl
+    readMePath: /workflows/bahrain_project/BahrainSampleLoading.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainPGxRiskWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainPGxRisk.wdl
+    readMePath: /workflows/bahrain_project/BahrainPGxRisk.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainMergeFASTExportsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainMergeFASTExports.wdl
+    readMePath: /workflows/bahrain_project/BahrainMergeFASTExports.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainAnnotationsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainAnnotations.wdl
+    readMePath: /workflows/bahrain_project/BahrainAnnotations.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
+  - name: BahrainAlamutWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bahrain_project/BahrainAlamut.wdl
+    readMePath: /workflows/bahrain_project/BahrainAlamut.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BahrainPipelines_*
   - name: BgwgsPanelWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/bgwgs/BgwgsPanelWorkflow.wdl
-  - name: BiobankShardingWorkflow
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - GenomePanels_*
+  - name: BiobankRoRAlamutWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRAlamutWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRAlamutWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BiobankRoR_*
+  - name: BiobankRoRSamplePrepWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSamplePrepWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRSamplePrepWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BiobankRoR_*
+  - name: BiobankRoRSampleLoadingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRSampleLoadingWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BiobankRoR_*
+  - name: BiobankRoRFASTParsingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRFASTParsing.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRFASTParsing.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BiobankRoR_*
+  - name: BiobankRoRMergeFASTExportsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank_ror/BiobankRoRMergeFASTExports.wdl
+    readMePath: /workflows/biobank_ror/BiobankRoRFASTMergeFASTExports.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BiobankRoR_*
+  - name: LmmgapWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/lmmgap/lmmgap.wdl
+    filters:
+      branches:
+        - master
+        - /.*lmmgap.*/
+      tags:
+        - LMMGAP_*
+  - name: BiobankSharding
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank-scrub/BiobankShardingWorkflow.wdl
-  - name: BiobankScrubWorkflow
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - BiobankSharding_*
+  - name: BiobankScrub
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank-scrub/BiobankScrubWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - BiobankScrub_*
+  - name: insiMWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/mutagenesis/insiM.wdl
+    readMePath: /workflows/mutagenesis/insiM.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - insiM_*
+  - name: BamsurgeonWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/mutagenesis/bamsurgeon.wdl
+    readMePath: /workflows/mutagenesis/bamsurgeon.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - Bamsurgeon_*
+  - name: Glimpse2Imputation
+    subclass: WDL
+    primaryDescriptorPath: /workflows/lowpassimputation/Glimpse2Imputation.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - Glimpse2Imputation_*
+  - name: Glimpse2SplitReference
+    subclass: WDL
+    primaryDescriptorPath: /workflows/lowpassimputation/Glimpse2SplitReference.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - Glimpse2SplitReference_*
+  - name: PRSMakeAdjustmentModel
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/MakeAdjustmentModelWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
+  - name: PRSScoreQueryVcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/ScoreQueryVcfWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
+  - name: PRSRunPRS
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/RunPRSWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
