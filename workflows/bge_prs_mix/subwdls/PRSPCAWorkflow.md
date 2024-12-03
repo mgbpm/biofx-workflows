@@ -7,8 +7,6 @@
 | File | condition_name | Yes | Name of condition/disease | |
 | File | input_vcf | Yes | Imputed VCF or VCF with genome data | |
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
-| File | var_weight_file | Required if chromosome encoding is not provided | PGS variant weight file, with 3 columns: variant ID, effect allele, and score | |
-| String | weights_chr_encoding | No | Chromosome encoding string | |
 | File | prs_raw_scores | Yes | Raw PRS scores for all subjects to adjust | |
 | File | python_docker_image | No | Python Docker image | "python:3.9.10" |
 | String | plink_docker_image | No | Docker image for Plink 2 | us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124 |

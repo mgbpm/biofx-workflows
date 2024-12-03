@@ -28,10 +28,9 @@ This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percent
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| Array[File] | condition_zip_files | Yes | Array of TAR files, where each TAR contains the variant weights files, score weight file, population loadings file, population meansd file, and population pc file for each condition/disease | |
+| Array[File] | condition_model_manifests | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | File | condition_yaml | Yes | YAML file with condition-specific data on bins, thresholds, etc. | |
 | File | pruning_sites_for_pca | Required if running PCA after PRS is desired | Pruning sites used in PCA to generate the ancestry adjustment model | |
-| Int | prs_scoring_mem | No | Memory usage for scoring input or imputed VCF | 8 |
 | String | ubuntu_docker_image | No | Ubunutu Docker image | "ubuntu:21.10" |
 | String | python_docker_image | No | Python Docker image | "python:3.11" |
 | String | interaction_docker_image | No | Docker image for use of Python | us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e |

@@ -11,8 +11,6 @@ workflow PRSPCAWorkflow {
         String condition_name
         File input_vcf
         File adjustment_model_manifest
-        File? var_weight_file
-        String? weights_chr_encoding
         File? prs_raw_scores
         # Docker images
         String python_docker_image = "python:3.9.10"
@@ -29,43 +27,14 @@ workflow PRSPCAWorkflow {
             vcf = input_vcf
     }
 
-    if (defined(model_data.query_regions)) {
-        call HelperTasks.SubsetVcf as SubsetQueryVcf {
-            input:
-                inputvcf = RenameVcf.renamed,
-                regions = select_first([model_data.query_regions]),
-                label = "query"
-        }
-    }
-
-    File resolved_query_vcf = select_first([SubsetQueryVcf.result, RenameVcf.renamed])
-
-    Int base_memory = select_first([GetBaseMemoryFromVcf.gigabytes, model_data.base_memory])
-
-    if (!defined(weights_chr_encoding)) {
-        if (!defined(var_weight_file)) {
-            call Utilities.FailTask as VarWeightsFail {
-                input:
-                    error_message = "Must have variant weights file for determining chromosome encoding."
-            }
-        }
-        if (defined(var_weight_file)) {
-            call ScoringTasks.DetermineChromosomeEncoding as ChrEncoding {
-                input:
-                    weights = select_first([var_weight_file]),
-                    docker_image = python_docker_image
-            }
-        }
-    }
-
     call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
         input:
-            vcf = resolved_query_vcf,
+            vcf = RenameVcf.renamed,
             pruning_sites = model_data.pca_variants,
-            chromosome_encoding = select_first([weights_chr_encoding, ChrEncoding.chromosome_encoding]),
+            chromosome_encoding = "MT",
             basename = condition_name,
             docker_image = plink_docker_image,
-            mem_size = base_memory
+            mem_size = model_data.base_memory
     }
     call PCATasks.ProjectArray as ProjectPCA {
         input:
@@ -76,7 +45,7 @@ workflow PRSPCAWorkflow {
             pc_meansd = modle_data.meansd,
             basename = condition_name + "_pca",
             docker_image = flash_pca_docker_image,
-            mem = base_memory
+            mem = model_data.base_memory
     }
     call PCATasks.MakePCAPlot as PCAPlot {
         input:

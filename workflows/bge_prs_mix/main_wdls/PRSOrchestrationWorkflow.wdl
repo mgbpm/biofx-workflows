@@ -5,8 +5,6 @@ import "../lowpassimputation/Glimpse2Imputation.wdl"
 import "PRSRawScoreWorkflow.wdl"
 import "PRSMixScoreWorkflow.wdl"
 import "PRSPCAWorkflow.wdl"
-import "PRSAdjustmentWorkflow.wdl"
-import "PRSSummaryWorkflow.wdl"
 
 workflow PRSOrchestrationWorkflow {
     input {
@@ -30,7 +28,7 @@ workflow PRSOrchestrationWorkflow {
         File? ref_dict
 
         # PRS INPUTS
-        Array[File] condition_jsons
+        Array[File] condition_model_manifests
         File condition_yaml
         File pruning_sites_for_pca
         String ubuntu_docker_image = "ubuntu:21.10"
@@ -96,14 +94,14 @@ workflow PRSOrchestrationWorkflow {
             }
         }
 
-        scatter (i in range(length(condition_jsons))) {
-            String condition_name = sub(basename(condition_jsons[i]), "_[[0-9]]+\\.json$", "")
+        scatter (i in range(length(condition_model_manifests))) {
+            String condition_name = sub(basename(condition_model_manifests[i]), "_[[0-9]]+\\.json$", "")
 
             # Get PRS raw scores for each condition
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
-                    adjustment_model_manifest = condition_jsons[i],
-                    query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
+                    input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
+                    adjustment_model_manifest = condition_model_manifests[i],
                     python_docker_image = python_docker_image,
                     plink_docker_image = plink_docker_image
             }
@@ -121,10 +119,9 @@ workflow PRSOrchestrationWorkflow {
             call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
                 input:
                     condition_name = condition_name,
-                    query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = condition_jsons[i],
+                    input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
+                    adjustment_model_manifest = condition_model_manifests[i],
                     prs_raw_scores = PRSMixScores.prs_mix_raw_score,
-                    weights_chr_encoding = PRSRawScores.chromosome_encoding[0],
                     python_docker_image = python_docker_image,
                     plink_docker_image = plink_docker_image,
                     flash_pca_docker_image = flash_pca_docker_image,

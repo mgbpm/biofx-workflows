@@ -21,46 +21,35 @@ workflow PRSRawScoreWorkflow {
             vcf = input_vcf
     }
 
-    if (defined(model_data.query_regions)) {
-        call HelperTasks.SubsetVcf as SubsetQueryVcf {
-            input:
-                inputvcf = RenameVcf.renamed,
-                regions = select_first([model_data.query_regions]),
-                label = "query"
-        }
+    call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
+        input:
+            vcf = RenameVcf.renamed
     }
-
-    File resolved_query_vcf = select_first([SubsetQueryVcf.result, RenameVcf.renamed])
-
-    Int base_memory = select_first([GetBaseMemoryFromVcf.gigabytes, model_data.base_memory])
 
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
-            vcf = resolved_query_vcf,
-            mem = base_memory
+            vcf = RenameVcf.renamed,
+            mem = GetBaseMemoryFromVcf.gigabytes
     }
 
     # Check weights files and score VCF
     scatter (i in range(length(model_data.var_weights))) {
         File var_weights_file = model_data.var_weights[i]
+
         call ScoringTasks.CheckWeightsCoverSitesUsedInTraining {
             input:
                 sites_used_in_training = model_data.training_variants,
                 weight_set = object {linear_weights : var_weights_file}
         }
-        call ScoringTasks.DetermineChromosomeEncoding as ChrEncoding {
-            input:
-                weights = var_weights_file,
-                docker_image = python_docker_image
-        }
+
         call ScoringTasks.ScoreVcf {
             input:
-                vcf = resolved_query_vcf,
-                chromosome_encoding = ChrEncoding.chromosome_encoding,
+                vcf = RenameVcf.renamed,
+                chromosome_encoding = "MT",
                 sites = model_data.training_variants,
                 weights = var_weights_file,
                 basename = sub(basename(var_weights_file), ".var_weights.tsv", ""),
-                base_mem = base_memory,
+                base_mem = GetBaseMemoryFromVcf.gigabytes,
                 docker_image = plink_docker_image
         }
     }
