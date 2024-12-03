@@ -636,7 +636,7 @@ task ConcatenateShards {
   }
 
   runtime {
-    preemptible:      3
+    preemptible:      1
     docker:           docker_image
     disks:            "local-disk ~{storage} HDD"
     ignoreExitStatus: true
