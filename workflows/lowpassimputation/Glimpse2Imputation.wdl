@@ -18,6 +18,7 @@ workflow Glimpse2Imputation {
 
         Boolean impute_reference_only_variants = false
         Boolean call_indels = false
+        Boolean keep_monomorphic_ref_sites = false
         Int? n_burnin
         Int? n_main
         Int? effective_population_size
@@ -73,6 +74,7 @@ workflow Glimpse2Imputation {
                 input_vcf = input_vcf,
                 input_vcf_index = input_vcf_index,
                 impute_reference_only_variants = impute_reference_only_variants,
+                keep_monomorphic_ref_sites = keep_monomorphic_ref_sites,
                 n_burnin = n_burnin,
                 n_main = n_main,
                 effective_population_size = effective_population_size,
@@ -135,6 +137,7 @@ task GlimpsePhase {
         File reference_chunk
 
         Boolean impute_reference_only_variants
+        Boolean keep_monomorphic_ref_sites
         Boolean call_indels
         Int? n_burnin
         Int? n_main
@@ -186,6 +189,7 @@ task GlimpsePhase {
         --output phase_output.bcf \
         --threads ~{cpu} \
         ~{if impute_reference_only_variants then "--impute-reference-only-variants" else ""} ~{if call_indels then "--call-indels" else ""} \
+        ~{if keep_monomorphic_ref_sites then "--keep-monomorphic-ref-sites" else ""} \
         ~{"--burnin " + n_burnin} ~{"--main " + n_main} \
         ~{"--ne " + effective_population_size} \
         ~{bam_file_list_input} \
