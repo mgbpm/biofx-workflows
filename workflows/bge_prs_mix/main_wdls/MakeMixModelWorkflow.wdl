@@ -2,18 +2,17 @@ version 1.0
 
 import "../tasks/PCATasks.wdl"
 import "../tasks/ScoringTasks.wdl"
-import "../subwdls/TrainAncestryAdjustmentModel.wdl"
+import "../subwdls/PRSTrainMixModelWorkflow.wdl"
 import "../tasks/HelperTasks.wdl"
     
-workflow MakeMixModel {
+workflow MakeMixModelWorkflow {
     input {
+        String condition_name
         Array[File] var_weights
         File pca_variants
         File reference_vcf
         File query_file
         File score_weights
-        Int scoring_mem = 8
-        String condition_name
         # Docker images
         String python_docker_image = "python:3.9.10"
         String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
@@ -25,8 +24,8 @@ workflow MakeMixModel {
     scatter (i in range(length(var_weights))) {
         call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
             input:
-            tsv = var_weights[i],
-            skipheader = true
+                tsv = var_weights[i],
+                skipheader = true
         }
     }
     call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
@@ -70,14 +69,14 @@ workflow MakeMixModel {
     if (!isvcf) {
         call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
             input:
-                tsv    = query_file,
+                tsv = query_file,
                 skipheader = false
         }
     }
 
     File query_variants = select_first([ExtractQueryVariants.ids, RenameChromosomesInQueryVariants.renamed])
 
-    call TrimPCAVariants {
+    call HelperTasks.TrimPCAVariants {
         input:
             pca_variants = RenameChromosomesInPcaVariants.renamed,
             reference = ExtractReferenceVariants.ids,
@@ -94,7 +93,7 @@ workflow MakeMixModel {
             vcf = select_first([SubsetReferenceVcf.result, RenameChromosomesInReferenceVcf.renamed]),
             pruning_sites = kept_pca_variants,
             basename = reference_basename,
-            mem = GetBaseMemoryForReference.gigabytes,
+            mem_size = GetBaseMemoryForReference.gigabytes,
             subset_to_sites = query_variants
     }
     call PCATasks.PerformPCA {
@@ -103,20 +102,18 @@ workflow MakeMixModel {
             bim = ReferenceBed.bim,
             fam = ReferenceBed.fam,
             basename = reference_basename,
-            mem = GetMemoryForReference.gigabytes
+            mem_size = GetMemoryForReference.gigabytes
     }
 
     # Train ancestry adjustment model
-    call TrainPRSMixModelWorkflow.TrainPRSMixModelWorkflow as TrainModel {
+    call PRSTrainMixModelWorkflow.PRSTrainMixModelWorkflow as TrainModel {
         input:
             condition_name = condition_name,
             var_weights = RenameChromosomesInWeights.renamed,
             scoring_sites = query_variants,
             population_vcf = RenameChromosomesInReferenceVcf.renamed,
-            scoring_mem = scoring_mem,
             score_weights = score_weights,
             population_pcs = PerformPCA.pcs,
-            named_weight_set = named_weight_set,
             python_docker_image = python_docker_image,
             plink_docker_image = plink_docker_image,
             ubuntu_docker_image = ubuntu_docker_image,
@@ -125,6 +122,7 @@ workflow MakeMixModel {
 
     # Bundle model outputs in JSON
     Array[String] renamed_weights = RenameChromosomesInWeights.renamed
+
     call BundleAdjustmentModel {
         # Convert files to string types so a VM is not used
         input:
@@ -144,8 +142,10 @@ workflow MakeMixModel {
     }
 
     output {
+        # Model outputs
         File adjustment_model_manifest = BundleAdjustmentModel.manifest
         Boolean fit_converged = TrainModel.fit_converged
+        # Score outputs
         Array[File] raw_reference_scores = TrainModel.raw_population_scores
         File mixed_reference_scores = TrainModel.mixed_population_scores
         File adjusted_reference_scores = TrainModel.adjusted_population_scores

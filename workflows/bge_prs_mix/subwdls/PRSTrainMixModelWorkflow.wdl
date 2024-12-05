@@ -8,7 +8,7 @@ import "../../../steps/Utilities.wdl"
 import "PRSRawScoreWorkflow.wdl"
 import "PRSMixScoreWorkflow.wdl"
 
-workflow TrainPRSMixModelWorkflow {
+workflow PRSTrainMixModelWorkflow {
     input {
         # Scoring inputs
         String condition_name

@@ -272,7 +272,7 @@ task SubsetVcf {
     }
 }
 
-task MaybeTrimPcaVariants {
+task TrimPCAVariants {
     input {
         File pca_variants
         File reference

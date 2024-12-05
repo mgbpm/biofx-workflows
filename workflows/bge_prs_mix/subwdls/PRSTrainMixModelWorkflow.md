@@ -1,4 +1,4 @@
-# PRS Mix Train Model Workflow
+# PRS Train Mix Model Workflow
 
 ## Input Parameters
 
