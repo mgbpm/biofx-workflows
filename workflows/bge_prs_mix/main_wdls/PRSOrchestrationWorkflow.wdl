@@ -1,10 +1,10 @@
 version 1.0
 
-import "../../steps/Utilities.wdl"
-import "../lowpassimputation/Glimpse2Imputation.wdl"
-import "PRSRawScoreWorkflow.wdl"
-import "PRSMixScoreWorkflow.wdl"
-import "PRSPCAWorkflow.wdl"
+import "../../../steps/Utilities.wdl"
+import "../../lowpassimputation/Glimpse2Imputation.wdl"
+import "../subwdls/PRSRawScoreWorkflow.wdl"
+import "../subwdls/PRSMixScoreWorkflow.wdl"
+import "../subwdls/PRSPCAWorkflow.wdl"
 
 workflow PRSOrchestrationWorkflow {
     input {

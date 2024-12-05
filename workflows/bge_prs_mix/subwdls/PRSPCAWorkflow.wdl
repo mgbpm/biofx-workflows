@@ -3,7 +3,7 @@ version 1.0
 import "../tasks/ScoringTasks.wdl"
 import "../tasks/PCATasks.wdl"
 import "../tasks/HelperTasks.wdl"
-import "../../steps/Utilities.wdl"
+import "../../../steps/Utilities.wdl"
 
 workflow PRSPCAWorkflow {
     input {

@@ -4,7 +4,7 @@ version 1.0
 
 import "../tasks/ScoringTasks.wdl"
 import "../tasks/PRSStructs.wdl"
-import "../../steps/Utilities.wdl"
+import "../../../steps/Utilities.wdl"
 import "PRSRawScoreWorkflow.wdl"
 import "PRSMixScoreWorkflow.wdl"
 

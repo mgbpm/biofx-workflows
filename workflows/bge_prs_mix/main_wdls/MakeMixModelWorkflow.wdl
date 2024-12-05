@@ -1,9 +1,9 @@
 version 1.0
 
-import "./tasks/PCATasks.wdl"
-import "./tasks/ScoringTasks.wdl"
-import "./subwdls/TrainAncestryAdjustmentModel.wdl"
-import "./tasks/HelperTasks.wdl"
+import "../tasks/PCATasks.wdl"
+import "../tasks/ScoringTasks.wdl"
+import "../subwdls/TrainAncestryAdjustmentModel.wdl"
+import "../tasks/HelperTasks.wdl"
     
 workflow MakeMixModel {
     input {
