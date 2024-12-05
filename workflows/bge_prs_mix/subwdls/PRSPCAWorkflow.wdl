@@ -65,7 +65,7 @@ workflow PRSPCAWorkflow {
             input:
                 fitted_model_params = model_data.parameters,
                 pcs = ProjectPCA.projections,
-                scores = prs_raw_scores,
+                scores = select_first([prs_raw_scores]),
                 docker_image = tidyverse_docker_image
         }
     }
