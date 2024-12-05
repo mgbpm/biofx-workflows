@@ -5,6 +5,7 @@ import "../../lowpassimputation/Glimpse2Imputation.wdl"
 import "../subwdls/PRSRawScoreWorkflow.wdl"
 import "../subwdls/PRSMixScoreWorkflow.wdl"
 import "../subwdls/PRSPCAWorkflow.wdl"
+import "../tasks/PRSStructs.wdl"
 
 workflow PRSOrchestrationWorkflow {
     input {
@@ -97,6 +98,8 @@ workflow PRSOrchestrationWorkflow {
         scatter (i in range(length(condition_model_manifests))) {
             String condition_name = sub(basename(condition_model_manifests[i]), "_[[0-9]]+\\.json$", "")
 
+            AdjustmentModelData model_data = read_json(condition_model_manifests[i])
+            
             # Get PRS raw scores for each condition
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
