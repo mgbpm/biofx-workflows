@@ -45,7 +45,7 @@ struct AdjustmentModelData {
     File  principal_components
     File  loadings
     File  meansd
-    File  var_weights
+    Array[File]  var_weights
     File? score_weights
     File  pca_variants
     File  original_pca_variants

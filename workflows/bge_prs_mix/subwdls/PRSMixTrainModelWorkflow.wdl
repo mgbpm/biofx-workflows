@@ -15,7 +15,6 @@ workflow TrainPRSMixModelWorkflow {
         Array[File] var_weights
         File scoring_sites
         File population_vcf
-        Int scoring_mem = 8
         File score_weights
         # Training model inputs
         File population_pcs
@@ -26,13 +25,24 @@ workflow TrainPRSMixModelWorkflow {
         String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
     }
 
+    AdjustmentModelData pre_model_data = object {
+        parameters: "",
+        training_variants: scoring_sites,
+        principal_components: "",
+        loadings: "",
+        meansd: "",
+        var_weights: var_weights,
+        score_weights: score_weights
+        pca_variants: "",
+        original_pca_variants: "",
+        base_memory: 10
+    }
+
     # Score population VCF with each var weights file
     call PRSRawScoreWorkflow.PRSRawScoreWorkflow as ScorePopulationVCF {
         input:
-            var_weights = var_weights,
-            scoring_sites = scoring_sites,
             input_vcf = population_vcf,
-            scoring_mem = scoring_mem,
+            adjustment_model_manifest = pre_model_data,
             python_docker_image = python_docker_image,
             plink_docker_image = plink_docker_image
     }
@@ -46,6 +56,7 @@ workflow TrainPRSMixModelWorkflow {
             ubuntu_docker_image = ubuntu_docker_image
     }
 
+    # Train the ancestry adjustment model
     call ScoringTasks.TrainAncestryModel {
         input:
             population_pcs = population_pcs,
@@ -55,11 +66,13 @@ workflow TrainPRSMixModelWorkflow {
     }
 
     output {
+        # Model outputs
         File fitted_params = TrainAncestryModel.fitted_params
         Array[File] sites_used_in_scoring = ScorePopulationVCF.sites_scored
-        Array[File] raw_population_scores = ScorePopulationVCF.prs_raw_scores
-        File mixed_population_scores = GetMixScore.prs_mix_raw_score
         File adjusted_population_scores = TrainAncestryModel.adjusted_population_scores
         Boolean fit_converged = TrainAncestryModel.fit_converged
+        # Scoring outputs
+        Array[File] raw_population_scores = ScorePopulationVCF.prs_raw_scores
+        File mixed_population_scores = GetMixScore.prs_mix_raw_score
     }
 }

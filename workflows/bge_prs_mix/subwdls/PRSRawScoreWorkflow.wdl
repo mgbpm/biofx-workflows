@@ -2,6 +2,7 @@ version 1.0
 
 import "../tasks/HelperTasks.wdl"
 import "../tasks/ScoringTasks.wdl"
+import "../tasks/PRSStructs.wdl"
 
 workflow PRSRawScoreWorkflow {
     input {
@@ -55,9 +56,6 @@ workflow PRSRawScoreWorkflow {
     }
 
     output {
-        # Chromosme encoding
-        Array[String] chromosome_encoding = ChrEncoding.chromosome_encoding
-        # PRS outputs
         Array[File] prs_raw_scores = ScoreVcf.score
         Array[File] prs_raw_scores_log = ScoreVcf.log
         Array[File] prs_sites_scored = ScoreVcf.sites_scored

@@ -4,6 +4,7 @@ import "../tasks/ScoringTasks.wdl"
 import "../tasks/PCATasks.wdl"
 import "../tasks/HelperTasks.wdl"
 import "../../../steps/Utilities.wdl"
+import "../tasks/PRSStructs.wdl"
 
 workflow PRSPCAWorkflow {
     input {
@@ -36,6 +37,8 @@ workflow PRSPCAWorkflow {
             docker_image = plink_docker_image,
             mem_size = model_data.base_memory
     }
+
+    # Run PCA with query VCF
     call PCATasks.ProjectArray as ProjectPCA {
         input:
             bim = QueryBed.bim,
@@ -47,6 +50,8 @@ workflow PRSPCAWorkflow {
             docker_image = flash_pca_docker_image,
             mem = model_data.base_memory
     }
+
+    # Plot PCA
     call PCATasks.MakePCAPlot as PCAPlot {
         input:
             population_pcs = model_data.principal_components,
@@ -54,6 +59,7 @@ workflow PRSPCAWorkflow {
             docker_image = tidyverse_docker_image
     }
 
+    # Adjust PRS raw scores with model and PCA
     if (defined(prs_raw_scores)) {
         call ScoringTasks.AdjustScores as GetAdjustedScores {
             input:
