@@ -51,15 +51,18 @@ workflow MakeMixModelWorkflow {
 
     # Clean up query input
     Boolean isvcf = basename(query_file) != basename(query_file, ".vcf.gz")
+    
     if (isvcf) {
         call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
             input:
                 vcf = query_file
         }
+
         call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
             input:
                 vcf = query_file
         }
+
         call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
             input:
                 vcf = RenameChromosomesInQueryVcf.renamed,
@@ -90,10 +93,10 @@ workflow MakeMixModelWorkflow {
     # Perform PCA
     call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
         input:
-            vcf = select_first([SubsetReferenceVcf.result, RenameChromosomesInReferenceVcf.renamed]),
+            vcf = RenameChromosomesInReferenceVcf.renamed,
             pruning_sites = kept_pca_variants,
             basename = reference_basename,
-            mem_size = GetBaseMemoryForReference.gigabytes,
+            mem_size = GetMemoryForReference.gigabytes,
             subset_to_sites = query_variants
     }
     call PCATasks.PerformPCA {
@@ -111,10 +114,10 @@ workflow MakeMixModelWorkflow {
             condition_name = condition_name,
             var_weights = RenameChromosomesInWeights.renamed,
             scoring_sites = query_variants,
-            population_vcf = RenameChromosomesInReferenceVcf.renamed,
+            reference_vcf = RenameChromosomesInReferenceVcf.renamed,
             score_weights = score_weights,
+            scoring_mem = GetMemoryForReference.gigabytes,
             population_pcs = PerformPCA.pcs,
-            python_docker_image = python_docker_image,
             plink_docker_image = plink_docker_image,
             ubuntu_docker_image = ubuntu_docker_image,
             tidyverse_docker_image = tidyverse_docker_image
