@@ -132,7 +132,7 @@ workflow PRSOrchestrationWorkflow {
         # Categorize each condition's score into bins; report percentile & bin
         call SummarizeScores {
             input:
-                scores = AdjustPRSScores.adjusted_scores,
+                scores = PerformPCA.adjusted_scores,
                 condition_yaml = condition_yaml,
                 docker_image = python_docker_image
         }
