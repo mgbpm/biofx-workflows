@@ -99,7 +99,7 @@ workflow PRSOrchestrationWorkflow {
             String condition_name = sub(basename(condition_model_manifests[i]), "_[[0-9]]+\\.json$", "")
 
             AdjustmentModelData model_data = read_json(condition_model_manifests[i])
-            
+
             # Get PRS raw scores for each condition
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
@@ -114,7 +114,7 @@ workflow PRSOrchestrationWorkflow {
                 input:
                     condition_name = condition_name,
                     raw_scores = PRSRawScores.prs_raw_scores,
-                    score_weights = model_data.score_weights,
+                    score_weights = select_first([model_data.score_weights]),
                     ubuntu_docker_image = ubuntu_docker_image
             }
 
@@ -135,7 +135,7 @@ workflow PRSOrchestrationWorkflow {
         # Categorize each condition's score into bins; report percentile & bin
         call SummarizeScores {
             input:
-                scores = PerformPCA.adjusted_scores,
+                scores = select_first([PerformPCA.adjusted_scores]),
                 condition_yaml = condition_yaml,
                 docker_image = python_docker_image
         }
@@ -152,7 +152,7 @@ workflow PRSOrchestrationWorkflow {
         # PRS Outputs
         Array[Array[File]]? prs_raw_scores = PRSRawScores.prs_raw_scores
         Array[File]? prs_mix_raw_score = PRSMixScores.prs_mix_raw_score
-        Array[File]? prs_adjusted_score = PerformPCA.adjusted_scores
+        Array[File?]? prs_adjusted_score = PerformPCA.adjusted_scores
         Array[File]? pc_projection = PerformPCA.pc_projection
         Array[File]? pc_plot = PerformPCA.pc_plot
 
@@ -163,7 +163,7 @@ workflow PRSOrchestrationWorkflow {
 
 task SummarizeScores {
     input {
-        Array[File] scores
+        Array[File?] scores
         File condition_yaml
         String docker_image
         Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
