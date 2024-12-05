@@ -58,6 +58,6 @@ workflow PRSRawScoreWorkflow {
     output {
         Array[File] prs_raw_scores = ScoreVcf.score
         Array[File] prs_raw_scores_log = ScoreVcf.log
-        Array[File] prs_sites_scored = ScoreVcf.sites_scored
+        Array[File] sites_scored = ScoreVcf.sites_scored
     }
 }

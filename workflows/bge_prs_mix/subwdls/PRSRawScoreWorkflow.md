@@ -15,4 +15,4 @@
 | :--- | :--- | :--- | :--- |
 | Array[File] | prs_raw_scores | Always | Raw scores for each sample in the input VCF |
 | Array[File] | prs_raw_scores_log | Always | Log file for finding raw PRS scores |
-| Array[File] | prs_sites_scored | Always | List of sites found for PRS scoring |
+| Array[File] | sites_scored | Always | List of sites found for PRS scoring |
