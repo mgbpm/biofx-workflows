@@ -13,10 +13,7 @@ workflow MakeMixModelWorkflow {
         File reference_vcf
         File query_file
         File score_weights
-        # Docker images
-        String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
         String ubuntu_docker_image = "ubuntu:21.10"
-        String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
     }
 
     # Clean up weights, pca, and reference inputs
@@ -82,7 +79,8 @@ workflow MakeMixModelWorkflow {
         input:
             pca_variants = RenameChromosomesInPcaVariants.renamed,
             reference = ExtractReferenceVariants.ids,
-            query = query_variants
+            query = query_variants,
+            docker_image = ubuntu_docker_image
     }
 
     File kept_pca_variants = select_first([TrimPCAVariants.kept_pca_variants, RenameChromosomesInPcaVariants.renamed])
@@ -116,10 +114,7 @@ workflow MakeMixModelWorkflow {
             reference_vcf = RenameChromosomesInReferenceVcf.renamed,
             score_weights = score_weights,
             scoring_mem = GetMemoryForReference.gigabytes,
-            population_pcs = PerformPCA.pcs,
-            plink_docker_image = plink_docker_image,
-            ubuntu_docker_image = ubuntu_docker_image,
-            tidyverse_docker_image = tidyverse_docker_image
+            population_pcs = PerformPCA.pcs
     }
 
     # Bundle model outputs in JSON
@@ -160,6 +155,7 @@ task TrimPCAVariants {
       File    reference
       File    query
       Boolean debug        = false
+      String docker_image
     }
   
     String        WORKDIR                 = "WORK"
@@ -416,7 +412,7 @@ task TrimPCAVariants {
     }
   
     runtime {
-      docker: "ubuntu:21.10"
+      docker: "~{docker_image}"
       disks : "local-disk ~{storage} HDD"
     }
 }

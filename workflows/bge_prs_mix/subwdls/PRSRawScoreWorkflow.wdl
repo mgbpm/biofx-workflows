@@ -6,12 +6,8 @@ import "../tasks/PRSStructs.wdl"
 
 workflow PRSRawScoreWorkflow {
     input {
-        # PRS inputs
         File input_vcf
         File adjustment_model_manifest
-        # Docker images
-        String python_docker_image = "python:3.9.10"
-        String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)

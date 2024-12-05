@@ -32,13 +32,7 @@ workflow PRSOrchestrationWorkflow {
         Array[File] condition_model_manifests
         File condition_yaml
         File pruning_sites_for_pca
-        String ubuntu_docker_image = "ubuntu:21.10"
-        String python_docker_image = "python:3.11"
-        String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-        String interaction_docker_image = "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
-        String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
-        String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
-
+        
         # DEBUGGING INPUTS
         Boolean run_glimpse = true
         File? query_vcf
@@ -104,9 +98,7 @@ workflow PRSOrchestrationWorkflow {
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = condition_model_manifests[i],
-                    python_docker_image = python_docker_image,
-                    plink_docker_image = plink_docker_image
+                    adjustment_model_manifest = condition_model_manifests[i]
             }
 
             # Get the PRS mix raw score for each condition
@@ -114,8 +106,7 @@ workflow PRSOrchestrationWorkflow {
                 input:
                     condition_name = condition_name,
                     raw_scores = PRSRawScores.prs_raw_scores,
-                    score_weights = select_first([model_data.score_weights]),
-                    ubuntu_docker_image = ubuntu_docker_image
+                    score_weights = select_first([model_data.score_weights])
             }
 
             # Perform PCA with population model
@@ -124,11 +115,7 @@ workflow PRSOrchestrationWorkflow {
                     condition_name = condition_name,
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
                     adjustment_model_manifest = condition_model_manifests[i],
-                    prs_raw_scores = PRSMixScores.prs_mix_raw_score,
-                    python_docker_image = python_docker_image,
-                    plink_docker_image = plink_docker_image,
-                    flash_pca_docker_image = flash_pca_docker_image,
-                    tidyverse_docker_image = tidyverse_docker_image
+                    prs_raw_scores = PRSMixScores.prs_mix_raw_score
             }
         }
 
@@ -136,8 +123,7 @@ workflow PRSOrchestrationWorkflow {
         call SummarizeScores {
             input:
                 scores = select_first([PerformPCA.adjusted_scores]),
-                condition_yaml = condition_yaml,
-                docker_image = python_docker_image
+                condition_yaml = condition_yaml
         }
     }
 
@@ -165,7 +151,7 @@ task SummarizeScores {
     input {
         Array[File?] scores
         File condition_yaml
-        String docker_image
+        String docker_image = "python:3.11"
         Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
         Int mem_size = 2
         Int preemptible = 1
@@ -232,7 +218,7 @@ with open("'$c'", "r") as scores_file:
     >>>
 
     runtime {
-          docker: "~{docker_image}"
+        docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD"
         memory: mem_size + "GB"
         preemptible: preemptible

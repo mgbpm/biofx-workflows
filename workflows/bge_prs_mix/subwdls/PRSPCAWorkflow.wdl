@@ -8,16 +8,10 @@ import "../tasks/PRSStructs.wdl"
 
 workflow PRSPCAWorkflow {
     input {
-        # PCA and adjustment inputs
         String condition_name
         File input_vcf
         File adjustment_model_manifest
         File? prs_raw_scores
-        # Docker images
-        String python_docker_image = "python:3.9.10"
-        String plink_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-        String flash_pca_docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
-        String tidyverse_docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)
@@ -49,12 +43,10 @@ workflow PRSPCAWorkflow {
     }
 
     # Plot PCA
-    call PCATasks.MakePCAPlot as PCAPlot {
+    call ScoringTasks.MakePCAPlot as PCAPlot {
         input:
             population_pcs = model_data.principal_components,
-            target_pcs = ProjectPCA.projections,
-            output_basename = condition_name,
-            docker_image = tidyverse_docker_image
+            target_pcs = ProjectPCA.projections
     }
 
     # Adjust PRS raw scores with model and PCA
