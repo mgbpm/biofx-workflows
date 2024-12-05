@@ -10,7 +10,6 @@
 | File | reference_vcf | Yes | Reference VCF of population for creating/training model | |
 | File | query_file | Yes | VCF or TSV to score | |
 | File | score_weights | Yes | Score weights for each PGS ID | |
-| String | python_docker_image | No | Python Docker image | "python:3.9.10" |
 | String | plink_docker_image | No | Docker image for Plink 2 | us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124 |
 | String | ubuntu_docker_image | No | Ubunutu Docker image | "ubuntu:21.10" |
 | String | tidyverse_docker_image | No | Docker image for R tidyverse package | rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1 |
