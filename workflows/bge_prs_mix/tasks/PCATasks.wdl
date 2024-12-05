@@ -192,11 +192,11 @@ task ArrayVcfToPlinkDataset {
         Boolean use_ref_alt_for_ids = false
         String docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
         Int disk_size = 3 * ceil(size(vcf, "GB")) + 20
-        Int mem = 8
+        Int mem_size = 8
         Int preemptible = 1
     }
 
-    Int base_memory = if mem < 8 then 8 else mem
+    Int base_memory = if mem_size < 8 then 8 else mem_size
     Int plink_mem = base_memory * 1000
     Int runtime_memory = base_memory + 2
 

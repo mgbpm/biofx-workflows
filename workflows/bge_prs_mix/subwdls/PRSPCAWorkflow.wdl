@@ -48,7 +48,7 @@ workflow PRSPCAWorkflow {
             pc_meansd = model_data.meansd,
             basename = condition_name + "_pca",
             docker_image = flash_pca_docker_image,
-            mem = model_data.base_memory
+            mem_size = model_data.base_memory
     }
 
     # Plot PCA
