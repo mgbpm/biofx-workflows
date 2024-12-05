@@ -149,7 +149,7 @@ workflow PRSOrchestrationWorkflow {
         # PRS Outputs
         Array[Array[File]]? prs_raw_scores = PRSRawScores.prs_raw_scores
         Array[File]? prs_mix_raw_score = PRSMixScores.prs_mix_raw_score
-        Array[File]? prs_adjusted_score = AdjustPRSScores.adjusted_scores
+        Array[File]? prs_adjusted_score = PerformPCA.adjusted_scores
         Array[File]? pc_projection = PerformPCA.pc_projection
         Array[File]? pc_plot = PerformPCA.pc_plot
 
