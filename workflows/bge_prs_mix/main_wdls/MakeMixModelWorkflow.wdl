@@ -3,7 +3,7 @@ version 1.0
 import "../tasks/PCATasks.wdl"
 import "../tasks/ScoringTasks.wdl"
 import "../subwdls/PRSTrainMixModelWorkflow.wdl"
-import "../tasks/HelperTasks.wdl"
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/HelperTasks.wdl" as HelperTasks
     
 workflow MakeMixModelWorkflow {
     input {
