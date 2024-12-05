@@ -1,7 +1,7 @@
 version 1.0
 
-import "../tasks/HelperTasks.wdl"
-import "../tasks/ScoringTasks.wdl"
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/HelperTasks.wdl" as HelperTasks
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
 import "../tasks/PRSStructs.wdl"
 
 workflow PRSRawScoreWorkflow {
@@ -46,12 +46,11 @@ workflow PRSRawScoreWorkflow {
         call ScoringTasks.ScoreVcf {
             input:
                 vcf = RenameVcf.renamed,
-                chromosome_encoding = "MT",
-                sites = model_data.training_variants,
-                weights = var_weights_file,
                 basename = sub(basename(var_weights_file), ".var_weights.tsv", ""),
+                weights = var_weights_file,
                 base_mem = GetBaseMemoryFromVcf.gigabytes,
-                docker_image = plink_docker_image
+                sites = model_data.training_variants,
+                chromosome_encoding = "MT"
         }
     }
 

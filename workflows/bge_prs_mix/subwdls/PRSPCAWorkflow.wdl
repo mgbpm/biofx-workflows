@@ -1,8 +1,8 @@
 version 1.0
 
-import "../tasks/ScoringTasks.wdl"
-import "../tasks/PCATasks.wdl"
-import "../tasks/HelperTasks.wdl"
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/PCATasks.wdl" as PCATasks
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/HelperTasks.wdl" as HelperTasks
 import "../../../steps/Utilities.wdl"
 import "../tasks/PRSStructs.wdl"
 
@@ -32,10 +32,8 @@ workflow PRSPCAWorkflow {
         input:
             vcf = RenameVcf.renamed,
             pruning_sites = model_data.pca_variants,
-            chromosome_encoding = "MT",
             basename = condition_name,
-            docker_image = plink_docker_image,
-            mem_size = model_data.base_memory
+            mem = model_data.base_memory
     }
 
     # Run PCA with query VCF
@@ -47,8 +45,7 @@ workflow PRSPCAWorkflow {
             pc_loadings = model_data.loadings,
             pc_meansd = model_data.meansd,
             basename = condition_name + "_pca",
-            docker_image = flash_pca_docker_image,
-            mem_size = model_data.base_memory
+            mem = model_data.base_memory
     }
 
     # Plot PCA
@@ -66,9 +63,7 @@ workflow PRSPCAWorkflow {
             input:
                 fitted_model_params = model_data.parameters,
                 pcs = ProjectPCA.projections,
-                scores = select_first([prs_raw_scores]),
-                output_basename = condition_name,
-                docker_image = tidyverse_docker_image
+                scores = select_first([prs_raw_scores])
         }
     }
     

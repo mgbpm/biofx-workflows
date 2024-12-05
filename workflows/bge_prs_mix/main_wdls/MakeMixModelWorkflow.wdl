@@ -1,7 +1,7 @@
 version 1.0
 
-import "../tasks/PCATasks.wdl"
-import "../tasks/ScoringTasks.wdl"
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/PCATasks.wdl" as PCATasks
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
 import "../subwdls/PRSTrainMixModelWorkflow.wdl"
 import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/HelperTasks.wdl" as HelperTasks
     
@@ -94,9 +94,9 @@ workflow MakeMixModelWorkflow {
         input:
             vcf = RenameChromosomesInReferenceVcf.renamed,
             pruning_sites = kept_pca_variants,
+            subset_to_sites = query_variants,
             basename = reference_basename,
-            mem_size = GetMemoryForReference.gigabytes,
-            subset_to_sites = query_variants
+            mem = GetMemoryForReference.gigabytes
     }
     call PCATasks.PerformPCA {
         input:
@@ -104,7 +104,7 @@ workflow MakeMixModelWorkflow {
             bim = ReferenceBed.bim,
             fam = ReferenceBed.fam,
             basename = reference_basename,
-            mem_size = GetMemoryForReference.gigabytes
+            mem = GetMemoryForReference.gigabytes
     }
 
     # Train ancestry adjustment model

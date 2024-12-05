@@ -2,7 +2,7 @@ version 1.0
 
 # Adapted from commit faa824e0322e2ab455ef1cb88bc82c47d753338c of https://github.com/broadinstitute/palantir-workflows
 
-import "../tasks/ScoringTasks.wdl"
+import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
 import "PRSMixScoreWorkflow.wdl"
 
 workflow PRSTrainMixModelWorkflow {
@@ -27,12 +27,11 @@ workflow PRSTrainMixModelWorkflow {
         call ScoringTasks.ScoreVcf as ScorePopulationVCF {
             input:
                 vcf = reference_vcf,
-                chromosome_encoding = "MT",
-                sites = scoring_sites,
-                weights = weights_file,
                 basename = sub(basename(weights_file), ".var_weights.tsv", ""),
+                weights = weights_file,
                 base_mem = scoring_mem,
-                docker_image = plink_docker_image
+                sites = scoring_sites,
+                chromosome_encoding = "MT"
         }
     }
 
