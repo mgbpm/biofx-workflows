@@ -56,6 +56,7 @@ workflow PRSPCAWorkflow {
         input:
             population_pcs = model_data.principal_components,
             target_pcs = ProjectPCA.projections,
+            output_basename = condition_name,
             docker_image = tidyverse_docker_image
     }
 
@@ -66,6 +67,7 @@ workflow PRSPCAWorkflow {
                 fitted_model_params = model_data.parameters,
                 pcs = ProjectPCA.projections,
                 scores = select_first([prs_raw_scores]),
+                output_basename = condition_name,
                 docker_image = tidyverse_docker_image
         }
     }
