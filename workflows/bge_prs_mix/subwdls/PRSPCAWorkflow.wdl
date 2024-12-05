@@ -45,7 +45,7 @@ workflow PRSPCAWorkflow {
             bed = QueryBed.bed,
             fam = QueryBed.fam,
             pc_loadings = model_data.loadings,
-            pc_meansd = modle_data.meansd,
+            pc_meansd = model_data.meansd,
             basename = condition_name + "_pca",
             docker_image = flash_pca_docker_image,
             mem = model_data.base_memory
