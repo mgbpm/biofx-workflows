@@ -18,13 +18,14 @@ workflow Glimpse2Imputation {
 
         Boolean impute_reference_only_variants = false
         Boolean call_indels = false
+        Boolean keep_monomorphic_ref_sites = false
         Int? n_burnin
         Int? n_main
         Int? effective_population_size
 
         Boolean collect_qc_metrics = true
         
-        Int preemptible = 9
+        Int preemptible = 1
         String docker = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String docker_extract_num_sites_from_reference_chunk = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
         Int cpu_ligate = 4
@@ -49,12 +50,16 @@ workflow Glimpse2Imputation {
             }
         }
 
-        Int n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
+        Int nCrams = if defined(crams) then length(select_first([crams])) else 0
+
+        #Int n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
+        Int n_samples = select_first([CountSamples.nSamples, nCrams])
 
         call SelectResourceParameters {
             input:
                 n_rare = n_rare,
                 n_common = n_common,
+                #n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
                 n_samples = n_samples
         }
 
@@ -69,6 +74,7 @@ workflow Glimpse2Imputation {
                 input_vcf = input_vcf,
                 input_vcf_index = input_vcf_index,
                 impute_reference_only_variants = impute_reference_only_variants,
+                keep_monomorphic_ref_sites = keep_monomorphic_ref_sites,
                 n_burnin = n_burnin,
                 n_main = n_main,
                 effective_population_size = effective_population_size,
@@ -131,6 +137,7 @@ task GlimpsePhase {
         File reference_chunk
 
         Boolean impute_reference_only_variants
+        Boolean keep_monomorphic_ref_sites
         Boolean call_indels
         Int? n_burnin
         Int? n_main
@@ -139,7 +146,7 @@ task GlimpsePhase {
         Int mem_gb = 4
         Int cpu = 4
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
-        Int preemptible = 9
+        Int preemptible = 1
         Int max_retries = 3
         String docker
         File? monitoring_script
@@ -182,6 +189,7 @@ task GlimpsePhase {
         --output phase_output.bcf \
         --threads ~{cpu} \
         ~{if impute_reference_only_variants then "--impute-reference-only-variants" else ""} ~{if call_indels then "--call-indels" else ""} \
+        ~{if keep_monomorphic_ref_sites then "--keep-monomorphic-ref-sites" else ""} \
         ~{"--burnin " + n_burnin} ~{"--main " + n_main} \
         ~{"--ne " + effective_population_size} \
         ~{bam_file_list_input} \
@@ -238,10 +246,16 @@ task GlimpseLigate {
         
         /bin/GLIMPSE2_ligate --input ~{write_lines(imputed_chunks)} --output ligated.vcf.gz --threads ${NPROC}
 
+        # change ID and sort ligated.vcf
+        bcftools annotate --set-id '%CHROM:%POS:%REF:%ALT' ligated.vcf.gz -Ov | bcftools sort -Oz -o ligated_sorted.vcf.gz
+        mv ligated_sorted.vcf.gz ligated.vcf.gz
+
         # Set correct reference dictionary
-        bcftools view -h --no-version ligated.vcf.gz > old_header.vcf        
+        bcftools view -h --no-version ligated.vcf.gz > old_header.vcf
+        #bcftools view -h --no-version ligated_sorted.vcf.gz > old_header.vcf
         java -jar /picard.jar UpdateVcfSequenceDictionary -I old_header.vcf --SD ~{ref_dict} -O new_header.vcf        
         bcftools reheader -h new_header.vcf -o ~{output_basename}.imputed.vcf.gz ligated.vcf.gz
+        #bcftools reheader -h new_header.vcf -o ~{output_basename}.imputed.vcf.gz ligated_sorted.vcf.gz
         tabix ~{output_basename}.imputed.vcf.gz
     >>>
 
