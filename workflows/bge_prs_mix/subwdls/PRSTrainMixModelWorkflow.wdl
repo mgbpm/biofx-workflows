@@ -23,7 +23,7 @@ workflow PRSTrainMixModelWorkflow {
         call ScoringTasks.ScoreVcf as ScorePopulationVCF {
             input:
                 vcf = reference_vcf,
-                basename = sub(basename(weights_file), ".var_weights.tsv", ""),
+                basename = sub(basename(weights_file)),
                 weights = weights_file,
                 base_mem = scoring_mem,
                 sites = scoring_sites,

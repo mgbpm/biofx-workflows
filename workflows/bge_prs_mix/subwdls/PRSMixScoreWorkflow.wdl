@@ -45,7 +45,7 @@ task CalculateMixScore {
         sed '1d;' ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
 
         # Set up score file headers
-        printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}_prs_mix_score.sscore"
+        printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}.prs_mix_score.sscore"
 
         while read line; do
             # Initialize sum of sample's raw scores
@@ -70,7 +70,7 @@ task CalculateMixScore {
     >>>
 
     runtime {
-          docker: "~{docker_image}"
+        docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD"
         memory: mem_size + "GB"
         preemptible: preemptible
