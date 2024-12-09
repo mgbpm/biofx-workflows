@@ -31,7 +31,6 @@ workflow PRSOrchestrationWorkflow {
         # PRS INPUTS
         Array[File] condition_model_manifests
         File condition_yaml
-        File pruning_sites_for_pca
         
         # DEBUGGING INPUTS
         Boolean run_glimpse = true
