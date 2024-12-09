@@ -125,7 +125,7 @@ workflow MakeMixModelWorkflow {
         input:
             model_data = object {
                 parameters : "" + TrainModel.fitted_params,
-                training_variants : "" + TrainModel.sites_used_in_scoring,
+                training_variants : "" + TrainModel.sites_used_in_scoring[0],
                 principal_components : "" + PerformPCA.pcs,
                 loadings : "" + PerformPCA.pc_loadings,
                 meansd : "" + PerformPCA.mean_sd,
