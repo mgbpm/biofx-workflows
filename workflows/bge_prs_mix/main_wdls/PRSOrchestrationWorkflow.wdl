@@ -121,6 +121,7 @@ workflow PRSOrchestrationWorkflow {
         # Categorize each condition's score into bins; report percentile & bin
         call SummarizeScores {
             input:
+                conditions = select_first([select_all(condition_name)]),
                 scores = select_first([select_all(PerformPCA.adjusted_scores)]),
                 condition_yaml = condition_yaml
         }
@@ -148,9 +149,10 @@ workflow PRSOrchestrationWorkflow {
 
 task SummarizeScores {
     input {
+        Array[String] conditions
         Array[File] scores
         File condition_yaml
-        String docker_image = "python:3.11"
+        String docker_image
         Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
         Int mem_size = 2
         Int preemptible = 1
@@ -167,44 +169,67 @@ task SummarizeScores {
         score_file_array=('~{sep="' '" scores}')
         sed '1d;' ${score_file_array[0]} | awk '{ print $2 }' > WORK/sample_ids.txt
 
-        # For each scores file, summarize the file with the sample info, condition name, and bin count
-        for c in '~{sep="' '" scores}'; do
-            file_basename=$(basename $c .tsv)
+        # Make a list of scores files for python to access
+        for s in '~{sep="' '" scores}'; do
+            printf "${s}" >> WORK/scores_files_list.txt
+        done
 
-            python3 -c '
+        # Make a list of condition_names
+        for c in '~{sep="' '" conditions}'; do
+            printf "${c}" >> WORK/conditions_list.txt
+        done
+
+        # For each scores file, summarize the file with the sample info, condition name, and bin count
+        python3 -c '
 import yaml
 
 # Load configs for conditions/diseases
 with open("~{condition_yaml}", "r") as yml_file:
     conditions_configs = yaml.safe_load(yml_file)
 
-with open("'$c'", "r") as scores_file:
-    condition_summary_file = open("WORK/summaries/'$file_basename'.summary.csv", "w")
-    condition_summary_file.write("Sample,Condition,Risk,Bin_Count\n")
+# Load working files for lists
+with open("WORK/scores_files_list.txt", "r") as f:
+    score_files = f.readlines()
+    for i in score_files:
+        i = i.strip("\n")
 
-    header = scores_file.readline().strip("\n").replace(" ", "").split("\t")
-    line = scores_file.readline().strip("\n").replace(" ", "").split("\t")
+with open("WORK/conditions_list.txt", "r") as f:
+    conditions_list = f.readlines()
+    for i in conditions_list:
+        i = i.strip("\n")
 
-    while line != [""]:
-        sample_id = line[header.index("IID")]
+for i in range(len(score_files)):
+    current_condition = conditions_list[i]
+    print(current_condition)
 
-        percentile = str(line[header.index("percentile")])
-        bins = str(conditions_configs["'$file_basename'"]["bin_count"])
-        print(sample_id, percentile, bins)
+    with open(score_files[i], "r") as current_scores:
+        condition_summary_file = open("WORK/summaries/" + current_condition + ".summary.csv", "w")
+        condition_summary_file.write("Sample,Condition,Risk,Bin_Count\n")
 
-        condition_summary_file.write(
-                ",".join([
-                    sample_id,
-                    "'$file_basename'",
-                    percentile,
-                    bins
-                ]) + "\n"
-        )
-            
-        line = scores_file.readline().strip("\n").replace(" ", "").split("\t")
+        header = current_scores.readline().strip("\n").replace(" ", "").split("\t")
+        print(header)
+        line = current_scores.readline().strip("\n").replace(" ", "").split("\t")
+        print(line)
 
-    condition_summary_file.close()'
-        done
+        while line != [""]:
+            sample_id = line[header.index("IID")]
+
+            percentile = str(line[header.index("percentile")])
+            bins = str(conditions_configs[current_condition]["bin_count"])
+            print(sample_id, percentile, bins)
+
+            condition_summary_file.write(
+                    ",".join([
+                        sample_id,
+                        current_condition,
+                        percentile,
+                        bins
+                    ]) + "\n"
+            )
+
+            line = current_scores.readline().strip("\n").replace(" ", "").split("\t")
+
+        condition_summary_file.close()'
     
         # Get per sample summaries
         while read line; do
