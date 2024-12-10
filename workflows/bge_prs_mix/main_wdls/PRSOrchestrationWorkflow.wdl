@@ -152,7 +152,7 @@ task SummarizeScores {
         Array[String] conditions
         Array[File] scores
         File condition_yaml
-        String docker_image
+        String docker_image = "python:3.11"
         Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
         Int mem_size = 2
         Int preemptible = 1
