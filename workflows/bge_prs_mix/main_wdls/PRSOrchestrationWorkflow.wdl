@@ -121,7 +121,7 @@ workflow PRSOrchestrationWorkflow {
         # Categorize each condition's score into bins; report percentile & bin
         call SummarizeScores {
             input:
-                scores = select_first([PerformPCA.adjusted_scores]),
+                scores = select_first([select_all(PerformPCA.adjusted_scores)]),
                 condition_yaml = condition_yaml
         }
     }
@@ -148,7 +148,7 @@ workflow PRSOrchestrationWorkflow {
 
 task SummarizeScores {
     input {
-        Array[File?] scores
+        Array[File] scores
         File condition_yaml
         String docker_image = "python:3.11"
         Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
