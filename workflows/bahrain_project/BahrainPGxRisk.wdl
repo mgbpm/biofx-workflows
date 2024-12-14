@@ -24,10 +24,10 @@ workflow BahrainPGxRiskWorkflow {
         File dbsnp_vcf
         File dbsnp_vcf_index
         # PGx inputs
-        String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:dev-v3"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
-        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
+        String pgx_test_code = "lmPGX-pnlD_L"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar"
+        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # Risk alleles inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
@@ -107,8 +107,8 @@ workflow BahrainPGxRiskWorkflow {
     
     output {
         # PGx outputs
-        Array[File]? pgx_CPIC_report = RunPGx.CPIC_report
-        Array[File]? pgx_FDA_report = RunPGx.FDA_report
+        Array[File]? pgx_summary_report = RunPGx.summary_report
+        Array[File]? pgx_details_report = RunPGx.details_report
         Array[File]? pgx_genotype_xlsx = RunPGx.genotype_xlsx
         Array[File]? pgx_genotype_txt = RunPGx.genotype_txt
         # Risk outputs

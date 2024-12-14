@@ -18,10 +18,10 @@ The Bahrain PGx/Risk Workflow is a part of the screening pipeline. It can be run
 | File | ref_dict | No | The genome reference dict file; required for running PGx and Risk with the screening pipeline | |
 | File | dbsnp_vcf | No | dbSNP VCF file that matches the genome reference; required for running PGx and Risk with the screening pipeline | |
 | File | dbsnp_vcf_index | No | dbSNP VCF file index; required for running PGx and Risk with the screening pipeline | |
-| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlC_L" |
-| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:dev-v3" |
-| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar" |
-| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed" |
+| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlD_L" |
+| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008" |
+| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar" |
+| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed" |
 | String | risk_alleles_test_code | No | Test code that defines which risk alleles report to generate | "lmRISK-pnlB_L" |
 | String | risk_alleles_docker_image | No | The name of the Docker image to generate the risk alleles report | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129" |
 | File | risk_alleles_workflow_fileset | No | Tar file containing the risk alleles reference data to generate the report | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar" |
@@ -31,8 +31,8 @@ The Bahrain PGx/Risk Workflow is a part of the screening pipeline. It can be run
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| Array[File] | pgx_CPIC_report | When screening pipeline is run | CPIC pharmacogenomics report |
-| Array[File] | pgx_FDA_report | When screening pipeline is run | FDA pharmacogenomics report |
+| Array[File] | pgx_summary_report | When screening pipeline is run | Summary pharmacogenomics report |
+| Array[File] | pgx_details_report | When screening pipeline is run | Details pharmacogenomics report |
 | Array[File] | pgx_genotype_xlsx | When screening pipeline is run | Full list of pharmacogenomics genotypes in XLSX format |
 | Array[File] | pgx_genotype_txt | When screening pipeline is run | Full list of pharmacogenomics genotypes in TSV format |
 | Array[File] | risk_alleles_report | When screening pipeline is run | Risk alleles report |
