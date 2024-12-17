@@ -328,7 +328,7 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - Glimpse2SplitReference_*
-- name: VEP_development
+  - name: VEP_development
     subclass: WDL
     primaryDescriptorPath: /workflows/vep/vep_development.wdl
     filters:
