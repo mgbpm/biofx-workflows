@@ -137,7 +137,7 @@ task VEPCacheTask {
 
     runtime {
         docker: "~{docker_image}"
-        disk: "30 GB"
+        disk: "60 GB"
         memory: "5 GB"
     }
 
