@@ -90,6 +90,8 @@ task VEPCacheTask {
         String docker_image
     }
 
+    Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 10
+
     command <<<
         set -euxo pipefail
 
@@ -137,7 +139,7 @@ task VEPCacheTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk 100 SSD"
+        disks: "local-disk " + disk_size + " SSD"
         memory: "5 GB"
     }
 
