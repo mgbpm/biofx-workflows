@@ -93,6 +93,9 @@ task VEPCacheTask {
     command <<<
         set -euxo pipefail
 
+        # Ensure the destination directory exists
+        mkdir -p $HOME/.vep
+
         # Unpack the tar.gz file into $HOME/.vep
         tar xzf ~{cache_file} -C $HOME/.vep
 
@@ -134,6 +137,8 @@ task VEPCacheTask {
 
     runtime {
         docker: "~{docker_image}"
+        disk: "30 GB"
+        memory: "5 GB"
     }
 
     output {
