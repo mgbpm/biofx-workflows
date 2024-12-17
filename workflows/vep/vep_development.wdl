@@ -138,8 +138,9 @@ task VEPCacheTask {
     runtime {
         docker: "~{docker_image}"
         disk: "150 GB"
+        disk: "local-disk 50 SSD"
         memory: "5 GB"
-        bootDiskSizeGb: 50
+        bootDiskSizeGb: 10
     }
 
     output {
