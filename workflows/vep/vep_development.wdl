@@ -96,16 +96,19 @@ task VEPCacheTask {
         set -euxo pipefail
 
         # Ensure the destination directory exists
-        mkdir -p /tmp/.vep
+        mkdir -p /cromwell_root/.vep
 
         #investigate available disks
         df -h
 
-        # Unpack the tar.gz file into $HOME/.vep
-        tar xzf ~{cache_file} -C /tmp/.vep
+        # Unpack the tar.gz file into /cromwell_root/.vep
+        tar xzf ~{cache_file} -C /cromwell_root/.vep
+
+        #investigate available disks after unpacking
+        df -h
 
         /opt/vep/src/ensembl-vep/vep \
-            --cache --dir_cache /tmp/.vep --cache_version "~{cache_version}" \
+            --cache --dir_cache /cromwell_root/.vep --cache_version "~{cache_version}" \
             --input_file "~{input_vcf}" \
             --output_file "~{output_name}.txt" --tab --no_stats \
             --verbose \
