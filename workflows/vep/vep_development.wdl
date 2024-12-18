@@ -98,6 +98,9 @@ task VEPCacheTask {
         # Ensure the destination directory exists
         mkdir -p /tmp/.vep
 
+        #investigate available disks
+        df -h
+
         # Unpack the tar.gz file into $HOME/.vep
         tar xzf ~{cache_file} -C /tmp/.vep
 
