@@ -96,13 +96,13 @@ task VEPCacheTask {
         set -euxo pipefail
 
         # Ensure the destination directory exists
-        mkdir -p $HOME/.vep
+        mkdir -p /tmp/.vep
 
         # Unpack the tar.gz file into $HOME/.vep
-        tar xzf ~{cache_file} -C $HOME/.vep
+        tar xzf ~{cache_file} -C /tmp/.vep
 
         /opt/vep/src/ensembl-vep/vep \
-            --cache --dir_cache $HOME/.vep --cache_version "~{cache_version}" \
+            --cache --dir_cache /tmp/.vep --cache_version "~{cache_version}" \
             --input_file "~{input_vcf}" \
             --output_file "~{output_name}.txt" --tab --no_stats \
             --verbose \
