@@ -90,7 +90,7 @@ task VEPCacheTask {
         String docker_image
     }
 
-    Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 20 ) + 20
+    Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 5 ) + 20
 
     command <<<
         set -euxo pipefail
