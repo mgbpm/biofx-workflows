@@ -15,6 +15,11 @@ workflow VEPWorkflow {
         # Choose the annotation source
         Boolean run_database = false
         Boolean run_cache = true
+    
+        # Custom database file for VEP annotation
+        File custom_database?
+        # VEP command string with custom database load instructions
+        String custom_datatbase_config?
     }
 
     # If a local cache isn't available, run with the online database
@@ -40,8 +45,11 @@ workflow VEPWorkflow {
     }
 
     output {
-        File? database_output = VEPDatabaseTask.output_tab_file
-        File? cache_output = VEPCacheTask.output_tab_file
+        File? database_output = VEPDatabaseTask.output_vcf_file
+        File? cache_output = VEPCacheTask.output_vcf_file
+    }
+    meta {
+        allowNestedInputs: true
     }
 }
 
@@ -88,12 +96,26 @@ task VEPCacheTask {
         String cache_version
         String output_name
         String docker_image
+        # Specify an amount of additional disk space to add to the VM
+        Int extra_disk_gb?
+        # Specify the amount of RAM the VM uses
+        Int mem_gb?
+        # Number of threads to use while annotating
+        Int thread_count?
     }
 
-    Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20
+    Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20 + select_first([extra_disk_gb, 0])
+    Int machine_mem_gb = select_first([mem_gb, 20])
+    Int machine_cpus = select_first([thread_count, 20])
+
 
     command <<<
         set -euxo pipefail
+
+        # Assess allocated disk and memory resources
+        echo "Current memory requested: ~{machine_mem_gb} GB"
+        echo "Current disk requested: ~{disk_size} GB"
+        echo "Current cpu count: ~{machine_cpus}"
 
         # Ensure the destination directory exists
         mkdir -p /cromwell_root/.vep
@@ -110,7 +132,7 @@ task VEPCacheTask {
         /opt/vep/src/ensembl-vep/vep \
             --cache --dir_cache /cromwell_root/.vep --cache_version "~{cache_version}" \
             --input_file "~{input_vcf}" \
-            --output_file "~{output_name}.txt" --tab --no_stats \
+            --output_file "~{output_name}.vcf.gz" --tab --no_stats \
             --verbose \
             --show_ref_allele \
             --symbol \
@@ -145,11 +167,12 @@ task VEPCacheTask {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " SSD"
-        memory: "5 GB"
+        disks: "local-disk " + disk_size + " SSD" 
+        memory: machine_mem_gb + " GB"
+        cpus: machine_cpus
     }
 
     output {
-        File output_tab_file = "~{output_name}.txt"
+        File output_vcf_file = "~{output_name}.vcf.gz"
     }
 }
