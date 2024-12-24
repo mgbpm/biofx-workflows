@@ -10,7 +10,7 @@ workflow PreparePrsMixInputs {
     String      workspace
     String      source
     String      target
-    # Int         nbatches  = 500
+    Int         nbatches  = 500
     Boolean     resuming  = false
   }
 
@@ -70,13 +70,13 @@ workflow PreparePrsMixInputs {
     }
   }
 
-  # call HelperTasks.MakeBatches {
-  #   input:
-  #       relpaths = ListShards.relpaths
-  #     , nbatches = nbatches
-  #     , exclude  = select_first([FetchSentinels.sentinels, []])
-  # }
-  #
+  call HelperTasks.MakeBatches {
+    input:
+        cases    = ListShards.relpaths
+      , nbatches = nbatches
+      , exclude  = select_first([FetchSentinels.sentinels, []])
+  }
+
   # scatter (batch in MakeBatches.batches) {
   #   call SubsetShards {
   #     input:

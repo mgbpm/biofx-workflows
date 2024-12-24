@@ -344,3 +344,102 @@ task ListShards {
     docker: docker_image
   }
 }
+
+task MakeBatches {
+  input {
+    File          cases
+    Int           nbatches
+    Array[String] exclude
+    Boolean       noshuffle    = false
+    Int?          seed
+  }
+
+  Boolean no_exclude = length(exclude) == 0
+
+  String OUTPUTDIR     = "OUTPUT"
+  String BATCHES       = OUTPUTDIR + "/BATCHES"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  mkdir --parents '~{OUTPUTDIR}'
+
+  python3 <<EOF
+  import sys
+  import os
+  import random
+  import json
+
+
+  def getcases():
+
+      ~{if no_exclude
+        then "# NB: the exclude variable will not be used in this execution"
+        else ""}
+      if ~{if no_exclude then "True" else "False"}:
+          exclude = None
+      else:
+          exclude = set(['~{sep="', '" exclude}'])
+
+      return [case for case in readlines('~{cases}')
+              ~{if no_exclude then "" else "if not case in exclude"}]
+
+
+  def batch(cases, nbatches):
+
+      ncases = len(cases)
+      min_stride, leftover = divmod(ncases, nbatches)
+      batches = []
+      offset = 0
+      while offset < ncases:
+          stride = min_stride
+          if leftover > 0:
+              stride += 1
+              leftover -= 1
+          elif stride == 0:
+              assert ncases < nbatches
+              break
+
+          batches.append(cases[offset:offset + stride])
+          offset += stride
+
+      return batches
+
+
+  def readlines(filepath):
+      with open(filepath) as reader:
+          return [rawline.rstrip('\n') for rawline in reader]
+
+
+  def main():
+
+      cases = getcases()
+
+      if ~{if noshuffle then "False" else "True"}:
+          ~{"random.seed(" + seed + ")"}
+          random.shuffle(cases)
+
+      batches = batch(cases, ~{nbatches})
+
+      with open('~{BATCHES}', 'w') as writer:
+          json.dump(batches, writer, indent=4)
+
+
+  # --------------------------------------------------------------------------
+
+  main()
+  EOF
+  >>>
+
+  output {
+    Array[Array[String]+]+ batches = read_json(BATCHES)
+  }
+
+  runtime {
+    docker: "python:3.9.10"
+  }
+}
