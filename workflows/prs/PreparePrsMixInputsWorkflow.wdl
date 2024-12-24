@@ -39,12 +39,13 @@ workflow PreparePrsMixInputs {
       , workspace = workspace
   }
 
-  # call GetReferenceRegions {
-  #   input:
-  #       weights      = RenameChromosomesInWeights.renamed
-  #     , pca_variants = RenameChromosomesInPcaVariants.renamed
-  # }
-  # 
+  call GetReferenceRegions {
+    input:
+        weights_files = RenameChromosomesInWeights.renamed
+      , pca_variants  = RenameChromosomesInPcaVariants.renamed
+      , footprint     = FootprintOfWeightsAndPCA.gigabytes
+  }
+  
   # call HelperTasks.ListShards {
   #   input:
   #       source       = source
@@ -215,110 +216,112 @@ task GetTotalSize {
   }
 }
 
-# task GetReferenceRegions {
-#   input {
-#     Array[File] weights_files
-#     File        pca_variants
-#   }
-# 
-#   String OUTPUTDIR = "OUTPUT"
-#   String REGIONS   = OUTPUTDIR + "/REGIONS"
-# 
-#   Int    storage   = 20 + ceil(size(weights, "GB") + size(pca_variants, "GB"))
-# 
-#   command <<<
-#   set -o pipefail
-#   set -o errexit
-#   set -o nounset
-#   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-#   # set -o xtrace
-# 
-#   # ---------------------------------------------------------------------------
-# 
-#   OUTPUTDIR='~{OUTPUTDIR}'
-#   WEIGHTS='~{weights}'     # weights file (with headers row)
-#   PCA='~{pca_variants}'    # pca_variants file (no header row)
-# 
-#   mkdir --verbose --parents "${OUTPUTDIR}"
-# 
-#   # ---------------------------------------------------------------------------
-# 
-#   (
-#     # The perl segment of the following pipeline prints the first line only if
-#     # it ends in a numeric expression (i.e. the file does not have a headers
-#     # row)
-#     cut --fields=1 "${WEIGHTS}"               \
-#       | perl -lne '
-#           BEGIN {
-#             $::WEIGHT = qr/
-#                \b-?
-#                (?:\d+|\d*\.\d+|\d+\.\d*)
-#                (?:[eE][+-]?\d+)?\b
-#             /x;
-#           }
-#           print if $. > 1 || /$::WEIGHT\s*$/' \
-# 
-#     cut --fields=1 "${PCA}"
-# 
-#   )                                           \
-#     | cut --fields=1,2 --delimiter=:          \
-#     | sort --unique                           \
-#     | tr : $'\t'                              \
-#     > '~{REGIONS}'
-#   >>>
-# 
-#   output {
-#     File regions = REGIONS
-#   }
-# 
-#   runtime {
-#     docker: "ubuntu:21.10"
-#     disks : "local-disk ~{storage} HDD"
-#   }
-# }
-# 
-# task FetchSentinels {
-#   input {
-#     String basedir
-#   }
-# 
-#   String SENTINELS = "output/SENTINELS"
-# 
-#   command <<<
-#   set -o errexit
-#   set -o pipefail
-#   set -o nounset
-#   export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-#   set -o xtrace
-# 
-#   typeset -p >&2
-#   rclone version >&2
-# 
-#   mkdir --verbose --parents "$( dirname '~{SENTINELS}' )"
-# 
-#   BASEDIR="$( mapurl.sh '~{basedir}' )"
-# 
-#   rclone             \
-#       lsf            \
-#       --recursive    \
-#       --files-only   \
-#       "${BASEDIR}"   \
-#     > '~{SENTINELS}'
-# 
-#   >>>
-# 
-#   output {
-#     Array[String] sentinels = read_lines(SENTINELS)
-#   }
-# 
-#   runtime {
-#     # FIXME: the image for this should a minimal image + rclone
-#     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
-#     preemptible: 5
-#   }
-# }
-# 
-# 
+task GetReferenceRegions {
+  input {
+    Array[File]+ weights_files
+    File         pca_variants
+    Int          footprint
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String REGIONS   = OUTPUTDIR + "/REGIONS"
+  Int    storage   = 20 + 2 * footprint
+
+  command <<<
+  set -o pipefail
+  set -o errexit
+  set -o nounset
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  # set -o xtrace
+
+  # ---------------------------------------------------------------------------
+
+  OUTPUTDIR='~{OUTPUTDIR}'
+  WEIGHTSFILES=( '~{sep="' '" weights_files}' )
+  PCA='~{pca_variants}'
+
+  mkdir --verbose --parents "${OUTPUTDIR}"
+
+  # ---------------------------------------------------------------------------
+
+  (
+    # The perl segment of the following pipeline prints the first line only if
+    # it ends in a numeric expression (i.e. the file does not have a headers
+    # row)
+    for WEIGHTS in "${WEIGHTSFILES[@]}"
+    do
+        cut --fields=1 "${WEIGHTS}"               \
+          | perl -lne '
+              BEGIN {
+                $::WEIGHT = qr/
+                   \b-?
+                   (?:\d+|\d*\.\d+|\d+\.\d*)
+                   (?:[eE][+-]?\d+)?\b
+                /x;
+              }
+              print if $. > 1 || /$::WEIGHT\s*$/'
+    done
+
+    cut --fields=1 "${PCA}"
+  )                                               \
+    | cut --fields=1,2 --delimiter=:              \
+    | sort --unique                               \
+    | tr : $'\t'                                  \
+    > '~{REGIONS}'
+  >>>
+
+  output {
+    File regions = REGIONS
+  }
+
+  runtime {
+    docker: "ubuntu:21.10"
+    disks : "local-disk ~{storage} HDD"
+  }
+}
+
+task FetchSentinels {
+  input {
+    String basedir
+  }
+
+  String SENTINELS = "output/SENTINELS"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  set -o xtrace
+
+  typeset -p >&2
+  rclone version >&2
+
+  mkdir --verbose --parents "$( dirname '~{SENTINELS}' )"
+
+  BASEDIR="$( mapurl.sh '~{basedir}' )"
+
+  rclone             \
+      lsf            \
+      --recursive    \
+      --files-only   \
+      "${BASEDIR}"   \
+    > '~{SENTINELS}'
+
+  >>>
+
+  output {
+    Array[String] sentinels = read_lines(SENTINELS)
+  }
+
+  runtime {
+    # FIXME: the image for this should a minimal image + rclone
+    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    preemptible: 5
+  }
+}
+
+
 # task SubsetShards {
 #   input {
 #     Array[String]+ batch
