@@ -288,3 +288,59 @@ task SubsetVcf {
     disks : "local-disk ~{storage} HDD"
   }
 }
+
+task ListShards {
+  input {
+    String source
+    String workspace
+    String docker_image
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String STDOUT    = OUTPUTDIR + "/STDOUT"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  # -----------------------------------------------------------------------------
+  export WORKSPACE='~{workspace}'
+  SOURCE="$( mapurl.sh '~{source}' )"
+
+  mkdir --parents '~{OUTPUTDIR}'
+
+  rclone lsf --files-only --recursive "${SOURCE}" \
+    | grep --perl-regexp 'shards/.*\.gz$'         \
+    | perl -lne '
+        BEGIN {
+          %lookup = (
+                      X  => 23,
+                      Y  => 24,
+                      XY => 25,
+                      MT => 26
+                    )
+        }
+        $_ =~ /chr(\d+|XY|X|Y|MT)\b/;
+        $index = ( $lookup{$1} or $1 );
+        printf qq(%s\t%s\n), $index, $_;
+       '                                          \
+    | sort                                        \
+          --field-separator=$'\t'                 \
+          --key=1,1n                              \
+          --key=2,2V                              \
+    | cut --fields=2                              \
+    | tee '~{STDOUT}'                             \
+    >&2
+  >>>
+
+  output {
+    File relpaths = STDOUT
+  }
+
+  runtime {
+    docker: docker_image
+  }
+}

@@ -8,7 +8,7 @@ workflow PreparePrsMixInputs {
     Array[File] weights_files
     File        pca_variants
     String      workspace
-    # String      source
+    String      source
     # String      target
     # Int         nbatches  = 500
     # Boolean     resuming  = false
@@ -46,13 +46,14 @@ workflow PreparePrsMixInputs {
       , footprint     = FootprintOfWeightsAndPCA.gigabytes
   }
   
-  # call HelperTasks.ListShards {
-  #   input:
-  #       source       = source
-  #     , workspace    = workspace
-  #     , docker_image = docker_image
-  # }
-  # 
+  # FIXME: the image for this should a minimal image + rclone
+  call HelperTasks.ListShards {
+    input:
+        source       = source
+      , workspace    = workspace
+      , docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+  }
+
   # if (resuming) {
   #   call FetchSentinels {
   #     input:
