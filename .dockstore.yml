@@ -352,3 +352,11 @@ workflows:
         - /.+/
       tags:
         - PRS_*
+  - name: PRSPreparePrsMixInputs
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/PreparePrsMixInputsWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
