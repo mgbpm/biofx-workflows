@@ -12,6 +12,8 @@ workflow PreparePrsMixInputs {
     String      target
     Int         nbatches  = 500
     Boolean     resuming  = false
+    File?       reference         ## FIXME: DELETE
+    Array[File] query_vcfs
   }
 
   String tmp       = target + "/.PreparePrsInputs"
@@ -32,6 +34,7 @@ workflow PreparePrsMixInputs {
       , skipheader = false
   }
 
+  if (! defined(reference)) {  ## FIXME: DELETE
   call GetTotalSize as FootprintOfWeightsAndPCA {
     input:
         urls      = flatten([RenameChromosomesInWeights.renamed,
@@ -99,40 +102,50 @@ workflow PreparePrsMixInputs {
   call ConcatenateShards {
     input:
       basedir   = workdir
+    , target    = target
     , relpaths  = ListShards.relpaths
     , workspace = workspace
     , storage   = 3 * FootprintOfSubsettedShards.gigabytes + 10
   }
+  }  ## FIXME: DELETE
 
-  # call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
-  #   input:
-  #       vcf = ConcatenateShards.result
-  #     , mem = GetMemoryForReference.gigabytes
-  # }
+  File reference_vcf = select_first([reference, ConcatenateShards.reference_vcf])
 
-  # scatter (vcf in queryvcfs) {
-  #   call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
-  #     input:
-  #         vcf = query_file
-  #   }
-  #
-  #   call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
-  #     input:
-  #         vcf = query_file
-  #   }
-  #
-  #   call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
-  #     input:
-  #         vcf = RenameChromosomesInQueryVcf.renamed
-  #       , mem = GetMemoryForQueryFromVcf.gigabytes
-  #   }
-  # }
-  #
-  # call GetTotalSize as FootprintOfVariantFiles {
-  #   input:
-  #       urls = ExtractQueryVariants.ids
-  # }
-  #
+  call HelperTasks.GetBaseMemory as GetMemoryForReference {
+    input:
+        vcf = reference_vcf
+  }
+
+  call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
+    input:
+        vcf = reference_vcf
+      , mem = GetMemoryForReference.gigabytes
+  }
+
+  scatter (query_vcf in query_vcfs) {
+    call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
+      input:
+          vcf = query_vcf
+    }
+  
+    call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
+      input:
+          vcf = query_vcf
+    }
+  
+    call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
+      input:
+          vcf = RenameChromosomesInQueryVcf.renamed
+        , mem = GetMemoryForQueryFromVcf.gigabytes
+    }
+  }
+
+  call GetTotalSize as FootprintOfVariantFiles {
+    input:
+        urls      = ExtractQueryVariants.ids
+      , workspace = workspace
+  }
+
   # call HelperTasks.Union {
   #   input:
   #       lists   = ExtractQueryVariants.ids
@@ -733,6 +746,7 @@ task SubsetShards {
 task ConcatenateShards {
   input {
     String basedir
+    String target
     File   relpaths
     String workspace
     Int    storage
@@ -762,6 +776,7 @@ task ConcatenateShards {
   export WORKSPACE='~{workspace}'
 
   BASEDIR="$( mapurl.sh '~{basedir}' )"
+  TARGET="$( mapurl.sh '~{target}' )"
 
   LOCALBASEDIR="$( mktemp --directory )"
 
@@ -788,6 +803,14 @@ task ConcatenateShards {
       --force          \
       --tbi            \
       '~{REFERENCE}'
+
+  BASENAME="$( basename '~{REFERENCE}' )"
+
+  for EXTENSION in '' '.tbi'
+  do
+      rclone copyto "~{REFERENCE}${EXTENSION}" "${TARGET}/${BASENAME}${EXTENSION}"
+  done
+
   >>>
 
   output {
