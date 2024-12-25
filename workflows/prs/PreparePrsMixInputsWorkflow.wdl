@@ -127,12 +127,12 @@ workflow PreparePrsMixInputs {
       input:
           vcf = query_vcf
     }
-  
+
     call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
       input:
           vcf = query_vcf
     }
-  
+
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
       input:
           vcf = RenameChromosomesInQueryVcf.renamed
@@ -146,18 +146,18 @@ workflow PreparePrsMixInputs {
       , workspace = workspace
   }
 
-  # call HelperTasks.Union {
-  #   input:
-  #       lists   = ExtractQueryVariants.ids
-  #     , storage = FootprintOfVariantFiles.gigabytes
-  # }
-  #
-  # call HelperTasks.Intersection {
-  #   input:
-  #       lists   = ExtractQueryVariants.ids
-  #     , storage = FootprintOfVariantFiles.gigabytes
-  # }
-  #
+  call HelperTasks.Union {
+    input:
+        lists   = ExtractQueryVariants.ids
+      , storage = FootprintOfVariantFiles.gigabytes
+  }
+
+  call HelperTasks.Intersection {
+    input:
+        lists   = ExtractQueryVariants.ids
+      , storage = FootprintOfVariantFiles.gigabytes
+  }
+
   # call MaybeTrimPcaVariants {
   #   input:
   #       pca_variants = RenameChromosomesInPcaVariants.renamed

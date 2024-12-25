@@ -289,6 +289,77 @@ task SubsetVcf {
   }
 }
 
+task Union {
+  input {
+    Array[File]+ lists
+    Int          storage
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String RESULT    = OUTPUTDIR + "/RESULT"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  # set -o xtrace
+
+  mkdir --verbose --parents '~{OUTPUTDIR}'
+
+  sort --unique '~{sep="' '" lists}' > '~{RESULT}'
+  >>>
+
+  output {
+    File result = RESULT
+  }
+
+  runtime {
+    docker: "ubuntu:21.10"
+    disks : "local-disk " + (20 + storage) + " HDD"
+  }
+}
+
+task Intersection {
+  input {
+    Array[File]+ lists
+    Int          storage
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String RESULT    = OUTPUTDIR + "/RESULT"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  # set -o xtrace
+
+  INPUTS=( '~{sep="' '" lists}' )
+
+  HOLD="$( mktemp )"
+
+  mkdir --verbose --parents '~{OUTPUTDIR}'
+
+  sort --unique "${INPUTS[0]}" > '~{RESULT}'
+  for INPUT in "${INPUTS[@]:1}"
+  do
+      comm -1 -2 '~{RESULT}' <( sort --unique "${INPUT}" ) > "${HOLD}"
+      mv "${HOLD}" '~{RESULT}'
+  done
+  >>>
+
+  output {
+    File result = RESULT
+  }
+
+  runtime {
+    docker: "ubuntu:21.10"
+    disks : "local-disk " + (20 + storage) + " HDD"
+  }
+}
+
 task ListShards {
   input {
     String source
