@@ -291,61 +291,42 @@ task FetchSentinels {
     String workspace
   }
 
+  String SENTINELS = "output/SENTINELS"
+
   command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  # set -o xtrace
+
+  typeset -p >&2
+  rclone version >&2
+
+  mkdir --verbose --parents "$( dirname '~{SENTINELS}' )"
+
+  export WORKSPACE='~{workspace}'
+  BASEDIR="$( mapurl.sh '~{basedir}' )"
+
+  rclone             \
+      lsf            \
+      --recursive    \
+      --files-only   \
+      "${BASEDIR}"   \
+    > '~{SENTINELS}'
+
   >>>
 
   output {
-    Array[String] sentinels = []
+    Array[String] sentinels = read_lines(SENTINELS)
   }
 
   runtime {
     # FIXME: the docker image for this should a minimal image + rclone
     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    preemptible: 5
   }
 }
-
-# task FetchSentinels {
-#   input {
-#     String basedir
-#     String workspace
-#   }
-#
-#   String SENTINELS = "output/SENTINELS"
-#
-#   command <<<
-#   set -o errexit
-#   set -o pipefail
-#   set -o nounset
-#   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-#   # set -o xtrace
-#
-#   typeset -p >&2
-#   rclone version >&2
-#
-#   mkdir --verbose --parents "$( dirname '~{SENTINELS}' )"
-#
-#   export WORKSPACE='~{workspace}'
-#   BASEDIR="$( mapurl.sh '~{basedir}' )"
-#
-#   rclone             \
-#       lsf            \
-#       --recursive    \
-#       --files-only   \
-#       "${BASEDIR}"   \
-#     > '~{SENTINELS}'
-#
-#   >>>
-#
-#   output {
-#     Array[String] sentinels = read_lines(SENTINELS)
-#   }
-#
-#   runtime {
-#     # FIXME: the docker image for this should a minimal image + rclone
-#     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
-#     preemptible: 5
-#   }
-# }
 
 task SubsetShards {
   input {
