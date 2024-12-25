@@ -46,7 +46,7 @@ workflow PreparePrsMixInputs {
       , footprint     = FootprintOfWeightsAndPCA.gigabytes
   }
 
-  # FIXME: the image for this should a minimal image + rclone
+  # FIXME: the docker image for this should a minimal image + rclone
   call HelperTasks.ListShards {
     input:
         source       = source
@@ -77,23 +77,25 @@ workflow PreparePrsMixInputs {
       , exclude  = select_first([FetchSentinels.sentinels, []])
   }
 
-  # scatter (batch in MakeBatches.batches) {
-  #   call SubsetShards {
-  #     input:
-  #         batch     = batch
-  #       , source    = source
-  #       , target    = workdir
-  #       , regions   = regions
-  #       , workspace = workspace
-  #   }
-  # }
-  #
-  # call GetTotalSize as FootprintOfSubsettedShards {
-  #   input:
-  #       urls       = [workdir]
-  #     , sequencing = SubsetShards.sequencing
-  # }
-  #
+  scatter (batch in MakeBatches.batches) {
+    call SubsetShards {
+      input:
+          batch     = batch
+        , regions   = GetReferenceRegions.regions
+        , source    = source
+        , target    = workdir
+        , sentinels = sentinels
+        , workspace = workspace
+    }
+  }
+
+  call GetTotalSize as FootprintOfSubsettedShards {
+    input:
+        urls       = [workdir]
+      , workspace  = workspace
+      , sequencing = SubsetShards.sequencing
+  }
+
   # call ConcatenateShards {
   #   input:
   #     docker_image = docker_image
@@ -214,7 +216,7 @@ task GetTotalSize {
 
   runtime {
     preemptible: 5
-    # FIXME: the image for this should a minimal image + rclone
+    # FIXME: the docker image for this should a minimal image + rclone
     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
   }
 }
@@ -297,7 +299,7 @@ task FetchSentinels {
   }
 
   runtime {
-    # FIXME: the image for this should a minimal image + rclone
+    # FIXME: the docker image for this should a minimal image + rclone
     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
   }
 }
@@ -339,103 +341,139 @@ task FetchSentinels {
 #   }
 #
 #   runtime {
-#     # FIXME: the image for this should a minimal image + rclone
+#     # FIXME: the docker image for this should a minimal image + rclone
 #     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
 #     preemptible: 5
 #   }
 # }
 
-# task SubsetShards {
-#   input {
-#     Array[String]+ batch
-#     String         source
-#     String         target
-#     File           regions
-#     String         workspace
-#   }
-#
-#   File firstshard = source + "/" + batch[0]
-#   Int  storage   = 20 + 2 * ceil(size(firstshard))
-#
-#   command <<<
-#   set -o errexit
-#   set -o pipefail
-#   set -o nounset
-#   set -o xtrace
-#   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-#
-#   export WORKSPACE='~{workspace}'
-#
-#   subset_shard () {
-#       local relpath="${1}"
-#       local source="${2}"
-#       local target="${3}"
-#       local shard="${source}/${relpath}"
-#
-#       local inputshard="$( mktemp )"
-#       local outputshard="$( mktemp )"
-#
-#       rclone copyto "${source}/${relpath}"     "${inputshard}"
-#       rclone copyto "${source}/${relpath}.tbi" "${inputshard}.tbi"
-#
-#       touch --date '1 Jan 1970 00:00:00 -0000' "${inputshard}"
-#       touch --date '1 Jan 1970 00:00:01 -0000' "${inputshard}.tbi"
-#
-#       bcftools                          \
-#           view                          \
-#           --no-version                  \
-#           --output-type v               \
-#           --regions-file '~{regions}'   \
-#           "${inputshard}"               \
-#         | bcftools                      \
-#               norm                      \
-#               --multiallelics -any      \
-#               --no-version              \
-#               --output-type v           \
-#         | bcftools                      \
-#               annotate                  \
-#               --remove 'INFO,FORMAT'    \
-#               --no-version              \
-#               --output-type v           \
-#         | bcftools                      \
-#               view                      \
-#               --no-version              \
-#               --output-type z           \
-#               --output "${outputshard}"
-#
-#       bcftools             \
-#           index            \
-#           --force          \
-#           --tbi            \
-#           "${outputshard}"
-#
-#       rclone copyto "${outputshard}"     "${target}/${relpath}"
-#       rclone copyto "${outputshard}.tbi" "${target}/${relpath}.tbi"
-#
-#       rm --force "${inputshard}"* "${outputshard}"*
-#   }
-#
-#   SOURCE="$( mapurl.sh '~{source}' )"
-#   TARGET="$( mapurl.sh '~{target}' )"
-#   BATCH=( '~{sep="' '" batch}' )
-#
-#   for RELPATH in "${BATCH[@]}"
-#   do
-#       subset_shard "${RELPATH}" "${SOURCE}" "${TARGET}"
-#   done
-#   >>>
-#
-#   output {
-#     Boolean sequencing = true
-#   }
-#
-#   runtime {
-#     # FIXME: the image for this should a minimal image + rclone
-#     docker: "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
-#     disks : "local-disk ~{storage} HDD"
-#   }
-# }
-#
+task SubsetShards {
+  input {
+    Array[String]+ batch
+    File           regions
+    String         source
+    String         target
+    String         sentinels
+    String         workspace
+  }
+
+  File firstshard = source + "/" + batch[0]
+  Int  storage    = 20 + 3 * ceil(size(firstshard, "GB"))
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  set -o xtrace
+  export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+  export WORKSPACE='~{workspace}'
+
+  SOURCE="$( mapurl.sh '~{source}' )"
+  TARGET="$( mapurl.sh '~{target}' )"
+  SENTINELS="$( mapurl.sh '~{sentinels}' )"
+
+  fileexists() {
+      local url="${1%/}"
+      local parent="$( dirname "${url}" )"
+      local basename="$( basename "${url}" )"
+      local -a found
+      readarray -t found < <(
+                              rclone                      \
+                                  lsf                     \
+                                  --files-only            \
+                                  --include="${basename}" \
+                                  "${parent}"
+                            )
+
+      local nfound="${#found[@]}"
+      if (( nfound == 0 ))
+      then
+          printf -- 'false'
+      elif (( nfound == 1 )) && [[ "${found[0]}" == */"${basename}" ]]
+      then
+          printf -- 'true'
+      else
+          printf -- 'fileexists: unexpected nfound=%d\n' "${nfound}" >&2
+          exit 1
+      fi
+  }
+
+  subsetshard () {
+      local relpath="${1}"
+      local sentinel="${SENTINELS}/${relpath}"
+
+      if "$( fileexists "${sentinel}" )"
+      then
+          return
+      fi
+
+      local shard="${SOURCE}/${relpath}"
+
+      local inputshard="$( mktemp )"
+      local outputshard="$( mktemp )"
+
+      rclone copyto "${SOURCE}/${relpath}"     "${inputshard}"
+      rclone copyto "${SOURCE}/${relpath}.tbi" "${inputshard}.tbi"
+
+      touch --date '1 Jan 1970 00:00:00 -0000' "${inputshard}"
+      touch --date '1 Jan 1970 00:00:01 -0000' "${inputshard}.tbi"
+
+      bcftools                          \
+          view                          \
+          --no-version                  \
+          --output-type v               \
+          --regions-file '~{regions}'   \
+          "${inputshard}"               \
+        | bcftools                      \
+              norm                      \
+              --multiallelics -any      \
+              --no-version              \
+              --output-type v           \
+        | bcftools                      \
+              annotate                  \
+              --remove 'INFO,FORMAT'    \
+              --no-version              \
+              --output-type v           \
+        | bcftools                      \
+              view                      \
+              --no-version              \
+              --output-type z           \
+              --output "${outputshard}"
+
+      bcftools             \
+          index            \
+          --force          \
+          --tbi            \
+          "${outputshard}"
+
+      rclone copyto "${outputshard}"     "${TARGET}/${relpath}"
+      rclone copyto "${outputshard}.tbi" "${TARGET}/${relpath}.tbi"
+
+      rclone touch "${sentinel}"
+
+      rm --force "${inputshard}"* "${outputshard}"*
+  }
+
+  BATCH=( '~{sep="' '" batch}' )
+
+  for RELPATH in "${BATCH[@]}"
+  do
+      subsetshard "${RELPATH}"
+  done
+  >>>
+
+  output {
+    Boolean sequencing = true
+  }
+
+  runtime {
+    # FIXME: the docker image for this should a minimal image + rclone
+    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    disks      : "local-disk ~{storage} HDD"
+  }
+}
+
 # task MakeReferenceVcf {
 #   input {
 #     File   weights
