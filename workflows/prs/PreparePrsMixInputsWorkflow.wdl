@@ -96,27 +96,20 @@ workflow PreparePrsMixInputs {
       , sequencing = SubsetShards.sequencing
   }
 
-  # call ConcatenateShards {
-  #   input:
-  #     docker_image = docker_image
-  #   , storage      = 3 * FootprintOfSubsettedShards.footprint + 10
-  #   , basedir      = basedir
-  #   , shards       = spec.shards
-  #   , target       = target
-  # }
-  #
-  # call MakeReferenceVcf {
-  #   input:
-  #       regions    = GetReferenceRegions.regions
-  #     , shardsbase = shardsbase
-  # }
-  #
+  call ConcatenateShards {
+    input:
+      basedir   = workdir
+    , relpaths  = ListShards.relpaths
+    , workspace = workspace
+    , storage   = 3 * FootprintOfSubsettedShards.gigabytes + 10
+  }
+
   # call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
   #   input:
-  #       vcf = MakeReferenceVcf
+  #       vcf = ConcatenateShards.result
   #     , mem = GetMemoryForReference.gigabytes
   # }
-  #
+
   # scatter (vcf in queryvcfs) {
   #   call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
   #     input:
@@ -280,8 +273,9 @@ task GetReferenceRegions {
   }
 
   runtime {
-    docker: "ubuntu:21.10"
-    disks : "local-disk ~{storage} HDD"
+    preemptible: 5
+    docker     : "ubuntu:21.10"
+    disks      : "local-disk ~{storage} HDD"
   }
 }
 
@@ -322,9 +316,9 @@ task FetchSentinels {
   }
 
   runtime {
+    preemptible: 5
     # FIXME: the docker image for this should a minimal image + rclone
     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
-    preemptible: 5
   }
 }
 
@@ -449,6 +443,7 @@ task SubsetShards {
   }
 
   runtime {
+    preemptible: 5
     # FIXME: the docker image for this should a minimal image + rclone
     docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
     disks      : "local-disk ~{storage} HDD"
@@ -735,6 +730,79 @@ task SubsetShards {
 #   }
 # }
 
+task ConcatenateShards {
+  input {
+    String basedir
+    File   relpaths
+    String workspace
+    Int    storage
+
+    Int    memory       = 8
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String REFERENCE = OUTPUTDIR + "/reference.vcf.gz"
+
+  command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  set -o xtrace
+
+  # export RCLONE_LOG_LEVEL=DEBUG
+  # export RCLONE_STATS_LOG_LEVEL=DEBUG
+
+  # typeset -p >&2
+  # rclone version >&2
+
+  free --bytes >&2
+  free --human >&2
+
+  export WORKSPACE='~{workspace}'
+
+  BASEDIR="$( mapurl.sh '~{basedir}' )"
+
+  LOCALBASEDIR="$( mktemp --directory )"
+
+  rclone copy "${BASEDIR}" "${LOCALBASEDIR}"
+
+  find "${LOCALBASEDIR}" -type f
+
+  SHARDS="$( mktemp )"
+  perl -lpe "s@^@${LOCALBASEDIR}/@" '~{relpaths}' > "${SHARDS}"
+
+  mkdir --verbose --parents '~{OUTPUTDIR}'
+
+  bcftools                    \
+      concat                  \
+      --file-list="${SHARDS}" \
+      --no-version            \
+      --naive                 \
+    > '~{REFERENCE}'
+
+  rm --recursive --force "${LOCALBASEDIR}"
+
+  bcftools             \
+      index            \
+      --force          \
+      --tbi            \
+      '~{REFERENCE}'
+  >>>
+
+  output {
+    File reference_vcf = REFERENCE
+    File reference_tbi = REFERENCE + ".tbi"
+  }
+
+  runtime {
+    preemptible : 1
+    disks       : "local-disk " + storage + " HDD"
+    memory      : memory + " GB"
+    docker      : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+  }
+}
+
 task PurgeTmp {
   input {
     String tmp
@@ -743,11 +811,18 @@ task PurgeTmp {
   }
 
   command <<<
+  set -o errexit
+  set -o pipefail
+  set -o nounset
+  # set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
   export WORKSPACE='~{workspace}'
   TMP="$( mapurl.sh '~{tmp}' )"
   rclone purge "${TMP}"
   >>>
   runtime {
-    docker: "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    preemptible: 5
+    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
   }
 }
