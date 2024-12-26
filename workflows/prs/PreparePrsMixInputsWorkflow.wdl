@@ -166,11 +166,12 @@ workflow PreparePrsMixInputs {
       , intersection = Intersection.result
   }
 
-  # call PurgeTmp {
-  #   input:
-  #       tmp        = tmp
-  #     , sequencing = MaybeTrimPcaVariants.sequencing
-  # }
+  call PurgeTmp {
+    input:
+        tmp        = tmp
+      , workspace  = workspace
+      , sequencing = MaybeTrimPcaVariants.sequencing
+  }
 
   output {
     File kept_pca_variants = select_first([MaybeTrimPcaVariants.kept_pca_variants,
@@ -832,8 +833,9 @@ task ConcatenateShards {
   >>>
 
   output {
-    File reference_vcf = REFERENCE
-    File reference_tbi = REFERENCE + ".tbi"
+    File    reference_vcf = REFERENCE
+    File    reference_tbi = REFERENCE + ".tbi"
+    Boolean sequencing    = true
   }
 
   runtime {
@@ -847,8 +849,8 @@ task ConcatenateShards {
 task PurgeTmp {
   input {
     String tmp
-    String sequencing_dummy = "ignored"
     String workspace
+    String sequencing = "ignored"
   }
 
   command <<<
