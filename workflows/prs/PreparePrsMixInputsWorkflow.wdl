@@ -10,9 +10,8 @@ workflow PreparePrsMixInputs {
     String      workspace
     String      source
     String      target
-    Int         nbatches  = 500
-    Boolean     resuming  = false
-    File?       reference         ## FIXME: DELETE
+    Int         nbatches      = 500
+    Boolean     resuming      = false
     Array[File] query_vcfs
   }
 
@@ -34,7 +33,6 @@ workflow PreparePrsMixInputs {
       , skipheader = false
   }
 
-  if (! defined(reference)) {  ## FIXME: DELETE
   call GetTotalSize as FootprintOfWeightsAndPCA {
     input:
         urls      = flatten([RenameChromosomesInWeights.renamed,
@@ -42,7 +40,7 @@ workflow PreparePrsMixInputs {
       , workspace = workspace
   }
 
-  call GetReferenceRegions {
+  call GetRegions {
     input:
         weights_files = RenameChromosomesInWeights.renamed
       , pca_variants  = RenameChromosomesInPcaVariants.renamed
@@ -84,7 +82,7 @@ workflow PreparePrsMixInputs {
     call SubsetShards {
       input:
           batch     = batch
-        , regions   = GetReferenceRegions.regions
+        , regions   = GetRegions.regions
         , source    = source
         , target    = workdir
         , sentinels = sentinels
@@ -107,18 +105,15 @@ workflow PreparePrsMixInputs {
     , workspace = workspace
     , storage   = 3 * FootprintOfSubsettedShards.gigabytes + 10
   }
-  }  ## FIXME: DELETE
-
-  File reference_vcf = select_first([reference, ConcatenateShards.reference_vcf])
 
   call HelperTasks.GetBaseMemory as GetMemoryForReference {
     input:
-        vcf = reference_vcf
+        vcf = ConcatenateShards.reference_vcf
   }
 
   call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
     input:
-        vcf = reference_vcf
+        vcf = ConcatenateShards.reference_vcf
       , mem = GetMemoryForReference.gigabytes
   }
 
@@ -174,8 +169,13 @@ workflow PreparePrsMixInputs {
   }
 
   output {
-    File kept_pca_variants = select_first([MaybeTrimPcaVariants.kept_pca_variants,
-                                           RenameChromosomesInPcaVariants.renamed])
+    File        regions               = GetRegions.regions
+    File        kept_pca_variants     = select_first([MaybeTrimPcaVariants.kept_pca_variants,
+                                                     RenameChromosomesInPcaVariants.renamed])
+    Array[File] renamed_weights_files = RenameChromosomesInWeights.renamed
+    Array[File] renamed_query_vcfs    = RenameChromosomesInQueryVcf.renamed
+    File        reference_vcf         = ConcatenateShards.reference_vcf
+    File        reference_tbi         = ConcatenateShards.reference_tbi
   }
 }
 
@@ -232,7 +232,7 @@ task GetTotalSize {
   }
 }
 
-task GetReferenceRegions {
+task GetRegions {
   input {
     Array[File]+ weights_files
     File         pca_variants
