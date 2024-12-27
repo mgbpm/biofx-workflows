@@ -103,12 +103,13 @@ task VEPCacheTask {
         # Specify the amount of RAM the VM uses
         Int? mem_gb
         # Number of cpus to use while annotating, default is 10
-        Int? cpu_count
+        Int? machine_cpus
     }
 
     Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20 + select_first([extra_disk_gb, 0])
     Int machine_mem_gb = select_first([mem_gb, 20])
-    Int thread_count = select_first([cpu_count, 10]) * 2
+    Int cpu_count = select_first([machine_cpu, 10])
+    Int thread_count = cpu_count * 2
 
     command <<<
         set -euxo pipefail
@@ -116,7 +117,7 @@ task VEPCacheTask {
         # Assess allocated disk and memory resources
         echo "Current memory requested: ~{machine_mem_gb} GB"
         echo "Current disk requested: ~{disk_size} GB"
-        echo "Current cpu count: select_first([cpu_count, 10])"
+        echo "Current cpu count: ~{cpu_count}"
         echo "Current thread count: ~{thread_count}"
 
         # Ensure the destination directory exists
@@ -139,7 +140,7 @@ task VEPCacheTask {
             --vcf --no_stats \
             --compress_output bgzip \
             --verbose \
-            --fork "~{thread_count}~" \
+            --fork "~{thread_count}" \
             --show_ref_allele \
             --symbol \
             --hgvs \
@@ -175,7 +176,7 @@ task VEPCacheTask {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD" 
         memory: machine_mem_gb + " GB"
-        cpus: select_first([cpu_count, 10])
+        cpus: ~{cpu_count}
     }
 
     output {
