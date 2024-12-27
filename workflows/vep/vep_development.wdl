@@ -114,11 +114,15 @@ task VEPCacheTask {
     command <<<
         set -euxo pipefail
 
+        #calculate current cpu count
+        real_cpus=$(nproc)
+
         # Assess allocated disk and memory resources
         echo "Current memory requested: ~{machine_mem_gb} GB"
         echo "Current disk requested: ~{disk_size} GB"
-        echo "Current cpu count: ~{cpu_count}"
-        echo "Current thread count: ~{thread_count}"
+        echo "Current cpu requested: ~{cpu_count}"
+        echo "Current thread requested: ~{thread_count}"
+        echo "Current nproc count: $real_cpus"
 
         # Ensure the destination directory exists
         mkdir -p /cromwell_root/.vep
