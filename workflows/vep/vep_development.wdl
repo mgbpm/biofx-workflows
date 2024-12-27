@@ -108,7 +108,7 @@ task VEPCacheTask {
 
     Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20 + select_first([extra_disk_gb, 0])
     Int machine_mem_gb = select_first([mem_gb, 20])
-    Int cpu_count = select_first([machine_cpu, 10])
+    Int cpu_count = select_first([machine_cpus, 10])
     Int thread_count = cpu_count * 2
 
     command <<<
