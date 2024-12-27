@@ -71,8 +71,8 @@ workflow BahrainPipelinesWorkflow {
         Int fast_data_load_wait_max_intervals = 72
         Int fast_adi_wait_interval_secs = 600
         Int fast_adi_wait_max_intervals = 144
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20231206"
-        File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20241226"
+        File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type
     }
 
@@ -425,7 +425,7 @@ workflow BahrainPipelinesWorkflow {
                         sample_type = fast_parser_sample_type,
                         reference_build = reference_build,
                         oms_query = "Y",
-                        transcript_exonNum = gil_transcript_exon_count,
+                        portable_db_file = portable_db_file,
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name,
                         fast_parser_image = fast_parser_image
