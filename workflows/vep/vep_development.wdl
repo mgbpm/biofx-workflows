@@ -17,9 +17,9 @@ workflow VEPWorkflow {
         Boolean run_cache = true
     
         # Custom database file for VEP annotation
-        File custom_database?
+        File? custom_database
         # VEP command string with custom database load instructions
-        String custom_datatbase_config?
+        String? custom_datatbase_config
     }
 
     # If a local cache isn't available, run with the online database
@@ -65,7 +65,8 @@ task VEPDatabaseTask {
 
         /opt/vep/src/ensembl-vep/vep --database \
             --input_file "~{input_vcf}" \
-            --output_file "~{output_name}.txt" --tab --no_stats \
+            --output_file "~{output_name}.vcf.gz" --vcf --no_stats \
+            --compress_output bgzip \
             --verbose \
             --show_ref_allele \
             --symbol \
@@ -77,7 +78,8 @@ task VEPDatabaseTask {
             --clin_sig_allele 1 \
             --mane \
             --species homo_sapiens \
-            --assembly GRCh38
+            --assembly GRCh38 \
+            --vcf
     >>>
 
     runtime {
@@ -85,7 +87,7 @@ task VEPDatabaseTask {
     }
 
     output {
-        File output_tab_file = "~{output_name}.txt"
+        File output_vcf_file = "~{output_name}.vcf.gz"
     }
 }
 
@@ -97,11 +99,11 @@ task VEPCacheTask {
         String output_name
         String docker_image
         # Specify an amount of additional disk space to add to the VM
-        Int extra_disk_gb?
+        Int? extra_disk_gb
         # Specify the amount of RAM the VM uses
-        Int mem_gb?
+        Int? mem_gb
         # Number of threads to use while annotating
-        Int thread_count?
+        Int? thread_count
     }
 
     Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20 + select_first([extra_disk_gb, 0])
@@ -130,9 +132,12 @@ task VEPCacheTask {
         df -h
 
         /opt/vep/src/ensembl-vep/vep \
-            --cache --dir_cache /cromwell_root/.vep --cache_version "~{cache_version}" \
+            --cache --dir_cache /cromwell_root/.vep \
+            --cache_version "~{cache_version}" \
             --input_file "~{input_vcf}" \
-            --output_file "~{output_name}.vcf.gz" --tab --no_stats \
+            --output_file "~{output_name}.vcf.gz" \
+            --vcf --no_stats \
+            --compress_output bgzip \
             --verbose \
             --show_ref_allele \
             --symbol \
