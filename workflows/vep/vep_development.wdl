@@ -176,7 +176,7 @@ task VEPCacheTask {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD" 
         memory: machine_mem_gb + " GB"
-        cpus: ~{cpu_count}
+        cpus: cpu_count
     }
 
     output {
