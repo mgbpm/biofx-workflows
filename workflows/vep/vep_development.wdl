@@ -102,14 +102,13 @@ task VEPCacheTask {
         Int? extra_disk_gb
         # Specify the amount of RAM the VM uses
         Int? mem_gb
-        # Number of threads to use while annotating
-        Int? thread_count
+        # Number of cpus to use while annotating, default is 10
+        Int? cpu_count
     }
 
     Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20 + select_first([extra_disk_gb, 0])
     Int machine_mem_gb = select_first([mem_gb, 20])
-    Int machine_cpus = select_first([thread_count, 20])
-
+    Int thread_count = select_first([cpu_count, 10]) * 2
 
     command <<<
         set -euxo pipefail
@@ -117,7 +116,8 @@ task VEPCacheTask {
         # Assess allocated disk and memory resources
         echo "Current memory requested: ~{machine_mem_gb} GB"
         echo "Current disk requested: ~{disk_size} GB"
-        echo "Current cpu count: ~{machine_cpus}"
+        echo "Current cpu count: select_first([cpu_count, 10])"
+        echo "Current thread count: ~{thread_count}"
 
         # Ensure the destination directory exists
         mkdir -p /cromwell_root/.vep
@@ -139,6 +139,7 @@ task VEPCacheTask {
             --vcf --no_stats \
             --compress_output bgzip \
             --verbose \
+            --fork "~{thread_count}~" \
             --show_ref_allele \
             --symbol \
             --hgvs \
@@ -174,7 +175,7 @@ task VEPCacheTask {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD" 
         memory: machine_mem_gb + " GB"
-        cpus: machine_cpus
+        cpus: select_first([cpu_count, 10])
     }
 
     output {
