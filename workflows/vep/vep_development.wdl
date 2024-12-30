@@ -50,7 +50,8 @@ workflow VEPWorkflow {
 
     output {
         File? database_output = VEPDatabaseTask.output_vcf_file
-        File? cache_output = VEPCacheTask.output_vcf_file
+        File? cache_output_vcf = VEPCacheTask.output_vcf_file
+        File? cache_output_vcf = VEPCacheTask.output_vcf_file
     }
     meta {
         allowNestedInputs: true
@@ -110,6 +111,7 @@ task VEPCacheTask {
         Int? machine_cpus
 
         File? custom_database
+        File? custom_database_index
         String? custom_database_config
     }
 
@@ -144,7 +146,7 @@ task VEPCacheTask {
         df -h
 
         if [[ -n "~{custom_database}" && -n "~{custom_database_config}" ]]; then
-            echo "Both custom database file or custom database config defined."
+            echo "Both custom database file and custom database config defined."
             use_custom_db="true"
         elif [[ -n "~{custom_database}" ]]; then
             echo "Custom database file provided, missing custom database config."
@@ -160,6 +162,14 @@ task VEPCacheTask {
         if [ ${use_custom_db} == "true" ] ; then
             echo "Localizing additional custom database: ~{custom_database}"
             echo "Custom database configuration: ~{custom_database_config}"
+            if [ -n "~{custom_database_index}" ] ; then
+                echo "Custom database index also detected: ~{custom_database_index}"
+            else
+                echo "Custom database index file missing, Exiting"
+                exit
+            fi
+
+            #run VEP command
             /opt/vep/src/ensembl-vep/vep \
                 --cache --dir_cache /cromwell_root/.vep \
                 --cache_version "~{cache_version}" \
