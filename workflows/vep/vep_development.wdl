@@ -17,9 +17,9 @@ workflow VEPWorkflow {
         Boolean run_cache = true
     
         # Custom database file for VEP annotation
-        File? custom_database
+        #File? custom_database
         # VEP command string with custom database load instructions
-        String? custom_datatbase_config
+        #String? custom_database_config
     }
 
     # If a local cache isn't available, run with the online database
@@ -34,6 +34,8 @@ workflow VEPWorkflow {
 
     # If a local cache is available, run with the cache
     if (run_cache) {
+
+
         call VEPCacheTask {
             input:
                 input_vcf = input_vcf,
@@ -41,6 +43,8 @@ workflow VEPWorkflow {
                 cache_version = cache_version,
                 output_name = output_name,
                 docker_image = vep_docker_image
+                #custom_database = custom_database
+                #custom_database_config = custom_database_config
         }
     }
 
@@ -104,6 +108,9 @@ task VEPCacheTask {
         Int? mem_gb
         # Number of cpus to use while annotating, default is 10
         Int? machine_cpus
+
+        File? custom_database
+        String? custom_database_config
     }
 
     Int disk_size = ceil(size(input_vcf, "GB") + size(cache_file, "GB") * 2 ) + 20 + select_first([extra_disk_gb, 0])
@@ -136,51 +143,110 @@ task VEPCacheTask {
         #investigate available disks after unpacking
         df -h
 
-        /opt/vep/src/ensembl-vep/vep \
-            --cache --dir_cache /cromwell_root/.vep \
-            --cache_version "~{cache_version}" \
-            --input_file "~{input_vcf}" \
-            --output_file "~{output_name}.vcf.gz" \
-            --vcf --no_stats \
-            --compress_output bgzip \
-            --verbose \
-            --fork "~{thread_count}" \
-            --show_ref_allele \
-            --symbol \
-            --hgvs \
-            --canonical \
-            --numbers \
-            --individual all \
-            --af_gnomade \
-            --af_gnomadg \
-            --max_af \
-            --clin_sig_allele 1 \
-            --pubmed \
-            --mane \
-            --sift b \
-            --polyphen b \
-            --ccds \
-            --domains \
-            --regulatory \
-            --protein \
-            --biotype \
-            --af \
-            --af_1kg \
-            --uniprot \
-            --tsl \
-            --appris \
-            --variant_class \
-            --gene_phenotype \
-            --mirna \
-            --species homo_sapiens \
-            --assembly GRCh38
+        if [[ -n "~{custom_database}" && -n "~{custom_database_config}" ]]; then
+            echo "Both custom database file or custom database config defined."
+            use_custom_db="true"
+        elif [[ -n "~{custom_database}" ]]; then
+            echo "Custom database file provided, missing custom database config."
+            use_custom_db="false"
+        elif [[ -n "~{custom_database_config}" ]]; then
+            echo "Custom database config provided, missing custom database file."
+            use_custom_db="false"
+        else
+            echo "Neither custom database file or custom database config provided."
+            use_custom_db="false"
+        fi
+
+        if [ ${use_custom_db} == "true" ] ; then
+            echo "Localizing additional custom database: ~{custom_database}"
+            echo "Custom database configuration: ~{custom_database_config}"
+            /opt/vep/src/ensembl-vep/vep \
+                --cache --dir_cache /cromwell_root/.vep \
+                --cache_version "~{cache_version}" \
+                --input_file "~{input_vcf}" \
+                --output_file "~{output_name}.vcf.gz" \
+                --vcf --no_stats \
+                --compress_output bgzip \
+                --verbose \
+                --fork "~{thread_count}" \
+                --show_ref_allele \
+                --symbol \
+                --hgvs \
+                --canonical \
+                --numbers \
+                --individual all \
+                --af_gnomade \
+                --af_gnomadg \
+                --max_af \
+                --clin_sig_allele 1 \
+                --pubmed \
+                --mane \
+                --sift b \
+                --polyphen b \
+                --ccds \
+                --domains \
+                --regulatory \
+                --protein \
+                --biotype \
+                --af \
+                --af_1kg \
+                --uniprot \
+                --tsl \
+                --appris \
+                --variant_class \
+                --gene_phenotype \
+                --mirna \
+                --species homo_sapiens \
+                --assembly GRCh38 \
+                --custom file="~{custom_database}",~{custom_database_config}
+        else
+            echo "Custom database file or configuration not detected, running normally."
+            /opt/vep/src/ensembl-vep/vep \
+                --cache --dir_cache /cromwell_root/.vep \
+                --cache_version "~{cache_version}" \
+                --input_file "~{input_vcf}" \
+                --output_file "~{output_name}.vcf.gz" \
+                --vcf --no_stats \
+                --compress_output bgzip \
+                --verbose \
+                --fork "~{thread_count}" \
+                --show_ref_allele \
+                --symbol \
+                --hgvs \
+                --canonical \
+                --numbers \
+                --individual all \
+                --af_gnomade \
+                --af_gnomadg \
+                --max_af \
+                --clin_sig_allele 1 \
+                --pubmed \
+                --mane \
+                --sift b \
+                --polyphen b \
+                --ccds \
+                --domains \
+                --regulatory \
+                --protein \
+                --biotype \
+                --af \
+                --af_1kg \
+                --uniprot \
+                --tsl \
+                --appris \
+                --variant_class \
+                --gene_phenotype \
+                --mirna \
+                --species homo_sapiens \
+                --assembly GRCh38
+        fi
     >>>
 
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " SSD" 
         memory: machine_mem_gb + " GB"
-        cpus: "~{cpu_count}"
+        cpu: "~{cpu_count}"
     }
 
     output {
