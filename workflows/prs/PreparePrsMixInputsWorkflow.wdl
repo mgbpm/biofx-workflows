@@ -15,9 +15,10 @@ workflow PreparePrsMixInputs {
     Array[File] query_vcfs
   }
 
-  String tmp       = target + "/.PreparePrsInputs"
-  String workdir   = tmp    + "/work"
-  String sentinels = tmp    + "/sentinels"
+  String tmp              = target + "/.PreparePrsInputs"
+  String workdir          = tmp    + "/work"
+  String sentinels        = tmp    + "/sentinels"
+  String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:250102"
 
   scatter (weights in weights_files) {
     call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
@@ -35,9 +36,10 @@ workflow PreparePrsMixInputs {
 
   call GetTotalSize as FootprintOfWeightsAndPCA {
     input:
-        urls      = flatten([RenameChromosomesInWeights.renamed,
-                             [RenameChromosomesInPcaVariants.renamed]])
-      , workspace = workspace
+        urls         = flatten([RenameChromosomesInWeights.renamed,
+                                [RenameChromosomesInPcaVariants.renamed]])
+      , workspace    = workspace
+      , docker_image = prs_docker_image
   }
 
   call GetRegions {
@@ -47,27 +49,28 @@ workflow PreparePrsMixInputs {
       , footprint     = FootprintOfWeightsAndPCA.gigabytes
   }
 
-  # FIXME: the docker image for this should a minimal image + rclone
   call HelperTasks.ListShards {
     input:
         source       = source
       , workspace    = workspace
-      , docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+      , docker_image = prs_docker_image
   }
 
   if (resuming) {
     call FetchSentinels {
       input:
-          basedir   = sentinels
-        , workspace = workspace
+          basedir      = sentinels
+        , workspace    = workspace
+        , docker_image = prs_docker_image
     }
   }
 
   if (!resuming) {
     call PurgeTmp as MaybePurgeTmp {
       input:
-          tmp       = tmp
-        , workspace = workspace
+          tmp          = tmp
+        , workspace    = workspace
+        , docker_image = prs_docker_image
     }
   }
 
@@ -81,29 +84,32 @@ workflow PreparePrsMixInputs {
   scatter (batch in MakeBatches.batches) {
     call SubsetShards {
       input:
-          batch     = batch
-        , regions   = GetRegions.regions
-        , source    = source
-        , target    = workdir
-        , sentinels = sentinels
-        , workspace = workspace
+          batch        = batch
+        , regions      = GetRegions.regions
+        , source       = source
+        , target       = workdir
+        , sentinels    = sentinels
+        , workspace    = workspace
+        , docker_image = prs_docker_image
     }
   }
 
   call GetTotalSize as FootprintOfSubsettedShards {
     input:
-        urls       = [workdir]
-      , workspace  = workspace
-      , sequencing = SubsetShards.sequencing
+        urls         = [workdir]
+      , workspace    = workspace
+      , sequencing   = SubsetShards.sequencing
+      , docker_image = prs_docker_image
   }
 
   call ConcatenateShards {
     input:
-      basedir   = workdir
-    , target    = target
-    , relpaths  = ListShards.relpaths
-    , workspace = workspace
-    , storage   = 3 * FootprintOfSubsettedShards.gigabytes + 10
+      basedir      = workdir
+    , target       = target
+    , relpaths     = ListShards.relpaths
+    , workspace    = workspace
+    , storage      = 3 * FootprintOfSubsettedShards.gigabytes + 10
+    , docker_image = prs_docker_image
   }
 
   call HelperTasks.GetBaseMemory as GetMemoryForReference {
@@ -137,8 +143,9 @@ workflow PreparePrsMixInputs {
 
   call GetTotalSize as FootprintOfVariantFiles {
     input:
-        urls      = ExtractQueryVariants.ids
-      , workspace = workspace
+        urls         = ExtractQueryVariants.ids
+      , workspace    = workspace
+      , docker_image = prs_docker_image
   }
 
   call HelperTasks.Union {
@@ -163,9 +170,10 @@ workflow PreparePrsMixInputs {
 
   call PurgeTmp {
     input:
-        tmp        = tmp
-      , workspace  = workspace
-      , sequencing = MaybeTrimPcaVariants.sequencing
+        tmp          = tmp
+      , workspace    = workspace
+      , sequencing   = MaybeTrimPcaVariants.sequencing
+      , docker_image = prs_docker_image
   }
 
   output {
@@ -185,6 +193,7 @@ task GetTotalSize {
   input {
     Array[String]+  urls
     String          workspace
+    String          docker_image
     Array[Boolean]+ sequencing = [false]  # ignored!
   }
 
@@ -227,8 +236,7 @@ task GetTotalSize {
 
   runtime {
     preemptible: 5
-    # FIXME: the docker image for this should a minimal image + rclone
-    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    docker     : docker_image
   }
 }
 
@@ -301,6 +309,7 @@ task FetchSentinels {
   input {
     String basedir
     String workspace
+    String docker_image
   }
 
   String SENTINELS = "output/SENTINELS"
@@ -335,8 +344,7 @@ task FetchSentinels {
 
   runtime {
     preemptible: 5
-    # FIXME: the docker image for this should a minimal image + rclone
-    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    docker     : docker_image
   }
 }
 
@@ -348,6 +356,7 @@ task SubsetShards {
     String         target
     String         sentinels
     String         workspace
+    String         docker_image
   }
 
   File firstshard = source + "/" + batch[0]
@@ -462,8 +471,7 @@ task SubsetShards {
 
   runtime {
     preemptible: 5
-    # FIXME: the docker image for this should a minimal image + rclone
-    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    docker     : docker_image
     disks      : "local-disk ~{storage} HDD"
   }
 }
@@ -757,8 +765,9 @@ task MaybeTrimPcaVariants {
   }
 
   runtime {
-    docker: "ubuntu:21.10"
-    disks : "local-disk ~{storage} HDD"
+    preemptible: 5
+    disks      : "local-disk ~{storage} HDD"
+    docker     : "ubuntu:21.10"
   }
 }
 
@@ -769,6 +778,7 @@ task ConcatenateShards {
     File   relpaths
     String workspace
     Int    storage
+    String docker_image
 
     Int    memory       = 8
   }
@@ -842,7 +852,7 @@ task ConcatenateShards {
     preemptible : 1
     disks       : "local-disk " + storage + " HDD"
     memory      : memory + " GB"
-    docker      : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    docker      : docker_image
   }
 }
 
@@ -850,7 +860,8 @@ task PurgeTmp {
   input {
     String tmp
     String workspace
-    String sequencing = "ignored"
+    String docker_image
+    String sequencing   = "ignored"
   }
 
   command <<<
@@ -866,6 +877,6 @@ task PurgeTmp {
   >>>
   runtime {
     preemptible: 5
-    docker     : "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.0.1"
+    docker     : docker_image
   }
 }
