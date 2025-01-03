@@ -228,10 +228,10 @@ workflow BgwgsWorkflow {
         String cov_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/coverage:20230630"
         String gatk3_docker_image = "broadinstitute/gatk3:3.7-0"
         # pgx inputs
-        String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
-        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
+        String pgx_test_code = "lmPGX-pnlD_L"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar"
+        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # risk alleles inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
@@ -708,8 +708,8 @@ workflow BgwgsWorkflow {
         # haplotype caller output
         File? vcf = HaplotypeCallerGvcf_GATK4.output_vcf
         # pgx output
-        File? pgx_CPIC_report = PGxWorkflowAlias.CPIC_report
-        File? pgx_FDA_report = PGxWorkflowAlias.FDA_report
+        File? pgx_summary_report = PGxWorkflowAlias.summary_report
+        File? pgx_details_report = PGxWorkflowAlias.details_report
         File? pgx_genotype_xlsx = PGxWorkflowAlias.genotype_xlsx
         File? pgx_genotype_txt = PGxWorkflowAlias.genotype_txt
         # risk alleles output
