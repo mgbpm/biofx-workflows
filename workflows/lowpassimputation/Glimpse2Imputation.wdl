@@ -246,17 +246,17 @@ task GlimpseLigate {
         
         /bin/GLIMPSE2_ligate --input ~{write_lines(imputed_chunks)} --output ligated.vcf.gz --threads ${NPROC}
 
-        # change ID and sort ligated.vcf
-        bcftools annotate --set-id '%CHROM:%POS:%REF:%ALT' ligated.vcf.gz -Ov | bcftools sort -Oz -o ligated_sorted.vcf.gz
-        mv ligated_sorted.vcf.gz ligated.vcf.gz
+        # sort ligated.vcf first otherwise it does not run other bcftools commands
+        # change ID and deduplicate it
+        bcftools sort ligated.vcf.gz -Ou | bcftools annotate --set-id '%CHROM:%POS:%REF:%ALT' -Ou | bcftools norm -d both -Oz -o ligated_cleaned.vcf.gz
 
         # Set correct reference dictionary
         bcftools view -h --no-version ligated.vcf.gz > old_header.vcf
-        #bcftools view -h --no-version ligated_sorted.vcf.gz > old_header.vcf
         java -jar /picard.jar UpdateVcfSequenceDictionary -I old_header.vcf --SD ~{ref_dict} -O new_header.vcf        
-        bcftools reheader -h new_header.vcf -o ~{output_basename}.imputed.vcf.gz ligated.vcf.gz
-        #bcftools reheader -h new_header.vcf -o ~{output_basename}.imputed.vcf.gz ligated_sorted.vcf.gz
+        bcftools reheader -h new_header.vcf -o ~{output_basename}.imputed.vcf.gz ligated_cleaned.vcf.gz
         tabix ~{output_basename}.imputed.vcf.gz
+        rm ligated.vcf.gz ligated.vcf.gz.csi
+        rm ligated_cleaned.vcf.gz
     >>>
 
     runtime {

@@ -38,10 +38,10 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | cov_gene_names | No | Tab-delimited file of gene information; see DepthOfCoverage.md for details | "gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt" |
 | String | cov_docker_image | No | The name of the coverage Docker image to run the coverage summary task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/coverage:20230630" |
 | String | gatk3_docker_image | No | The name of the GATK3 Docker image for coverage analysis | "broadinstitute/gatk3:3.7-0" |
-| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlC_L" |
-| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20230711" |
-| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar" |
-| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed" |
+| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlD_L" |
+| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008" |
+| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar" |
+| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed" |
 | String | risk_alleles_test_code | No | Test code that defines which risk alleles report to generate | "lmRISK-pnlB_L" |
 | String | risk_alleles_docker_image | No | The name of the Docker image to generate the risk alleles report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20230724" |
 | File | risk_alleles_workflow_fileset | No | Tar file containing the risk alleles reference data to generate the report | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar" |
@@ -276,8 +276,8 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | cov_gene_summary_unknown | If coverage analysis is enabled | Unknown entries from the gene coverage summary |
 | File | cov_gene_summary_entrez | If coverage analysis is enabled | Gene coverage summary enriched with Entrez IDs |
 | File | vcf | If variant calling is run | Variants called from BAM/CRAM |
-| File | pgx_CPIC_report | If PGx is enabled | CPIC pharmacogenomics report |
-| File | pgx_FDA_report | If PGx is enabled | FDA pharmacogenomics report |
+| File | pgx_summary_report | If PGx is enabled | Summary pharmacogenomics report |
+| File | pgx_details_report | If PGx is enabled | Detailed pharmacogenomics report |
 | File | pgx_genotype_xlsx | If PGx is enabled | Full list of pharmacogenomics genotypes in XLSX format |
 | File | pgx_genotype_txt | If PGx is enabled | Full list of pharmacogenomics genotypes in TSV format |
 | File | risk_alleles_report | If risk alleles is enabled | Risk alleles report |
