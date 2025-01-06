@@ -11,7 +11,7 @@ a parsed output with variants categorized that is used to populate an Excel work
 | String | sample_type | Yes | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite |
 | String | reference_build | No | The genome reference build name | "GRCh38" |
 | String | oms_query | Yes | Whether or not to query OMS for primers, either "Y" or "N" | "Y" |
-| File | transcript_exonNum | Yes | A tab delimited file of transcript id and exon count |
+| File | portable_db_file | Yes | A SQLite database that contains additional annotations that are merged into the Parser output |
 | String | report_basename | No | The basename to use for the report file | The basename of the fast_output_file |
 | String | fast_parser_image | Yes | The name of the Docker image to run the FAST output parser task | |
 | String | gcp_project_id | Yes | The GCP project to fetch secrets from | |

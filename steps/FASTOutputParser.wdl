@@ -6,7 +6,7 @@ task FASTOutputParserTask {
         String sample_type
         String reference_build = "GRCh38"
         String oms_query = "Y"
-        File transcript_exonNum
+        File portable_db_file
         String report_basename = sub(basename(fast_output_file), "\\.(txt.gz|txt|TXT.GZ|TXT)$", "")
         Boolean gatk_source = false
         String gcp_project_id
@@ -41,7 +41,7 @@ task FASTOutputParserTask {
             $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
                         -s "~{sample_type}" \
                         -o "~{oms_query}" \
-                        -e "~{transcript_exonNum}" \
+                        -e "~{portable_db_file}" \
                         -b "~{reference_build}" \
                         -k oms-client-config.json \
                         -a
@@ -49,7 +49,7 @@ task FASTOutputParserTask {
            $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
                         -s "~{sample_type}" \
                         -o "~{oms_query}" \
-                        -e "~{transcript_exonNum}" \
+                        -e "~{portable_db_file}" \
                         -b "~{reference_build}" \
                         -k oms-client-config.json 
         fi

@@ -77,9 +77,9 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | Int | fast_data_load_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST data loads to complete | 144 |
 | Int | fast_adi_wait_interval_secs | No | The number of seconds in between checks when waiting for FAST annotation data initialization to complete | 600 |
 | Int | fast_adi_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST annotation data initialization to complete | 144 |
-| String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
-| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230630" |
-| File | gil_transcript_exon_count | No | A tab delimited file of transcript id and exon count | "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt" |
+| String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
+| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20241226" |
+| File | portable_db_file | No | A SQLite database that contains additional annotations that are merged into the Parser output | "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db" |
 | String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | "S" |
 | Array[File] | igv_track_files | List of track files for inclusion in the IGV report | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" |
 | Array[File] | igv_track_index_files | List of track index files | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz.tbi" |

@@ -9,7 +9,7 @@ See also `FileUtils.DownloadOutputsTask`.
 * String config_json - the output copy mapping configuration, see `biofx-workflow-configurations` for more details
 * String default_target_location - the default location to copy files to if there is not a more specific configuration; defaults to empty string
 * Boolean verbose - optional - if true, generate verbose log output
-* String orchutils_docker_image - required - the name/tag of the mgbpmbiofx/orchutils Docker image; defaults to "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230719"
+* String orchutils_docker_image - required - the name/tag of the mgbpmbiofx/orchutils Docker image; defaults to "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
 * String gcp_project_id - required - the GCP project id to fetch location connection information from; defaults to "mgb-lmm-gcp-infrast-1651079146"
 * String workspace_namespace - optional - the current Terra workspace namespace, used to fetch submission metadata
 * String workspace_name - required - the current Terra workspace name, used to fetch location connection information and submission metadata

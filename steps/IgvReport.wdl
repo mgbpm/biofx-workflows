@@ -12,6 +12,9 @@ task IgvReportFromParsedFASTOutputTask {
         Array[File]? track_index_files
         String docker_image
         Int preemptible = 1
+        Int colidx_chr = 8
+        Int colidx_start = 9
+        Int colidx_end = 10
     }
 
     command <<<
@@ -32,9 +35,9 @@ task IgvReportFromParsedFASTOutputTask {
         awk '
             BEGIN { flag=1; cat=None; FS="\t"; OFS="\t" } 
             {
-                if ($1 == "Chr") { print $0, "Parser_Section" }
-                else if (NF == 1 && $1 == "Benign/Likely benign") { flag=0; cat=$1 } 
-                else if (NF == 1 && $1 != "Benign/Likely benign") { flag=1; cat=$1 } 
+                if (NR == 1) { print $0, "Parser_Section" } #Output the header row and append the Parser Section column header
+                else if (NF == 1 && $1 == "Benign/Likely benign") { flag=0; cat=$1 } #sets section header and set the output flag to off - i.e. ignore Benign/Likely Benign
+                else if (NF == 1 && $1 != "Benign/Likely benign") { flag=1; cat=$1 } #sets section header and set the output flag to on - i.e. for all other sections
                 else if (NF > 1 && flag == 1) { print $0, cat }
             }
         ' "~{parsed_fast_output}" > igv_sites.txt
@@ -42,18 +45,24 @@ task IgvReportFromParsedFASTOutputTask {
         # Check to make certain there are one or more variants in the file
         #   before building the IGV output
         set +e
-        num_sites=$(grep -vic ^chr igv_sites.txt)
+        num_sites=$(wc -l < igv_sites.txt)
         set -e
 
-        # Prefix chromosome symbols with 'chr'
-        sed -i -e 's/^\([0-9MTXY]*\)\t/chr\1\t/' igv_sites.txt
-        # Then convert chrMT to chrM
-        sed -i -e 's/^chrMT\t/chrM\t/' igv_sites.txt
+        # Prefix chromosome symbols with chr or chrM for MT
+        awk -v colidx_chr="~{colidx_chr}" '
+            BEGIN {FS=OFS="\t"} 
+            NR==1 {print $0; next} 
+            {
+                if ($colidx_chr == "MT") $colidx_chr = "chrM";
+                else $colidx_chr = "chr" $colidx_chr;
+            } 
+            1' igv_sites.txt > temp && mv temp igv_sites.txt
 
         # Add spaces after commas so text wrapping in the IGV report table works better
         sed -i -e 's/,\([a-zA-Z0-9]\)/, \1/g' igv_sites.txt
 
-        if [ $num_sites -gt 0 ]
+        # Exclude the header from the count
+        if [ $num_sites -gt 1 ] 
         then
             track_files=""
             if [ -n "~{sep=' ' track_files}" ]
@@ -72,8 +81,8 @@ task IgvReportFromParsedFASTOutputTask {
             fi
 
             create_report igv_sites.txt "~{ref_fasta}" \
-                --sequence 1 --begin 2 --end 3 --flanking 50 \
-                --info-columns Sym Entrez_Gene Trans DNA AA Parser_Section \
+                --sequence ~{colidx_chr} --begin ~{colidx_start} --end ~{colidx_end} --flanking 50 \
+                --info-columns Sym "Entrez Gene" Trans DNA AA Parser_Section \
                 --tracks "~{bam_cram}" $track_files \
                 --output "~{output_basename}.html"
         fi

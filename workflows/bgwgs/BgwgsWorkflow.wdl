@@ -275,8 +275,8 @@ workflow BgwgsWorkflow {
         Int fast_adi_wait_max_intervals = 144
         # Reporting steps
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230920"
-        File gil_transcript_exon_count = "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20241226"
+        File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type = "S"
         Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]
         Array[File] igv_track_index_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz.tbi" ]
@@ -660,7 +660,7 @@ workflow BgwgsWorkflow {
                         sample_type = fast_parser_sample_type,
                         reference_build = reference_build,
                         oms_query = "Y",
-                        transcript_exonNum = gil_transcript_exon_count,
+                        portable_db_file = portable_db_file,
                         report_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
                         gcp_project_id = gcp_project_id,
                         workspace_name = workspace_name,
