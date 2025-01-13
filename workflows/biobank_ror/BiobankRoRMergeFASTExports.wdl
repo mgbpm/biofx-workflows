@@ -14,7 +14,7 @@ workflow MergeFASTExportsWorkflow {
         # Reference genome files
         String reference_build = "GRCh38"
         # Reporting steps
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20241226"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250111"
         File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type = "B"
         Boolean gatk_source = false
