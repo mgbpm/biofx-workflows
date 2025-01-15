@@ -362,8 +362,8 @@ workflows:
         - PRS_*
   - name: PRSMixScoreWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSMixScoreWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/subwdls/PRSMixScoreWorkflow.md
+    primaryDescriptorPath: /workflows/prs/subwdls/PRSMixScoreWorkflow.wdl
+    readMePath: /workflows/prs/subwdls/PRSMixScoreWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
@@ -371,8 +371,8 @@ workflows:
         - PRSMix_*
   - name: PRSOrchestrationWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/main_wdls/PRSOrchestrationWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/main_wdls/PRSOrchestrationWorkflow.md
+    primaryDescriptorPath: /workflows/prs/main_wdls/PRSOrchestrationWorkflow.wdl
+    readMePath: /workflows/prs/main_wdls/PRSOrchestrationWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
@@ -380,8 +380,8 @@ workflows:
         - PRSMix_*
   - name: PRSPCAWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSPCAWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/subwdls/PRSPCAWorkflow.md
+    primaryDescriptorPath: /workflows/prs/subwdls/PRSPCAWorkflow.wdl
+    readMePath: /workflows/prs/subwdls/PRSPCAWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
@@ -389,8 +389,8 @@ workflows:
         - PRSMix_*
   - name: PRSRawScoreWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSRawScoreWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/subwdls/PRSRawScoreWorkflow.md
+    primaryDescriptorPath: /workflows/prs/subwdls/PRSRawScoreWorkflow.wdl
+    readMePath: /workflows/prs/subwdls/PRSRawScoreWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
@@ -398,8 +398,8 @@ workflows:
         - PRSMix_*
   - name: PRSMixModelWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/bge_prs_mix/main_wdls/MakeMixModelWorkflow.wdl
-    readMePath: /workflows/bge_prs_mix/main_wdls/MakeMixModelWorkflow.md
+    primaryDescriptorPath: /workflows/prs/main_wdls/MakeMixModelWorkflow.wdl
+    readMePath: /workflows/prs/main_wdls/MakeMixModelWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
