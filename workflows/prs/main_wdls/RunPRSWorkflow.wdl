@@ -1,7 +1,7 @@
 version 1.0
 
-import "MakeAdjustmentModelWorkflow.wdl"
-import "ScoreQueryVcfWorkflow.wdl"
+import "../subwdls/MakeAdjustmentModelWorkflow.wdl"
+import "../subwdls/ScoreQueryVcfWorkflow.wdl"
 
 workflow RunPRS {
 

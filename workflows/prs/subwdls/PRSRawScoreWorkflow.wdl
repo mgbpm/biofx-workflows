@@ -1,7 +1,7 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/HelperTasks.wdl" as HelperTasks
-import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
+import "../tasks/HelperTasks.wdl" as HelperTasks
+import "../palantir/ScoringTasks.wdl" as ScoringTasks
 import "../tasks/PRSStructs.wdl"
 
 workflow PRSRawScoreWorkflow {

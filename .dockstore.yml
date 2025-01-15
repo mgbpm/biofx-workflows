@@ -330,7 +330,7 @@ workflows:
         - Glimpse2SplitReference_*
   - name: PRSMakeAdjustmentModel
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/MakeAdjustmentModelWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/subwdls/MakeAdjustmentModelWorkflow.wdl
     filters:
       branches:
         - /.+/
@@ -338,7 +338,7 @@ workflows:
         - PRS_*
   - name: PRSScoreQueryVcf
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/ScoreQueryVcfWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/subwdls/ScoreQueryVcfWorkflow.wdl
     filters:
       branches:
         - /.+/
@@ -346,7 +346,7 @@ workflows:
         - PRS_*
   - name: PRSRunPRS
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/RunPRSWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/main_wdls/RunPRSWorkflow.wdl
     filters:
       branches:
         - /.+/
@@ -354,7 +354,7 @@ workflows:
         - PRS_*
   - name: PRSPreparePrsMixInputs
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/PreparePrsMixInputsWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/main_wdls/PreparePrsMixInputsWorkflow.wdl
     filters:
       branches:
         - /.+/

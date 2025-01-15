@@ -1,7 +1,7 @@
 version 1.0
 
-import "ScoringTasks.wdl"
-import "HelperTasks.wdl"
+import "../tasks/HelperTasks.wdl"
+import "../palantir/ScoringTasks.wdl"
 
 workflow PreparePrsMixInputs {
   input {

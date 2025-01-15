@@ -2,7 +2,7 @@ version 1.0
 
 # Adapted from commit faa824e0322e2ab455ef1cb88bc82c47d753338c of https://github.com/broadinstitute/palantir-workflows
 
-import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
+import "../palantir/ScoringTasks.wdl" as ScoringTasks
 import "PRSMixScoreWorkflow.wdl"
 
 workflow PRSTrainMixModelWorkflow {

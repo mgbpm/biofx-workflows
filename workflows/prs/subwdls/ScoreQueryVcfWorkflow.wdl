@@ -1,9 +1,9 @@
 version 1.0
 
-import "ScoringTasks.wdl"
-import "PCATasks.wdl"
-import "HelperTasks.wdl"
-import "Structs.wdl"
+import "../palantir/ScoringTasks.wdl"
+import "../palantir/PCATasks.wdl"
+import "../tasks/HelperTasks.wdl"
+import "../palantir/Structs.wdl"
 
 workflow ScoreQueryVcf {
   input {

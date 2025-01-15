@@ -1,9 +1,9 @@
 version 1.0
 
-import "PCATasks.wdl"
-import "ScoringTasks.wdl"
-import "TrainAncestryAdjustmentModel.wdl"
-import "Structs.wdl"
+import "../palantir/PCATasks.wdl"
+import "../palantir/ScoringTasks.wdl"
+import "../palantir/TrainAncestryAdjustmentModel.wdl"
+import "../palantir/Structs.wdl"
 
 struct PcaResults {
   File loadings

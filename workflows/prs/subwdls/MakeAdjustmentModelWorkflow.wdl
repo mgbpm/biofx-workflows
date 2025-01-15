@@ -1,9 +1,9 @@
 version 1.0
 
-import "PCATasks.wdl"
-import "ScoringTasks.wdl"
-import "TrainAncestryAdjustmentModel.wdl"
-import "HelperTasks.wdl"
+import "../palantir/PCATasks.wdl"
+import "../palantir/ScoringTasks.wdl"
+import "../palantir/TrainAncestryAdjustmentModel.wdl"
+import "../tasks/HelperTasks.wdl"
 
 workflow MakeAdjustmentModel {
   input {

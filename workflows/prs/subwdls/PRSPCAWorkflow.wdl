@@ -1,8 +1,8 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/ScoringTasks.wdl" as ScoringTasks
-import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/PCATasks.wdl" as PCATasks
-import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/feature/prs/gb083__TEMP__241122F195830/workflows/prs/HelperTasks.wdl" as HelperTasks
+import "../palantir/ScoringTasks.wdl" as ScoringTasks
+import "../palantir/PCATasks.wdl" as PCATasks
+import "../tasks/HelperTasks.wdl" as HelperTasks
 import "../../../steps/Utilities.wdl"
 import "../tasks/PRSStructs.wdl"
 

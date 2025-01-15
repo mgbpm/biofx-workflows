@@ -1,7 +1,7 @@
 version 1.0
 
-import "ScoringTasks.wdl"
-import "ScoreVcf.wdl"
+import "../palantir/ScoringTasks.wdl"
+import "SimpleScore.wdl"
 
 workflow TrainModelWorkflow {
   input {
@@ -11,7 +11,7 @@ workflow TrainModelWorkflow {
     File imputed_variants      # aka "scoring variants"
   }
 
-  call ScoreVcf.ScoreVcfWorkflow as Scoring {
+  call SimpleScore.SimpleScore as Scoring {
     input:
         vcf      = vcf
       , weights  = linear_weights
