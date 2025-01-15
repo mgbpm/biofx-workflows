@@ -7,10 +7,9 @@ import "../pgxrisk/RiskAllelesWorkflow.wdl"
 
 workflow BamsurgeonWorkflow {
     input {
-        ## BAMSURGEON
+        ## BAMSURGEON INPUTS
         # File naming inputs
-        String sample_name
-        String mutation_name
+        String output_files_base
         # Mutation to run
         String mutation_type
         # Input BAM files
@@ -71,15 +70,15 @@ workflow BamsurgeonWorkflow {
         # IGV docker image
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
 
-        ## PGX/RISK
+        ## PGX/RISK INPUTS
         # Toggle PGx/Risk
         Boolean run_pgx = true
         Boolean run_risk = true
         # PGx inputs
-        String pgx_test_code = "lmPGX-pnlC_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240129"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar"
-        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed"
+        String pgx_test_code = "lmPGX-pnlD_L"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20240614"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20240606.tar"
+        File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # Risk inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
@@ -104,9 +103,23 @@ workflow BamsurgeonWorkflow {
                 error_message = "BAM index should have BAM name + '.bai'"
         }
     }
+    ## Test that the inputs for PGx/Risk are included
+    if (run_pgx || run_risk) {
+        if (!defined(ref_dict) || !defined(dbsnp_vcf) || !defined(dbsnp_vcf_index)) {
+            call Utilities.FailTask as PGxAndRiskInputsError {
+                input:
+                    error_message = "ref_dict, dbsnp_vcf, and dbsnp_vcf_index must be defined to run PGx and/or Risk."
+            }
+        }
+    }
+    if (run_risk && !defined(workspace_name)) {
+        call Utilities.FailTask as WorkspaceNameError {
+            input:
+                error_message = "Workspace name must be defined to run Risk pipeline."
+        }
+    }
 
     ## Create input files for bamsurgeon
-    String output_files_base = sample_name + "_" + mutation_name
     call RunBamsurgeonTask as RunBamsurgeon {
         input:
             mutation_bed_input = mutation_bed_input,
@@ -158,7 +171,6 @@ workflow BamsurgeonWorkflow {
             input_bam = RunBamsurgeon.mut_bam,
             docker_image = samtools_docker_image
     }
-
     ## Generate IGV report
     call IgvReport.IgvReportFromGenomePanelsBedTask as MutIGVReport {
         input:
@@ -170,10 +182,9 @@ workflow BamsurgeonWorkflow {
             output_basename = output_files_base + "_IGVreport",
             docker_image = igvreport_docker_image
     }
-
     ## Run PGx & Risk
     if (run_pgx) {
-        call PGxWorkflow.PGxWorkflow as MutBamPGx {
+        call PGxWorkflow.PGxWorkflow as RunPGx {
             input:
                 input_cram = IndexBAM.output_bam,
                 input_crai = IndexBAM.output_bai,
@@ -191,7 +202,7 @@ workflow BamsurgeonWorkflow {
         }
     }
     if (run_risk) {
-        call RiskAllelesWorkflow.RiskAllelesWorkflow as MutBamRisk {
+        call RiskAllelesWorkflow.RiskAllelesWorkflow as RunRisk {
             input:
                 input_cram = IndexBAM.output_bam,
                 input_crai = IndexBAM.output_bai,
@@ -222,14 +233,14 @@ workflow BamsurgeonWorkflow {
         # IGV report
         File igv_report = MutIGVReport.igv_report
         # PGx output
-        File? pgx_CPIC_report = MutBamPGx.CPIC_report
-        File? pgx_FDA_report = MutBamPGx.FDA_report
-        File? pgx_genotype_xlsx = MutBamPGx.genotype_xlsx
-        File? pgx_genotype_txt = MutBamPGx.genotype_txt
+        File? pgx_summary_report = RunPGx.summary_report
+        File? pgx_details_report = RunPGx.details_report
+        File? pgx_genotype_xlsx = RunPGx.genotype_xlsx
+        File? pgx_genotype_txt = RunPGx.genotype_txt
         # Risk output
-        File? risk_alleles_report = MutBamRisk.risk_report
-        File? risk_alleles_genotype_xlsx = MutBamRisk.genotype_xlsx
-        File? risk_alleles_genotype_txt = MutBamRisk.genotype_txt
+        File? risk_alleles_report = RunRisk.risk_report
+        File? risk_alleles_genotype_xlsx = RunRisk.genotype_xlsx
+        File? risk_alleles_genotype_txt = RunRisk.genotype_txt
     }
 }
 
@@ -237,7 +248,7 @@ struct MutationBED {
     String chr
     Int start
     Int end
-    String mut_type
+    String? mut_type
     Float? vaf
     String? base
     String? insert_seq
@@ -303,7 +314,7 @@ task RunBamsurgeonTask {
         # Docker inputs
         String docker_image
         Int disk_size = ceil((size(input_bam_file, "GB") * 2.5)) + ceil(size(input_bai_file, "GB")) + ceil(size(ref_fasta, "GB")) + ceil(size(ref_amb, "GB")) + ceil(size(ref_ann, "GB")) + ceil(size(ref_bwt, "GB")) + ceil(size(ref_fai, "GB")) + ceil(size(ref_pac, "GB")) + ceil(size(ref_sa, "GB")) + 10
-        Int mem_size = 6
+        Int mem_size = 8
         Int preemptible = 1
     }
 

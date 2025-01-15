@@ -360,3 +360,48 @@ workflows:
         - /.+/
       tags:
         - PRS_*
+  - name: PRSMixScoreWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSMixScoreWorkflow.wdl
+    readMePath: /workflows/bge_prs_mix/subwdls/PRSMixScoreWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PRSMix_*
+  - name: PRSOrchestrationWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bge_prs_mix/main_wdls/PRSOrchestrationWorkflow.wdl
+    readMePath: /workflows/bge_prs_mix/main_wdls/PRSOrchestrationWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PRSMix_*
+  - name: PRSPCAWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSPCAWorkflow.wdl
+    readMePath: /workflows/bge_prs_mix/subwdls/PRSPCAWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PRSMix_*
+  - name: PRSRawScoreWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bge_prs_mix/subwdls/PRSRawScoreWorkflow.wdl
+    readMePath: /workflows/bge_prs_mix/subwdls/PRSRawScoreWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PRSMix_*
+  - name: PRSMixModelWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/bge_prs_mix/main_wdls/MakeMixModelWorkflow.wdl
+    readMePath: /workflows/bge_prs_mix/main_wdls/MakeMixModelWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PRSMix_*

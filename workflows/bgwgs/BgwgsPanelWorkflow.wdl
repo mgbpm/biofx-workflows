@@ -13,7 +13,7 @@ workflow BgwgsPanelWorkflow {
         String workspace_name
         # Docker images
         String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
-        String genome_panels_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genome-panels:20240208"
+        String genome_panels_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genome-panels:20240927"
         # Run, sample id and data location
         String subject_id
         String sample_id
