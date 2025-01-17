@@ -63,9 +63,8 @@ task RenameChromosomesInTsv {
     File    lookup     = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
   }
 
-  Int    storage   = 20 + 2 * ceil(size(tsv, "GB"))
-  String OUTPUTDIR = "OUTPUT"
-  String RENAMED   = OUTPUTDIR + "/renamed_" + basename(tsv)
+  Int    storage = 20 + 2 * ceil(size(tsv, "GB"))
+  String RENAMED = "OUTPUT/renamed/" + basename(tsv)
 
   command <<<
   python3 <<EOF
@@ -148,9 +147,8 @@ task RenameChromosomesInVcf {
     File rename = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
   }
 
-  Int    storage   = 20 + 2 * ceil(size(vcf, "GB"))
-  String OUTPUTDIR = "OUTPUT"
-  String RENAMED   = OUTPUTDIR + "/renamed_" + basename(vcf)
+  Int    storage = 20 + 2 * ceil(size(vcf, "GB"))
+  String RENAMED = "OUTPUT/renamed/" + basename(vcf)
 
   command <<<
   set -o errexit
@@ -161,7 +159,7 @@ task RenameChromosomesInVcf {
 
   # ---------------------------------------------------------------------------
 
-  mkdir --verbose --parents '~{OUTPUTDIR}'
+  mkdir --verbose --parents "$( dirname '~{RENAMED}' )"
 
   WORKDIR="$( mktemp --directory )"
   INPUTVCF="${WORKDIR}/input.vcf.gz"
