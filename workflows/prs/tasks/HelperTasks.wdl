@@ -512,3 +512,55 @@ task MakeBatches {
     docker: "python:3.9.10"
   }
 }
+
+
+task GetTotalSize {
+  input {
+    Array[String]+  urls
+    String          workspace
+    String          docker_image
+    Array[Boolean]+ sequencing = [false]  # ignored!
+  }
+
+  String OUTPUTDIR = "OUTPUT"
+  String GIGABYTES = OUTPUTDIR + "/GIGABYTES"
+
+  command <<<
+  set -o pipefail
+  set -o errexit
+  set -o nounset
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  # set -o xtrace
+
+  # ---------------------------------------------------------------------------
+
+  export WORKSPACE='~{workspace}'
+  OUTPUTDIR='~{OUTPUTDIR}'
+
+  mkdir --verbose --parents "${OUTPUTDIR}"
+
+  TOTALBYTES=0
+  for URL in '~{sep="' '" urls}'
+  do
+      BYTES="$(
+                rclone size "$( mapurl.sh "${URL}" )"  \
+                  | tail --lines=1                     \
+                  | perl -lpe 's/^.*?(\d+) Byte.*/$1/'
+              )"
+      TOTALBYTES=$(( TOTALBYTES + BYTES ))
+  done
+
+  perl -e "printf qq(%f\n), ${TOTALBYTES}/2**30" > '~{GIGABYTES}'
+
+  printf -- '\nTotal size: %.1f GiB\n' "$( cat '~{GIGABYTES}' )"
+  >>>
+
+  output {
+    Int gigabytes = ceil(read_float(GIGABYTES))
+  }
+
+  runtime {
+    preemptible: 5
+    docker     : docker_image
+  }
+}

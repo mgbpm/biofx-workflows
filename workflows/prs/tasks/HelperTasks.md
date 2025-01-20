@@ -167,3 +167,23 @@ Distribute the items in <code>cases</code> across
 | Type                   | Name    | When   | Description                                                                     |
 | :---                   | :---    | :---   | :---                                                                            |
 | Array[Array[String]+]+ | batches | Always | Array of <code>nbatches</code> arrays of the cases listed in <code>cases</code> |
+
+
+## GetTotalSize Task
+
+Get the total footprint of an array of files without localizing them.
+
+### Input Parameters
+
+| Type            | Name         | Req'd | Description                                               | Default Value |
+| :---            | :---         | :---  | :---                                                      | :---          |
+| Array[Strings]+ | urls         | Yes   | Non-empty array of file urls                              |               |
+| String          | workspace    | Yes   | name of workspace where Terra job runs                    |               |
+| String          | docker_image | Yes   | name of docker image for the job                          |               |
+| Array[Boolean]+ | sequencing   | No    | ensures proper sequencing of this task (otherwise unused) |               |
+
+### Output Parameters
+
+| Type | Name      | When   | Description                                       |
+| :--- | :---      | :---   | :---                                              |
+| Int  | gigabytes | Always | Total footprint of the files in <code>urls</code> |

@@ -360,6 +360,14 @@ workflows:
         - /.+/
       tags:
         - PRS_*
+  - name: PRSBuildReferenceVcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/subwdls/BuildReferenceVcfWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS_*
   - name: PRSMixScoreWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/subwdls/PRSMixScoreWorkflow.wdl
