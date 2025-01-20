@@ -418,8 +418,8 @@ task MakeBatches {
   input {
     File          cases
     Int           nbatches
-    Array[String] exclude
-    Boolean       noshuffle    = false
+    Array[String] exclude   = []
+    Boolean       noshuffle = false
     Int?          seed
   }
 
