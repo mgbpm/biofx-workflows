@@ -1,16 +1,15 @@
-# BGE-PRS Orchestration Workflow
+# PRS Mix Orchestration Workflow
 
-This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percentiles of individuals for a certain disease and model(s).
+This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percentiles of individuals for a certain disease and model(s). The workflow is designed for single sample input. The model manifests used for each desired condition in the assay are to be generated before running this workflow using the MakeAdjustmentModelWorkflow WDL. It is also recommended that the inputs for running the model -- and thus those consequently used in this workflow -- are cleaned using the PreparePrsMixInputsWorkflow WDL to ensure no errors occur when using flashpca.
 
 ## GLIMPSE Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | File | glimpse_reference_chunks | Required if running GLIMPSE imputation is desired | | |
-| Array[File] | input_crams | Required if running GLIMPSE imputation is desired | Sample input CRAMs to run through GLIMPSE imputation | |
-| Array[File] | input_crai | Required if running GLIMPSE imputation is desired | Sample input CRAM indices to run through GLIMPSE imputation; must be in same order as input_crams | |
-| Array[String] | sample_ids | Required if running GLIMPSE imputation is desired | Sample ids for samples in input_crams | |
-| String | vcf_basename | Required if running GLIMPSE imputation is desired | Base name for GLIMPSE imputation output VCF | |
+| File | input_cram | Required if running GLIMPSE imputation is desired | Sample input CRAM to run through GLIMPSE imputation | |
+| File | input_crai | Required if running GLIMPSE imputation is desired | Sample input CRAM index to run through GLIMPSE imputation| |
+| String | sample_id | Required if running GLIMPSE imputation is desired | Sample id for sample in input_cram | |
 | Boolean | impute_reference_only_variants | No | | false |
 | Boolean | call_indels | No | | false |
 | Int | n_burnin | No | | |
@@ -28,13 +27,11 @@ This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percent
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| Array[File] | condition_model_manifests | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
-| File | condition_yaml | Yes | YAML file with condition-specific data on bins, thresholds, etc. | |
-| String | ubuntu_docker_image | No | Ubunutu Docker image | "ubuntu:21.10" |
-| String | python_docker_image | No | Python Docker image | "python:3.11" |
-| String | interaction_docker_image | No | Docker image for use of Python | us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e |
-| String | plink_docker_image | No | Docker image for Plink 2 | us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124 |
-| String | flash_pca_docker_image | No | Docker image for running flask PCA | us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f |
+| String | subject_id | Yes | Subject ID to match the input sample ID | |
+| String | prs_test_code | Yes | Test code that defines config files and assay | |
+| Array[File] | condition_model_manifests | Yes | Adjustment model manifest file from MakeAdjustmentModelWorkflow WDL | |
+| File | conditions_config | Yes | TSV file with condition-specific data on bins, odds-ratios, codes, etc. | |
+| String | prs_docker_image | No | Docker image with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122" |
 
 ## Debugging Options
 
@@ -59,4 +56,4 @@ For debugging purposes, there are several boolean values that can be used to tur
 | File | prs_adjusted_score | Always | PRS scores or mix scores adjusted with population models |
 | File | pc_projection | Always | PCA projection array |
 | File | pc_plot | Always | PCA plot from projection array |
-| Array[File] | individuals_risk_summaries | Always | Array of CSV files, where each CSV is a summary of PRS scores for an individual |
+| File | risk_summary | Always | TSV files with risk percentile, group, and odds ratio for the sample |
