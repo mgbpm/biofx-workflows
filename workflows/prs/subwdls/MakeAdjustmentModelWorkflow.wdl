@@ -2,22 +2,25 @@ version 1.0
 
 import "../palantir/PCATasks.wdl"
 import "../palantir/ScoringTasks.wdl"
-import "../palantir/TrainAncestryAdjustmentModel.wdl"
+import "../subwdls/PRSTrainMixModelWorkflow.wdl"
 import "../tasks/HelperTasks.wdl"
 
 workflow MakeAdjustmentModel {
   input {
-    File   weights
-    File   pca_variants
-    File   reference_vcf
-    File   query_file
-    String name
+    Array[File] weights
+    File        pca_variants
+    File        reference_vcf
+    File        query_file
+    String      name
   }
 
-  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
-    input:
-        tsv        = weights
-      , skipheader = true
+
+  scatter (tsv in weights) {  
+    call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+      input:
+          tsv        = tsv
+        , skipheader = true
+    }
   }
 
   call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
@@ -102,23 +105,18 @@ workflow MakeAdjustmentModel {
       , mem      = GetMemoryForReference.gigabytes
   }
 
-  WeightSet weight_set = object {
-    linear_weights : RenameChromosomesInWeights.renamed
-  }
-
-  NamedWeightSet named_weight_set = object {
-    condition_name : name,
-    weight_set     : weight_set
-  }
-
-  call TrainAncestryAdjustmentModel.TrainAncestryAdjustmentModel as TrainModel {
+  call PRSTrainMixModelWorkflow.PRSTrainMixModelWorkflow as TrainModel {
     input:
-        named_weight_set    = named_weight_set
-      , population_pcs      = PerformPCA.pcs
-      , population_vcf      = RenameChromosomesInReferenceVcf.renamed
-      , population_basename = reference_basename
-      , sites               = query_variants
+        condition_name = name
+      , var_weights    = RenameChromosomesInWeights.renamed
+      , scoring_sites  = query_variants
+      , reference_vcf  = RenameChromosomesInReferenceVcf.renamed
+      , scoring_mem    = GetMemoryForReference.gigabytes
+      , population_pcs = PerformPCA.pcs
   }
+
+  Array[String] renamed_weights   = RenameChromosomesInWeights.renamed
+  Array[String] training_variants = TrainModel.sites_used_in_scoring
 
   call BundleAdjustmentModel {
 
@@ -133,13 +131,13 @@ workflow MakeAdjustmentModel {
     input:
         model_data = object {
             parameters            : "" + TrainModel.fitted_params
-          , training_variants     : "" + TrainModel.sites_used_in_scoring
+          , training_variants     :      training_variants
 
           , principal_components  : "" + PerformPCA.pcs
           , loadings              : "" + PerformPCA.pc_loadings
           , meansd                : "" + PerformPCA.mean_sd
 
-          , weights               : "" + RenameChromosomesInWeights.renamed
+          , variant_weights       :      renamed_weights
           , pca_variants          : "" + kept_pca_variants
           , original_pca_variants : "" + pca_variants
 
@@ -148,10 +146,10 @@ workflow MakeAdjustmentModel {
   }
 
   output {
-    File    adjustment_model_manifest = BundleAdjustmentModel.manifest
-    Boolean converged                 = TrainModel.fit_converged
-    File    raw_reference_scores      = TrainModel.raw_population_scores
-    File    adjusted_reference_scores = TrainModel.adjusted_population_scores
+    File        adjustment_model_manifest = BundleAdjustmentModel.manifest
+    Boolean     converged                 = TrainModel.fit_converged
+    Array[File] raw_reference_scores      = TrainModel.raw_population_scores
+    File        adjusted_reference_scores = TrainModel.adjusted_population_scores
   }
 }
 

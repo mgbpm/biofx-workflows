@@ -48,7 +48,7 @@ workflow ScoreQueryVcf {
   call ScoringTasks.ScoreVcf as ScoreQueryVcf {
     input:
         vcf                 = RenameChromosomesInQueryVcf.renamed
-      , weights             = model_data.weights
+      , weights             = model_data.variant_weights[0]
       , sites               = model_data.training_variants
       , chromosome_encoding = "MT"
       , base_mem            = base_memory
