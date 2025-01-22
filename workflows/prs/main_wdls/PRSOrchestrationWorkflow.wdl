@@ -11,10 +11,9 @@ workflow PRSOrchestrationWorkflow {
     input {
         # GLIMPSE2 INPUTS
         File? glimpse_reference_chunks
-        Array[File]? input_crams
-        Array[File]? input_crai
-        Array[String]? sample_ids
-        String? vcf_basename
+        File? input_cram
+        File? input_crai
+        String sample_id
         Boolean impute_reference_only_variants = false
         Boolean call_indels = false
         Int? n_burnin
@@ -29,8 +28,11 @@ workflow PRSOrchestrationWorkflow {
         File? ref_dict
 
         # PRS INPUTS
-        Array[File] condition_model_manifests
-        File condition_yaml
+        String subject_id
+        String prs_test_code
+        Array[File] model_manifests
+        File conditions_config
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122"
         
         # DEBUGGING INPUTS
         Boolean run_glimpse = true
@@ -39,8 +41,8 @@ workflow PRSOrchestrationWorkflow {
 
     # Run input checks
     if (run_glimpse) {
-        if (!defined(glimpse_reference_chunks) || !defined(input_crams) || !defined(input_crai)) {
-            String GlimpseInputError = "Missing one or more GLIMPSE inputs: ref chunks, input crams, and/or input crai."
+        if (!defined(glimpse_reference_chunks) || !defined(input_cram) || !defined(input_crai)) {
+            String GlimpseInputError = "Missing one or more GLIMPSE inputs: ref chunks, input cram, and/or input crai."
         }
         if (!defined(ref_fasta) || !defined(ref_fai) || !defined(ref_dict)) {
             String GlimpseReferenceInputError = "Missing one or more reference files for GLIMPSE: fasta, fai, and/or dict."
@@ -48,7 +50,7 @@ workflow PRSOrchestrationWorkflow {
     }
 
     if (!run_glimpse && !defined(query_vcf)) {
-        String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS modules."
+        String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS."
     }
 
     String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
@@ -66,13 +68,13 @@ workflow PRSOrchestrationWorkflow {
             call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
                 input:
                     reference_chunks = select_first([glimpse_reference_chunks]),
-                    crams = select_first([input_crams]),
-                    cram_indices = select_first([input_crai]),
-                    sample_ids = select_first([sample_ids]),
+                    crams = select_first([[input_cram]]),
+                    cram_indices = select_first([[input_crai]]),
+                    sample_ids = [sample_id],
                     fasta = select_first([ref_fasta]),
                     fasta_index = select_first([ref_fai]),
                     ref_dict = select_first([ref_dict]),
-                    output_basename = select_first([vcf_basename, "PRS_Glimpse"]),
+                    output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
                     impute_reference_only_variants = impute_reference_only_variants,
                     call_indels = call_indels,
                     n_burnin = select_first([n_burnin]),
@@ -88,16 +90,16 @@ workflow PRSOrchestrationWorkflow {
             }
         }
 
-        scatter (i in range(length(condition_model_manifests))) {
-            String condition_name = sub(basename(condition_model_manifests[i]), "_[[0-9]]+\\.json$", "")
+        scatter (i in range(length(model_manifests))) {
+            String condition_name = sub(basename(model_manifests[i]), "_[[0-9]]+\\.json$", "")
 
-            AdjustmentModelData model_data = read_json(condition_model_manifests[i])
+            AdjustmentModelData model_data = read_json(model_manifests[i])
 
             # Get PRS raw scores for each condition
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = condition_model_manifests[i]
+                    adjustment_model_manifest = model_manifests[i]
             }
 
             # Get the PRS mix raw score for each condition
@@ -108,22 +110,24 @@ workflow PRSOrchestrationWorkflow {
                     score_weights = select_first([model_data.score_weights])
             }
 
-            # Perform PCA with population model
+            # Adjust the PRS mix raw score with PCA and model
             call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
                 input:
                     condition_name = condition_name,
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = condition_model_manifests[i],
+                    adjustment_model_manifest = model_manifests[i],
                     prs_raw_scores = PRSMixScores.prs_mix_raw_score
             }
         }
 
-        # Categorize each condition's score into bins; report percentile & bin
+        # Create summary of risk score, percentile, and condition info for reporting
         call SummarizeScores {
             input:
                 conditions = select_first([select_all(condition_name)]),
                 scores = select_first([select_all(PerformPCA.adjusted_scores)]),
-                condition_yaml = condition_yaml
+                conditions_config = conditions_config,
+                output_filename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results.tsv",
+                docker_image = prs_docker_image
         }
     }
 
@@ -143,31 +147,25 @@ workflow PRSOrchestrationWorkflow {
         Array[File]? pc_plot = PerformPCA.pc_plot
 
         # Individual Outputs
-        Array[File]? individuals_risk_summaries = SummarizeScores.individual_risk_summaries
+        File risk_summary = SummarizeScores.risk_summary
     }
 }
 
 task SummarizeScores {
     input {
-        Array[String] conditions
+        Array[String] condition_codes
         Array[File] scores
-        File condition_yaml
-        String docker_image = "python:3.11"
+        File conditions_config
+        String output_filename
+        String docker_image
         Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
         Int mem_size = 2
         Int preemptible = 1
     }
 
     command <<<
-        pip install PyYAML
-
-        mkdir -p WORK/summaries
+        mkdir -p WORK
         mkdir -p OUTPUT
-
-        # Extract all sample IDs from a score file
-            # NOTE: IDs should be the same across score files
-        score_file_array=('~{sep="' '" scores}')
-        sed '1d;' ${score_file_array[0]} | awk '{ print $2 }' > WORK/sample_ids.txt
 
         # Make a list of scores files for python to access
         for s in '~{sep="' '" scores}'; do
@@ -175,70 +173,16 @@ task SummarizeScores {
         done
 
         # Make a list of condition_names
-        for c in '~{sep="' '" conditions}'; do
-            printf "${c}" >> WORK/conditions_list.txt
+        for c in '~{sep="' '" conditions_codes}'; do
+            printf "${c}" >> WORK/condition_codes_list.txt
         done
-
-        # For each scores file, summarize the file with the sample info, condition name, and bin count
-        python3 -c '
-import yaml
-
-# Load configs for conditions/diseases
-with open("~{condition_yaml}", "r") as yml_file:
-    conditions_configs = yaml.safe_load(yml_file)
-
-# Load working files for lists
-with open("WORK/scores_files_list.txt", "r") as f:
-    score_files = f.readlines()
-    for i in score_files:
-        i = i.strip("\n")
-
-with open("WORK/conditions_list.txt", "r") as f:
-    conditions_list = f.readlines()
-    for i in conditions_list:
-        i = i.strip("\n")
-
-for i in range(len(score_files)):
-    current_condition = conditions_list[i]
-    print(current_condition)
-
-    with open(score_files[i], "r") as current_scores:
-        condition_summary_file = open("WORK/summaries/" + current_condition + ".summary.csv", "w")
-        condition_summary_file.write("Sample,Condition,Risk,Bin_Count\n")
-
-        header = current_scores.readline().strip("\n").replace(" ", "").split("\t")
-        print(header)
-        line = current_scores.readline().strip("\n").replace(" ", "").split("\t")
-        print(line)
-
-        while line != [""]:
-            sample_id = line[header.index("IID")]
-
-            percentile = str(line[header.index("percentile")])
-            bins = str(conditions_configs[current_condition]["bin_count"])
-            print(sample_id, percentile, bins)
-
-            condition_summary_file.write(
-                    ",".join([
-                        sample_id,
-                        current_condition,
-                        percentile,
-                        bins
-                    ]) + "\n"
-            )
-
-            line = current_scores.readline().strip("\n").replace(" ", "").split("\t")
-
-        condition_summary_file.close()'
-    
-        # Get per sample summaries
-        while read line; do
-            printf "Condition,Risk,Bin_Count\n" >> OUTPUT/"${line}"_prs_summary.csv
-            for file in WORK/summaries/*; do
-                grep "${line}" $file | cut -d "," -f 2,3,4 >> OUTPUT/"${line}"_prs_summary.csv
-            done
-        done < WORK/sample_ids.txt
         
+        ${PACKAGESDIR}/biofx-prs/bin/summarize_mix_scores.py \
+            --condition-config "~{conditions_config}" \
+            --scores-list WORK/scores_files_list.txt \
+            --condition-codes WORK/condition_codes_list.txt \
+            --output-file "~{output_filename}" \
+            --output-dir OUTPUT
     >>>
 
     runtime {
@@ -249,6 +193,6 @@ for i in range(len(score_files)):
     }
 
     output {
-        Array[File] individual_risk_summaries = glob("OUTPUT/*")
+        File risk_summary = "~{output_filename}"
     }
 }
