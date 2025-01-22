@@ -13,7 +13,7 @@ The Bahrain Merge Exports Workflow will merge FAST exports for either the monoge
 | String | reference_build | No | The genome reference build name | "GRCh38" |
 | String | python_docker_image | No | The name of the Python Docker image | "python:3.10" |
 | String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20240130" |
-| File | gil_transcript_exon_count | No | A tab delimited file of transcript id and exon count | "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt" |
+| File | portable_db_file | No | A SQLite database that contains additional annotations that are merged into the Parser output | "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db" |
 | String | fast_parser_sample_type | Yes | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | |
 | Boolean | gatk_source | No | Whether or not to use GATK as a source for allele state annotations; true will use GATK as a source | false |
 

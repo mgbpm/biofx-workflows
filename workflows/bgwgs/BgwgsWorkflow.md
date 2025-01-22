@@ -38,10 +38,10 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | cov_gene_names | No | Tab-delimited file of gene information; see DepthOfCoverage.md for details | "gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt" |
 | String | cov_docker_image | No | The name of the coverage Docker image to run the coverage summary task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/coverage:20230630" |
 | String | gatk3_docker_image | No | The name of the GATK3 Docker image for coverage analysis | "broadinstitute/gatk3:3.7-0" |
-| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlC_L" |
-| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20230711" |
-| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_files-20220118.tar" |
-| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlC_L_genotyping-chr-20220118.bed" |
+| String | pgx_test_code | No | Test code that defines which pharmacogenomics report to generate | "lmPGX-pnlD_L" |
+| String | pgx_docker_image | No | The name of the Docker image to generate the pharmacogenomics report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008" |
+| File | pgx_workflow_fileset | No | Tar file containing the pharmacogenomics reference data to generate the report | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar" |
+| File | pgx_roi_bed | No | BED file that defines the genomic regions to include in the pharmacogenomics analysis | "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed" |
 | String | risk_alleles_test_code | No | Test code that defines which risk alleles report to generate | "lmRISK-pnlB_L" |
 | String | risk_alleles_docker_image | No | The name of the Docker image to generate the risk alleles report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20230724" |
 | File | risk_alleles_workflow_fileset | No | Tar file containing the risk alleles reference data to generate the report | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar" |
@@ -77,9 +77,9 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | Int | fast_data_load_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST data loads to complete | 144 |
 | Int | fast_adi_wait_interval_secs | No | The number of seconds in between checks when waiting for FAST annotation data initialization to complete | 600 |
 | Int | fast_adi_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST annotation data initialization to complete | 144 |
-| String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
-| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20230630" |
-| File | gil_transcript_exon_count | No | A tab delimited file of transcript id and exon count | "gs://lmm-reference-data/annotation/gil_lmm/transcript_exonNum.txt" |
+| String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
+| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250111" |
+| File | portable_db_file | No | A SQLite database that contains additional annotations that are merged into the Parser output | "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db" |
 | String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | "S" |
 | Array[File] | igv_track_files | List of track files for inclusion in the IGV report | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" |
 | Array[File] | igv_track_index_files | List of track index files | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz.tbi" |
@@ -276,8 +276,8 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | cov_gene_summary_unknown | If coverage analysis is enabled | Unknown entries from the gene coverage summary |
 | File | cov_gene_summary_entrez | If coverage analysis is enabled | Gene coverage summary enriched with Entrez IDs |
 | File | vcf | If variant calling is run | Variants called from BAM/CRAM |
-| File | pgx_CPIC_report | If PGx is enabled | CPIC pharmacogenomics report |
-| File | pgx_FDA_report | If PGx is enabled | FDA pharmacogenomics report |
+| File | pgx_summary_report | If PGx is enabled | Summary pharmacogenomics report |
+| File | pgx_details_report | If PGx is enabled | Detailed pharmacogenomics report |
 | File | pgx_genotype_xlsx | If PGx is enabled | Full list of pharmacogenomics genotypes in XLSX format |
 | File | pgx_genotype_txt | If PGx is enabled | Full list of pharmacogenomics genotypes in TSV format |
 | File | risk_alleles_report | If risk alleles is enabled | Risk alleles report |
