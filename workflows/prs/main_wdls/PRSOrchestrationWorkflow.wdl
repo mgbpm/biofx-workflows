@@ -53,7 +53,11 @@ workflow PRSOrchestrationWorkflow {
         String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS."
     }
 
-    String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
+    if ((length(read_lines(model_data.score_weights)) - 1) != length(model.var_weights)) {
+        String WeightsLengthError = "Number of scores in the score weights file must be equal to the number of variant weights files."
+    }
+
+    String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, WeightsLengthError, "No error"])
 
     if (input_check_result != "No error") {
         call Utilities.FailTask as FailInputCheck {
