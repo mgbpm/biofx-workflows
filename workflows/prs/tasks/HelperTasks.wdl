@@ -512,3 +512,49 @@ task MakeBatches {
     docker: "python:3.9.10"
   }
 }
+
+task CheckInputWeightFiles {
+    input {
+        File score_weights
+        Array[File] variant_weights
+        String docker_image
+        Int disk_size = ceil(size(score_weights, "GB") + size(variant_weights, "GB")) + 10
+        Int mem_size = 2
+        Int preemptible = 1
+    }
+
+    Int n_variant_weights = length(variant_weights)
+
+    command <<<
+        # Make a list of PGS IDs from the variants weights files
+        for file in '~{sep="' '" variant_weights}'; do
+            printf "${file}" >> pgs_ids.txt
+        done
+
+        # Check for equivalent number of PGS IDs
+        if [ "~{n_variant_weights}" != $(wc -l $(tail -n +2 "~{score_weights}")) ]; then
+            echo "ERROR: Number of PGS IDs does not match" 1>&2
+            exit 1
+        fi
+
+        # Check for a matching PGS IDs in the variants weights files vs score weights file
+        while read line; do
+            pgs_id=$(echo "${line}" | cut -f 1)
+            if [ $(grep -c ${pgs_id} pgs_ids.txt) -lt 1 ]; then
+                echo "ERROR: ${pgs_id} missing from variants weights array" 1>&2
+                exit 1
+            fi
+        done < <(tail -n +2 "~{score_weights}")
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " SSD"
+        memory: mem_size + "GB"
+        preemptible: preemptible
+    }
+
+    output {
+        String input_result = "successful"
+    }
+}

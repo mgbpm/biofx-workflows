@@ -31,6 +31,7 @@ This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percent
 | String | prs_test_code | Yes | Test code that defines config files and assay | |
 | Array[File] | condition_model_manifests | Yes | Adjustment model manifest file from MakeAdjustmentModelWorkflow WDL | |
 | File | conditions_config | Yes | TSV file with condition-specific data on bins, odds-ratios, codes, etc. | |
+| String | ubuntu_docker_image | No | Ubuntu Docker image | "ubuntu:latest" |
 | String | prs_docker_image | No | Docker image with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122" |
 
 ## Debugging Options

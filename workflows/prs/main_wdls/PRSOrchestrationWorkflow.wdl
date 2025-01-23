@@ -6,6 +6,7 @@ import "../subwdls/PRSRawScoreWorkflow.wdl"
 import "../subwdls/PRSMixScoreWorkflow.wdl"
 import "../subwdls/PRSPCAWorkflow.wdl"
 import "../tasks/PRSStructs.wdl"
+import "../tasks/HelperTasks.wdl"
 
 workflow PRSOrchestrationWorkflow {
     input {
@@ -32,6 +33,7 @@ workflow PRSOrchestrationWorkflow {
         String prs_test_code
         Array[File] model_manifests
         File conditions_config
+        String ubuntu_docker_image = "ubuntu:latest"
         String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122"
         
         # DEBUGGING INPUTS
@@ -53,11 +55,18 @@ workflow PRSOrchestrationWorkflow {
         String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS."
     }
 
-    if ((length(read_lines(model_data.score_weights)) - 1) != length(model.var_weights)) {
-        String WeightsLengthError = "Number of scores in the score weights file must be equal to the number of variant weights files."
+    scatter (i in range(length(model_manifests))) {
+        AdjustmentModelData model_data = read_json(model_manifests[i])
+
+        call HelperTasks.CheckInputWeightFiles {
+            input:
+                score_weights = select_first([model_data.score_weights]),
+                variant_weights = select_first([model_data.var_weights]),
+                docker_image = ubuntu_docker_image
+        }
     }
 
-    String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, WeightsLengthError, "No error"])
+    String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
 
     if (input_check_result != "No error") {
         call Utilities.FailTask as FailInputCheck {
@@ -66,14 +75,14 @@ workflow PRSOrchestrationWorkflow {
         }
     }
 
-    if (input_check_result == "No error") {
+    if (defined(CheckInputWeightFiles.input_result) && (input_check_result == "No error")) {
         if (run_glimpse) {
             # Run GLIMPSE to get imputed low-pass variants
             call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
                 input:
                     reference_chunks = select_first([glimpse_reference_chunks]),
-                    crams = select_first([[input_cram]]),
-                    cram_indices = select_first([[input_crai]]),
+                    crams = select_all(select_first([[input_cram], []])),
+                    cram_indices = select_all(select_first([[input_crai], []])),
                     sample_ids = [sample_id],
                     fasta = select_first([ref_fasta]),
                     fasta_index = select_first([ref_fai]),
@@ -127,7 +136,7 @@ workflow PRSOrchestrationWorkflow {
         # Create summary of risk score, percentile, and condition info for reporting
         call SummarizeScores {
             input:
-                conditions = select_first([select_all(condition_name)]),
+                condition_codes = select_first([select_all(condition_name)]),
                 scores = select_first([select_all(PerformPCA.adjusted_scores)]),
                 conditions_config = conditions_config,
                 output_filename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results.tsv",
@@ -151,7 +160,7 @@ workflow PRSOrchestrationWorkflow {
         Array[File]? pc_plot = PerformPCA.pc_plot
 
         # Individual Outputs
-        File risk_summary = SummarizeScores.risk_summary
+        File? risk_summary = SummarizeScores.risk_summary
     }
 }
 
@@ -162,7 +171,7 @@ task SummarizeScores {
         File conditions_config
         String output_filename
         String docker_image
-        Int disk_size = ceil(size(scores, "GB") + size(condition_yaml, "GB")) + 10
+        Int disk_size = ceil(size(scores, "GB") + size(conditions_config, "GB")) + 10
         Int mem_size = 2
         Int preemptible = 1
     }
@@ -177,7 +186,7 @@ task SummarizeScores {
         done
 
         # Make a list of condition_names
-        for c in '~{sep="' '" conditions_codes}'; do
+        for c in '~{sep="' '" condition_codes}'; do
             printf "${c}" >> WORK/condition_codes_list.txt
         done
         
