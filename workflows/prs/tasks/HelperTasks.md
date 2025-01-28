@@ -158,7 +158,7 @@ Distribute the items in <code>cases</code> across
 | :---          | :---      | :---  | :---                                                   | :---          |
 | File          | cases     | Yes   | File containing cases to batch, one per line           |               |
 | Int           | nbatches  | Yes   | Desired number of batches                              |               |
-| Array[String] | exclude   | Yes   | (Possibly empty) array of exclusions                   |               |
+| Array[String] | exclude   | No    | (Possibly empty) array of exclusions                   | []            |
 | Boolean       | noshuffle | No    | If true, do not shuffle the cases before batching them | false         |
 | Int?          | seed      | No    | Seed to use for the PRNG before shuffling; if omitted, no seeding will be done | |
 

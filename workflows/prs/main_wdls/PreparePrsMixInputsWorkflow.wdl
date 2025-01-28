@@ -10,15 +10,15 @@ workflow PreparePrsMixInputs {
     String      workspace
     String      source
     String      target
-    Int         nbatches      = 500
-    Boolean     resuming      = false
+    Int         nbatches         = 500
+    Boolean     resuming         = false
     Array[File] query_vcfs
+    String      prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122"
   }
 
   String tmp              = target + "/.PreparePrsInputs"
   String workdir          = tmp    + "/work"
   String sentinels        = tmp    + "/sentinels"
-  String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:250102"
 
   scatter (weights in weights_files) {
     call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {

@@ -171,11 +171,12 @@ task RenameChromosomesInVcf {
       --tbi         \
       "${INPUTVCF}"
 
-  bcftools annotate            \
-      --no-version             \
-      --output='~{RENAMED}'    \
-      --output-type=z          \
-      --rename-chr='~{rename}' \
+  bcftools annotate                    \
+      --no-version                     \
+      --output='~{RENAMED}'            \
+      --output-type=z                  \
+      --rename-chr='~{rename}'         \
+      --set-id '%CHROM:%POS:%REF:%ALT' \
       "${INPUTVCF}"
 
   >>>
@@ -418,8 +419,8 @@ task MakeBatches {
   input {
     File          cases
     Int           nbatches
-    Array[String] exclude
-    Boolean       noshuffle    = false
+    Array[String] exclude   = []
+    Boolean       noshuffle = false
     Int?          seed
   }
 
