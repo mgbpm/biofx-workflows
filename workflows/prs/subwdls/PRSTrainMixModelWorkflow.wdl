@@ -47,7 +47,7 @@ workflow PRSTrainMixModelWorkflow {
         # Calculate PRS mix score for population VCF
         call PRSMixScoreWorkflow.PRSMixScoreWorkflow as GetMixScore {
             input:
-                condition_name = condition_name,
+                output_basename = condition_name + "_" + basename(reference_vcf),
                 raw_scores = ScorePopulationVCF.score,
                 score_weights = select_first([score_weights]),
         }
