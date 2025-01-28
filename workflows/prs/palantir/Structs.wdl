@@ -42,16 +42,17 @@ struct PRSWrapperConditionResource {
 
 # FOR INTERNAL USE ONLY
 struct AdjustmentModelData {
-  File  parameters
-  File  training_variants
+  File        parameters
+  File        training_variants
 
-  File  principal_components
-  File  loadings
-  File  meansd
+  File        principal_components
+  File        loadings
+  File        meansd
 
-  File  weights
-  File  pca_variants
-  File  original_pca_variants
+  Array[File] variant_weights
+  File?       score_weights
+  File        pca_variants
+  File        original_pca_variants
 
-  Int   base_memory
+  Int         base_memory
 }

@@ -16,7 +16,7 @@ workflow RunPRS {
 
   call MakeAdjustmentModelWorkflow.MakeAdjustmentModel {
     input:
-        weights       = weights
+        weights       = [weights]
       , pca_variants  = pca_variants
       , reference_vcf = reference_vcf
       , query_file    = query_vcf
@@ -36,7 +36,7 @@ workflow RunPRS {
   output {
     File    adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
     Boolean converged                 = MakeAdjustmentModel.converged
-    File    raw_reference_scores      = MakeAdjustmentModel.raw_reference_scores
+    File    raw_reference_scores      = MakeAdjustmentModel.raw_reference_scores[0]
     File    adjusted_reference_scores = MakeAdjustmentModel.adjusted_reference_scores
 
     # -------------------------------------------------------------------------

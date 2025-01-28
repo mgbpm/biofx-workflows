@@ -144,7 +144,7 @@ workflow MakeMixModelWorkflow {
         Boolean fit_converged = TrainModel.fit_converged
         # Score outputs
         Array[File] raw_reference_scores = TrainModel.raw_population_scores
-        File mixed_reference_scores = TrainModel.mixed_population_scores
+        File? mixed_reference_scores = TrainModel.mixed_population_scores
         File adjusted_reference_scores = TrainModel.adjusted_population_scores
     }
 }
