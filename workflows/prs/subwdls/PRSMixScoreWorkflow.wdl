@@ -2,10 +2,9 @@ version 1.0
 
 workflow PRSMixScoreWorkflow {
     input {
-        # PRS Mix inputs
-        String condition_name
         Array[File] raw_scores
         File score_weights
+        String output_basename
         # Docker images
         String ubuntu_docker_image = "ubuntu:21.10"
     }
@@ -15,7 +14,7 @@ workflow PRSMixScoreWorkflow {
         input:
             raw_scores = raw_scores,
             score_weights = score_weights,
-            output_basename = condition_name,
+            output_basename = output_basename,
             docker_image = ubuntu_docker_image
     }
 
@@ -45,7 +44,7 @@ task CalculateMixScore {
         sed '1d;' ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
 
         # Set up score file headers
-        printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}.prs_mix_score.sscore"
+        printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}.mix.sscore"
 
         while read line; do
             # Initialize sum of sample's raw scores
@@ -53,7 +52,7 @@ task CalculateMixScore {
 
             # Add the raw score from each file to the sum of raw scores
             for c in '~{sep="' '" raw_scores}'; do
-                pgs_id=$(basename $c .var_weights.tsv | cut -d "_" -f 2)
+                pgs_id=$(basename $c | grep -i -o "pgs[0-9]*")
                 score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f 2)
                 raw_score=$(grep "${line}" $c | cut -f 4)
                 weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
@@ -64,7 +63,7 @@ task CalculateMixScore {
             weighted_avg=$(awk -v x=${score_sum} -v y="~{raw_scores_len}" 'BEGIN {print x/y}')
 
             # Print info for the sample
-            printf "${line}\t0\t${weighted_avg}\t${score_sum}\n" >> "~{output_basename}.prs_mix_score.sscore"
+            printf "${line}\t0\t${weighted_avg}\t${score_sum}\n" >> "~{output_basename}.mix.sscore"
 
         done < sample_ids.txt
     >>>
@@ -77,6 +76,6 @@ task CalculateMixScore {
     }
 
     output {
-        File prs_mix_raw_score = "~{output_basename}.prs_mix_score.sscore"
+        File prs_mix_raw_score = "~{output_basename}.mix.sscore"
     }
 }
