@@ -8,14 +8,15 @@ both raw and adjusted according to the adjustment model.
 
 ## Input Parameters
 
-| Type   | Name          | Req'd | Description | Default Value |
-| :---   | :---          | :---  | :---        | :--- |
-| File   | weights       | Yes   | a 3-column TSV file describing variants and their weights | |
-| File   | pca_variants  | Yes   | text file listing the variants for principal component analysis (PCA), one variant per line | |
-| File   | reference_vcf | Yes   | gz-compressed VCF file for reference population | |
-| String | model_name    | Yes   | identifying label for the adjustment model | |
-| File   | query_vcf     | Yes   | gz-compressed VCF file of the samples to be scored | |
-| String | query_name    | No    | identifying label for the query dataset | basename of query_vcf (minus the ".vcf.gz" extension) |
+| Type    | Name          | Req'd | Description | Default Value |
+| :---    | :---          | :---  | :---        | :--- |
+| File    | weights       | Yes   | a 3-column TSV file describing variants and their weights | |
+| File    | pca_variants  | Yes   | text file listing the variants for principal component analysis (PCA), one variant per line | |
+| File    | reference_vcf | Yes   | gz-compressed VCF file for reference population | |
+| String  | model_name    | Yes   | identifying label for the adjustment model | |
+| File    | query_vcf     | Yes   | gz-compressed VCF file of the samples to be scored | |
+| String  | query_name    | No    | identifying label for the query dataset | basename of query_vcf (minus the ".vcf.gz" extension) |
+| Boolean | norename      | No    | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 
 ### Details
 <code>weights</code>

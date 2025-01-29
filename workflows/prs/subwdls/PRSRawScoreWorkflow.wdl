@@ -8,24 +8,29 @@ workflow PRSRawScoreWorkflow {
     input {
         File input_vcf
         File adjustment_model_manifest
+        Boolean norename = false
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
     # Clean up the query VCF
-    call HelperTasks.RenameChromosomesInVcf as RenameVcf {
-        input:
-            vcf = input_vcf
+    if (! norename) {
+        call HelperTasks.RenameChromosomesInVcf as RenameVcf {
+            input:
+                vcf = input_vcf
+        }
     }
+
+    File input_vcf_ = select_first([RenameVcf.renamed, input_vcf])
 
     call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
         input:
-            vcf = RenameVcf.renamed
+            vcf = input_vcf_
     }
 
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
-            vcf = RenameVcf.renamed,
+            vcf = input_vcf_,
             mem = GetBaseMemoryFromVcf.gigabytes
     }
 
@@ -41,7 +46,7 @@ workflow PRSRawScoreWorkflow {
 
         call ScoringTasks.ScoreVcf {
             input:
-                vcf = RenameVcf.renamed,
+                vcf = input_vcf_,
                 basename = sub(basename(var_weights_file), ".var_weights.tsv", ""),
                 weights = var_weights_file,
                 base_mem = GetBaseMemoryFromVcf.gigabytes,

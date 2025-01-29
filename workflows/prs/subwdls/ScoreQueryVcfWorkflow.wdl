@@ -7,29 +7,35 @@ import "../palantir/Structs.wdl"
 
 workflow ScoreQueryVcf {
   input {
-    File   query_vcf
-    File   adjustment_model_manifest
-    String name
+    File    query_vcf
+    File    adjustment_model_manifest
+    String  name
+    Boolean norename = false
   }
 
   AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
-  call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
-    input:
-        vcf = query_vcf
+  if (! norename) {
+    call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
+      input:
+          vcf = query_vcf
+    }
   }
+
+  File query_vcf_ = select_first([RenameChromosomesInQueryVcf.renamed,
+                                  query_vcf])
 
   call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
     input:
-        vcf = RenameChromosomesInQueryVcf.renamed
+        vcf = query_vcf_
   }
 
-  Int  base_memory        = select_first([GetBaseMemoryFromVcf.gigabytes,
-                                          model_data.base_memory])
+  Int base_memory = select_first([GetBaseMemoryFromVcf.gigabytes,
+                                  model_data.base_memory])
 
   call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
     input:
-        vcf = RenameChromosomesInQueryVcf.renamed
+        vcf = query_vcf_
       , mem = base_memory
   }
 
@@ -47,7 +53,7 @@ workflow ScoreQueryVcf {
 
   call ScoringTasks.ScoreVcf as ScoreQueryVcf {
     input:
-        vcf                 = RenameChromosomesInQueryVcf.renamed
+        vcf                 = query_vcf_
       , weights             = model_data.weights
       , sites               = model_data.training_variants
       , chromosome_encoding = "MT"
@@ -57,7 +63,7 @@ workflow ScoreQueryVcf {
 
   call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
     input:
-        vcf           = RenameChromosomesInQueryVcf.renamed
+        vcf           = query_vcf_
       , pruning_sites = model_data.pca_variants
       , mem           = base_memory
       , basename      = "query"

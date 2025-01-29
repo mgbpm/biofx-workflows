@@ -5,11 +5,12 @@ the samples mentioned in a query VCF file.
 
 ## Input Parameters
 
-| Type   | Name                      | Req'd | Description | Default Value |
-| :---   | :---                      | :---  | :---        | :--- |
-| File   | query_vcf                 | Yes   | gz-compressed VCF file of the samples to be scored | |
-| File   | adjustment_model_manifest | Yes   | description of the computed model's parameters in JSON format, as that produced by the MakeAdjustmentModel workflow | |
-| String | name                      | Yes   | identifying label for the query dataset | |
+| Type    | Name                      | Req'd | Description | Default Value |
+| :---    | :---                      | :---  | :---        | :--- |
+| File    | query_vcf                 | Yes   | gz-compressed VCF file of the samples to be scored | |
+| File    | adjustment_model_manifest | Yes   | description of the computed model's parameters in JSON format, as that produced by the MakeAdjustmentModel workflow | |
+| String  | name                      | Yes   | identifying label for the query dataset | |
+| Boolean | norename                  | No    | If `true`, do not run `HelperTasks.RenameChromosomesInVcf` on `query_vcf` | false |
 
 ## Output Parameters
 
