@@ -22,6 +22,7 @@ This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percent
 | File | ref_fasta | Required if running GLIMPSE imputation is desired | HG38 reference FASTA file | |
 | File | ref_fai | Required if running GLIMPSE imputation is desired | HG38 reference FASTA index file | |
 | File | reference_dict | Required if running GLIMPSE imputation is desired | HG38 Reference dict file | |
+| Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 
 ## PRS Input Parameters
 

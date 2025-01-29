@@ -35,6 +35,7 @@ workflow PRSOrchestrationWorkflow {
         File conditions_config
         String ubuntu_docker_image = "ubuntu:latest"
         String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122"
+        Boolean norename = false
         
         # DEBUGGING INPUTS
         Boolean run_glimpse = true
@@ -112,7 +113,8 @@ workflow PRSOrchestrationWorkflow {
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = model_manifests[i]
+                    adjustment_model_manifest = model_manifests[i],
+                    norename = norename
             }
 
             # Get the PRS mix raw score for each condition
@@ -129,7 +131,8 @@ workflow PRSOrchestrationWorkflow {
                     condition_name = condition_name,
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
                     adjustment_model_manifest = model_manifests[i],
-                    prs_raw_scores = PRSMixScores.prs_mix_raw_score
+                    prs_raw_scores = PRSMixScores.prs_mix_raw_score,
+                    norename = norename
             }
         }
 

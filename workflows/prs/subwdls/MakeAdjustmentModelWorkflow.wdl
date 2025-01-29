@@ -12,27 +12,37 @@ workflow MakeAdjustmentModel {
     File        reference_vcf
     File        query_file
     String      name
+    Boolean     norename      = false
   }
 
 
-  scatter (tsv in weights) {  
-    call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+  if (! norename) {
+    scatter (tsv in weights) {  
+      call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+        input:
+            tsv        = tsv
+          , skipheader = true
+      }
+    }
+
+    call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
       input:
-          tsv        = tsv
-        , skipheader = true
+          tsv        = pca_variants
+        , skipheader = false
+    }
+
+    call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
+      input:
+          vcf = reference_vcf
     }
   }
 
-  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
-    input:
-        tsv        = pca_variants
-      , skipheader = false
-  }
-
-  call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
-    input:
-        vcf = reference_vcf
-  }
+  Array[File] weights_       = select_first([RenameChromosomesInWeights.renamed,
+                                             weights])
+  File        pca_variants_  = select_first([RenameChromosomesInPcaVariants.renamed,
+                                             pca_variants])
+  File        reference_vcf_ = select_first([RenameChromosomesInReferenceVcf.renamed,
+                                             reference_vcf])
 
   call HelperTasks.GetBaseMemory as GetMemoryForReference {
     input:
@@ -41,55 +51,63 @@ workflow MakeAdjustmentModel {
 
   call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
     input:
-        vcf = RenameChromosomesInReferenceVcf.renamed
+        vcf = reference_vcf_
       , mem = GetMemoryForReference.gigabytes
   }
 
   Boolean isvcf = basename(query_file) != basename(query_file, ".vcf.gz")
 
   if (isvcf) {
-      call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
-        input:
-            vcf = query_file
-      }
+    call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
+      input:
+          vcf = query_file
+    }
 
+    if (! norename) {
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
         input:
             vcf = query_file
       }
+    }
 
-      call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
-        input:
-            vcf = RenameChromosomesInQueryVcf.renamed
-          , mem = GetMemoryForQueryFromVcf.gigabytes
-      }
+    File query_vcf = select_first([RenameChromosomesInQueryVcf.renamed,
+                                   query_file])
+
+    call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
+      input:
+          vcf = select_first([RenameChromosomesInQueryVcf.renamed, query_file])
+        , mem = GetMemoryForQueryFromVcf.gigabytes
+    }
   }
 
-  if (!isvcf) {
+  if (! isvcf) {
+    if (! norename) {
       call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
         input:
             tsv        = query_file
           , skipheader = false
       }
+    }
+    File query_file_ = select_first([RenameChromosomesInQueryVariants.renamed,
+                                     query_file])
   }
 
-  File query_variants = select_first([ExtractQueryVariants.ids,
-                                      RenameChromosomesInQueryVariants.renamed])
+  File query_variants = select_first([ExtractQueryVariants.ids, query_file_])
 
   call MaybeTrimPcaVariants {
     input:
-        pca_variants = RenameChromosomesInPcaVariants.renamed
+        pca_variants = pca_variants_
       , reference    = ExtractReferenceVariants.ids
       , query        = query_variants
   }
 
   File   kept_pca_variants  = select_first([MaybeTrimPcaVariants.kept_pca_variants, 
-                                            RenameChromosomesInPcaVariants.renamed])
+                                            pca_variants_])
   String reference_basename = basename(reference_vcf, ".vcf.gz")
 
   call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
     input:
-        vcf             = RenameChromosomesInReferenceVcf.renamed
+        vcf             = reference_vcf_
       , pruning_sites   = kept_pca_variants
       , basename        = reference_basename
       , mem             = GetMemoryForReference.gigabytes
@@ -108,14 +126,14 @@ workflow MakeAdjustmentModel {
   call PRSTrainMixModelWorkflow.PRSTrainMixModelWorkflow as TrainModel {
     input:
         condition_name = name
-      , var_weights    = RenameChromosomesInWeights.renamed
+      , var_weights    = weights_
       , scoring_sites  = query_variants
-      , reference_vcf  = RenameChromosomesInReferenceVcf.renamed
+      , reference_vcf  = reference_vcf_
       , scoring_mem    = GetMemoryForReference.gigabytes
       , population_pcs = PerformPCA.pcs
   }
 
-  Array[String] renamed_weights   = RenameChromosomesInWeights.renamed
+  Array[String] renamed_weights   = weights_
   Array[String] training_variants = TrainModel.sites_used_in_scoring
 
   call BundleAdjustmentModel {
@@ -140,6 +158,7 @@ workflow MakeAdjustmentModel {
           , variant_weights       :      renamed_weights
           , pca_variants          : "" + kept_pca_variants
           , original_pca_variants : "" + pca_variants
+          , query_file            : "" + select_first([query_vcf, query_file_])
 
           , base_memory           :      GetMemoryForReference.gigabytes
         }

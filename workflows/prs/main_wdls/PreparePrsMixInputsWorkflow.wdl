@@ -12,6 +12,7 @@ workflow PreparePrsMixInputs {
     String      target
     Int         nbatches         = 500
     Boolean     resuming         = false
+    Boolean     norename         = false
     Array[File] query_vcfs
     String      prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122"
   }
@@ -20,32 +21,38 @@ workflow PreparePrsMixInputs {
   String workdir          = tmp    + "/work"
   String sentinels        = tmp    + "/sentinels"
 
-  scatter (weights in weights_files) {
-    call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+  if (! norename) {
+    scatter (weights in weights_files) {
+      call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+        input:
+            tsv        = weights
+          , skipheader = true
+      }
+    }
+
+    call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
       input:
-          tsv        = weights
-        , skipheader = true
+          tsv        = pca_variants
+        , skipheader = false
     }
   }
 
-  call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
-    input:
-        tsv        = pca_variants
-      , skipheader = false
-  }
+  Array[File] weights_files_ = select_first([RenameChromosomesInWeights.renamed,
+                                             weights_files])
+  File        pca_variants_  = select_first([RenameChromosomesInPcaVariants.renamed,
+                                             pca_variants])
 
   call GetTotalSize as FootprintOfWeightsAndPCA {
     input:
-        urls         = flatten([RenameChromosomesInWeights.renamed,
-                                [RenameChromosomesInPcaVariants.renamed]])
+        urls         = flatten([weights_files_, [pca_variants_]])
       , workspace    = workspace
       , docker_image = prs_docker_image
   }
 
   call GetRegions {
     input:
-        weights_files = RenameChromosomesInWeights.renamed
-      , pca_variants  = RenameChromosomesInPcaVariants.renamed
+        weights_files = weights_files_
+      , pca_variants  = pca_variants_
       , footprint     = FootprintOfWeightsAndPCA.gigabytes
   }
 
@@ -129,14 +136,19 @@ workflow PreparePrsMixInputs {
           vcf = query_vcf
     }
 
-    call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
-      input:
-          vcf = query_vcf
+    if (! norename) {
+      call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
+        input:
+            vcf = query_vcf
+      }
     }
+
+    File query_vcf_ = select_first([RenameChromosomesInQueryVcf.renamed,
+                                    query_vcf])
 
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
       input:
-          vcf = RenameChromosomesInQueryVcf.renamed
+          vcf = query_vcf_
         , mem = GetMemoryForQueryFromVcf.gigabytes
     }
   }
@@ -162,7 +174,7 @@ workflow PreparePrsMixInputs {
 
   call MaybeTrimPcaVariants {
     input:
-        pca_variants = RenameChromosomesInPcaVariants.renamed
+        pca_variants = pca_variants_
       , reference    = ExtractReferenceVariants.ids
       , union        = Union.result
       , intersection = Intersection.result
@@ -179,9 +191,9 @@ workflow PreparePrsMixInputs {
   output {
     File        regions               = GetRegions.regions
     File        kept_pca_variants     = select_first([MaybeTrimPcaVariants.kept_pca_variants,
-                                                     RenameChromosomesInPcaVariants.renamed])
-    Array[File] renamed_weights_files = RenameChromosomesInWeights.renamed
-    Array[File] renamed_query_vcfs    = RenameChromosomesInQueryVcf.renamed
+                                                      pca_variants_])
+    Array[File] renamed_weights_files = weights_files_
+    Array[File] renamed_query_vcfs    = query_vcf_
     File        reference_vcf         = ConcatenateShards.reference_vcf
     File        reference_tbi         = ConcatenateShards.reference_tbi
   }

@@ -53,6 +53,7 @@ struct AdjustmentModelData {
   File?       score_weights
   File        pca_variants
   File        original_pca_variants
+  File        query_file
 
   Int         base_memory
 }
