@@ -31,6 +31,7 @@ workflow RunPRS {
         query_vcf                 = query_vcf
       , adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
       , name                      = resolved_query_name
+      , norename                  = true
   }
 
   output {
