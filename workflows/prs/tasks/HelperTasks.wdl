@@ -61,12 +61,32 @@ task RenameChromosomesInTsv {
     File    tsv
     Boolean skipheader
     File    lookup     = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
+    Boolean nocheck    = false
   }
 
   Int    storage = 20 + 2 * ceil(size(tsv, "GB"))
   String RENAMED = "OUTPUT/renamed/" + basename(tsv)
 
   command <<<
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  set -o xtrace
+
+  if '~{if nocheck then "false" else "true"}'
+  then
+      MATCHCOUNT="$(
+                     cut --fields=1 '~{tsv}'             \
+                       | grep                            \
+                             --ignore-case               \
+                             --count                     \
+                             --perl-regex '^\d+|[XY]|MT'
+                   )"
+
+      if (( MATCHCOUNT > 0 ))
+      then
+          exit 0
+      fi
+  fi
+
   python3 <<EOF
   import sys
   import os
@@ -130,7 +150,7 @@ task RenameChromosomesInTsv {
   >>>
 
   output {
-    File renamed = RENAMED
+    File renamed = select_first([RENAMED, tsv])
   }
 
   runtime {
@@ -143,19 +163,41 @@ task RenameChromosomesInTsv {
 
 task RenameChromosomesInVcf {
   input {
-    File vcf
-    File rename = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
+    File    vcf
+    File    rename = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
+    Boolean nocheck = false
   }
 
   Int    storage = 20 + 2 * ceil(size(vcf, "GB"))
   String RENAMED = "OUTPUT/renamed/" + basename(vcf)
 
   command <<<
-  set -o errexit
-  # set -o pipefail
-  # set -o nounset
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
+  set -o xtrace
+
+  if '~{if nocheck then "false" else "true"}'
+  then
+      MATCHCOUNT="$(
+                     zcat '~{vcf}'                              \
+                       | grep --invert-match --max-count=1 '^#' \
+                       | cut --fields=1                         \
+                       | grep                                   \
+                             --ignore-case                      \
+                             --count                            \
+                             --perl-regex '^\d+|[XY]|MT'
+                   )"
+
+      if (( MATCHCOUNT > 0 ))
+      then
+          exit 0
+      fi
+  fi
+
+  # ---------------------------------------------------------------------------
+
+  set -o errexit
+  set -o pipefail
+  set -o nounset
 
   # ---------------------------------------------------------------------------
 
@@ -182,7 +224,7 @@ task RenameChromosomesInVcf {
   >>>
 
   output {
-    File renamed = RENAMED
+    File renamed = select_first([RENAMED, vcf])
   }
 
   runtime {

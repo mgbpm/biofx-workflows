@@ -34,6 +34,7 @@ Renames the human chromosomes mentioned in the first column of
 | File    | tsv          | Yes   | TSV with chromosomes to rename | |
 | Boolean | skipheader   | Yes   | Whether or not to skip the header of the TSV | |
 | File    | lookup       | No    | Chromosome name mapping | "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv" |
+| Boolean | nocheck      | No    | If true, skip the heuristic of checking the first chromosome label in the file | false |
 
 ### Output Parameters
 
@@ -49,10 +50,11 @@ column of <code>vcf</code> to 1, 2, ..., 22, X, Y, MT.
 
 ### Input Parameters
 
-| Type   | Name         | Req'd | Description | Default Value |
-| :---   | :---         | :---  | :---        | :---          |
-| File   | vcf          | Yes   | VCF with chromosomes to rename | |
-| File   | rename       | No    | Chromosome name mapping | "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv" |
+| Type    | Name         | Req'd | Description | Default Value |
+| :---    | :---         | :---  | :---        | :---          |
+| File    | vcf          | Yes   | VCF with chromosomes to rename | |
+| File    | rename       | No    | Chromosome name mapping | "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv" |
+| Boolean | nocheck      | No    | If true, skip the heuristic of checking the first chromosome label in the file | false |
 
 ### Output Parameters
 
