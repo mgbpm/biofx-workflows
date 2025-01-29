@@ -12,6 +12,7 @@ workflow RunPRS {
     String  model_name
     File    query_vcf
     String? query_name
+    Boolean norename      = false
   }
 
   call MakeAdjustmentModelWorkflow.MakeAdjustmentModel {
@@ -21,6 +22,7 @@ workflow RunPRS {
       , reference_vcf = reference_vcf
       , query_file    = query_vcf
       , name          = model_name
+      , norename      = norename
   }
 
   String resolved_query_name = select_first([query_name,
@@ -31,6 +33,7 @@ workflow RunPRS {
         query_vcf                 = query_vcf
       , adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
       , name                      = resolved_query_name
+      , norename                  = true   # sic
   }
 
   output {

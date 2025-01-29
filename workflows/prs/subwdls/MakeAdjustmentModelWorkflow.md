@@ -10,13 +10,14 @@ Generates an adjustment model to adjust raw PRS scores.
 modification, to this workflow's input parameters of the same name;
 see the documentation for the RunPRS workflow for more information.
 
-| Type   | Name          | Req'd | Description | Default Value |
-| :---   | :---          | :---  | :---        | :--- |
-| File   | weights       | Yes   | a 3-column TSV file describing variants and their weights | |
-| File   | pca_variants  | Yes   | text file listing the variants for principal component analysis (PCA), one variant per line | |
-| File   | reference_vcf | Yes   | gz-compressed VCF file for reference population | |
-| File   | query_file    | Yes   | either a gz-compressed VCF file of the samples to be scored, or the list of variants extracted from one such VCF | |
-| String | name          | Yes   | identifying label for the adjustment model | |
+| Type    | Name          | Req'd | Description | Default Value |
+| :---    | :---          | :---  | :---        | :--- |
+| File    | weights       | Yes   | a 3-column TSV file describing variants and their weights | |
+| File    | pca_variants  | Yes   | text file listing the variants for principal component analysis (PCA), one variant per line | |
+| File    | reference_vcf | Yes   | gz-compressed VCF file for reference population | |
+| File    | query_file    | Yes   | either a gz-compressed VCF file of the samples to be scored, or the list of variants extracted from one such VCF | |
+| String  | name          | Yes   | identifying label for the adjustment model | |
+| Boolean | norename      | No    | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 
 ## Output Parameters
 

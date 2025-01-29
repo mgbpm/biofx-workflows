@@ -13,26 +13,38 @@ workflow MakeMixModelWorkflow {
         File reference_vcf
         File query_file
         File score_weights
+        Boolean norename = false
         String ubuntu_docker_image = "ubuntu:21.10"
     }
 
-    # Clean up weights, pca, and reference inputs
-    scatter (i in range(length(var_weights))) {
-        call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
-            input:
-                tsv = var_weights[i],
-                skipheader = true
-        }
+    if (! norename) {
+      # Clean up weights, pca, and reference inputs
+      scatter (i in range(length(var_weights))) {
+          call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
+              input:
+                  tsv = var_weights[i],
+                  skipheader = true
+          }
+      }
+
+      call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
+          input:
+              tsv = pca_variants,
+              skipheader = false
+      }
+
+      call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
+          input:
+              vcf = reference_vcf
+      }
     }
-    call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
-        input:
-            tsv = pca_variants,
-            skipheader = false
-    }
-    call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
-        input:
-            vcf = reference_vcf
-    }
+
+    Array[File] var_weights_ = select_first([RenameChromosomesInWeights.renamed,
+                                             var_weights])
+    File pca_variants_ = select_first([RenameChromosomesInPcaVariants.renamed,
+                                       pca_variants])
+    File reference_vcf_ = select_first([RenameChromosomesInReferenceVcf.renamed,
+                                        reference_vcf])
 
     # Extract variant IDs from reference
     call HelperTasks.GetBaseMemory as GetMemoryForReference {
@@ -41,7 +53,7 @@ workflow MakeMixModelWorkflow {
     }
     call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
         input:
-            vcf = RenameChromosomesInReferenceVcf.renamed,
+            vcf = reference_vcf_,
             mem = GetMemoryForReference.gigabytes
     }
 
@@ -54,43 +66,49 @@ workflow MakeMixModelWorkflow {
                 vcf = query_file
         }
 
-        call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
-            input:
-                vcf = query_file
+        if (! norename) {
+            call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
+                input:
+                    vcf = query_file
+            }
         }
 
         call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
             input:
-                vcf = RenameChromosomesInQueryVcf.renamed,
+                vcf = select_first([RenameChromosomesInQueryVcf.renamed, query_file]),
                 mem = GetMemoryForQueryFromVcf.gigabytes
         }
     }
-    if (!isvcf) {
-        call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
-            input:
-                tsv = query_file,
-                skipheader = false
+    if (! isvcf) {
+        if (! norename) {
+            call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
+                input:
+                    tsv = query_file,
+                    skipheader = false
+            }
         }
+        File query_file_ = select_first([RenameChromosomesInQueryVariants.renamed,
+                                         query_file])
     }
 
-    File query_variants = select_first([ExtractQueryVariants.ids, RenameChromosomesInQueryVariants.renamed])
+    File query_variants = select_first([ExtractQueryVariants.ids, query_file_])
 
     call TrimPCAVariants {
         input:
-            pca_variants = RenameChromosomesInPcaVariants.renamed,
+            pca_variants = pca_variants_,
             reference = ExtractReferenceVariants.ids,
             query = query_variants,
             docker_image = ubuntu_docker_image
     }
 
-    File kept_pca_variants = select_first([TrimPCAVariants.kept_pca_variants, RenameChromosomesInPcaVariants.renamed])
+    File kept_pca_variants = select_first([TrimPCAVariants.kept_pca_variants, pca_variants_])
 
     String reference_basename = basename(reference_vcf, ".vcf.gz")
 
     # Perform PCA
     call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
         input:
-            vcf = RenameChromosomesInReferenceVcf.renamed,
+            vcf = reference_vcf_,
             pruning_sites = kept_pca_variants,
             subset_to_sites = query_variants,
             basename = reference_basename,
@@ -109,16 +127,16 @@ workflow MakeMixModelWorkflow {
     call PRSTrainMixModelWorkflow.PRSTrainMixModelWorkflow as TrainModel {
         input:
             condition_name = condition_name,
-            var_weights = RenameChromosomesInWeights.renamed,
+            var_weights = var_weights_,
             scoring_sites = query_variants,
-            reference_vcf = RenameChromosomesInReferenceVcf.renamed,
+            reference_vcf = reference_vcf_,
             score_weights = score_weights,
             scoring_mem = GetMemoryForReference.gigabytes,
             population_pcs = PerformPCA.pcs
     }
 
     # Bundle model outputs in JSON
-    Array[String] renamed_weights = RenameChromosomesInWeights.renamed
+    Array[String] renamed_weights = var_weights_
 
     call BundleAdjustmentModel {
         # Convert files to string types so a VM is not used

@@ -12,19 +12,24 @@ workflow PRSPCAWorkflow {
         File input_vcf
         File adjustment_model_manifest
         File? prs_raw_scores
+        Boolean norename = false
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
-    # Clean up the query VCF
-    call HelperTasks.RenameChromosomesInVcf as RenameVcf {
-        input:
-            vcf = input_vcf
+    if (! norename) {
+        # Clean up the query VCF
+        call HelperTasks.RenameChromosomesInVcf as RenameVcf {
+            input:
+                vcf = input_vcf
+        }
     }
+
+    File input_vcf_ = select_first([RenameVcf.renamed, input_vcf])
 
     call PCATasks.ArrayVcfToPlinkDataset as QueryBed {
         input:
-            vcf = RenameVcf.renamed,
+            vcf = input_vcf_,
             pruning_sites = model_data.pca_variants,
             basename = condition_name,
             mem = model_data.base_memory
