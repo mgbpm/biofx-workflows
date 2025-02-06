@@ -47,7 +47,7 @@ workflow PRSRawScoreWorkflow {
         call ScoringTasks.ScoreVcf {
             input:
                 vcf = input_vcf_,
-                basename = sub(basename(var_weights_file), ".var_weights.tsv", ""),
+                basename = basename(var_weights_file),
                 weights = var_weights_file,
                 base_mem = GetBaseMemoryFromVcf.gigabytes,
                 sites = model_data.training_variants,
