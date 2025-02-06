@@ -149,13 +149,13 @@ workflow MakeAdjustmentModel {
     input:
         model_data = object {
             parameters            : "" + TrainModel.fitted_params
-          , training_variants     :      training_variants
 
           , principal_components  : "" + PerformPCA.pcs
           , loadings              : "" + PerformPCA.pc_loadings
           , meansd                : "" + PerformPCA.mean_sd
 
           , variant_weights       :      renamed_weights
+          , scoring_inputs        :      TrainModel.scoring_inputs
           , pca_variants          : "" + kept_pca_variants
           , original_pca_variants : "" + pca_variants
           , query_file            : "" + select_first([query_vcf, query_file_])

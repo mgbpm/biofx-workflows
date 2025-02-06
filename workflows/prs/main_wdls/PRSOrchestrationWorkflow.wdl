@@ -62,7 +62,7 @@ workflow PRSOrchestrationWorkflow {
         call HelperTasks.CheckInputWeightFiles {
             input:
                 score_weights = select_first([model_data.score_weights]),
-                variant_weights = select_first([model_data.var_weights]),
+                variant_weights = select_first([model_data.variant_weights]),
                 docker_image = ubuntu_docker_image
         }
     }

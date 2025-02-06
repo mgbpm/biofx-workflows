@@ -41,6 +41,13 @@ workflow PRSTrainMixModelWorkflow {
             sites = scoring_sites,
             chromosome_encoding = "MT"
         }
+
+        # The prepending of a empty string to the values of the Object
+        # below effectively coerces their types from File to String.
+        Object scoring_inputs_ = object {
+            variant_weights   : "" + weights_file
+          , training_variants : "" + ScorePopulationVCF.sites_scored
+        }
       }
 
       if (nweights > 1) {
@@ -68,12 +75,14 @@ workflow PRSTrainMixModelWorkflow {
 
     output {
         # Model outputs
-        File fitted_params = select_first([TrainAncestryModel.fitted_params])
-        Array[File] sites_used_in_scoring = select_first([ScorePopulationVCF.sites_scored])
-        File adjusted_population_scores = select_first([TrainAncestryModel.adjusted_population_scores])
-        Boolean fit_converged = select_first([TrainAncestryModel.fit_converged])
+        File           fitted_params              = select_first([TrainAncestryModel.fitted_params])
+        Array[File]    sites_used_in_scoring      = select_first([ScorePopulationVCF.sites_scored])
+        File           adjusted_population_scores = select_first([TrainAncestryModel.adjusted_population_scores])
+        Boolean        fit_converged              = select_first([TrainAncestryModel.fit_converged])
+        Array[Object]+ scoring_inputs             = select_first([scoring_inputs_])
+        Array[File]+   variant_weights            = var_weights
         # Scoring outputs
-        Array[File] raw_population_scores = select_first([ScorePopulationVCF.score])
-        File? mixed_population_scores = GetMixScore.prs_mix_raw_score
+        Array[File]    raw_population_scores      = select_first([ScorePopulationVCF.score])
+        File?          mixed_population_scores    = GetMixScore.prs_mix_raw_score
     }
 }

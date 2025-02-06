@@ -145,17 +145,17 @@ workflow MakeMixModelWorkflow {
         # Convert files to string types so a VM is not used
         input:
             model_data = object {
-                parameters : "" + TrainModel.fitted_params,
-                training_variants : "" + TrainModel.sites_used_in_scoring[0],
-                principal_components : "" + PerformPCA.pcs,
-                loadings : "" + PerformPCA.pc_loadings,
-                meansd : "" + PerformPCA.mean_sd,
-                score_weights : "" + score_weights,
-                var_weights : renamed_weights,
-                pca_variants : "" + kept_pca_variants,
-                original_pca_variants: "" + pca_variants,
-                query_file : "" + select_first([query_vcf, query_file_]),
-                base_memory : GetMemoryForReference.gigabytes
+                parameters            : "" + TrainModel.fitted_params
+              , scoring_inputs        :      TrainModel.scoring_inputs
+              , principal_components  : "" + PerformPCA.pcs
+              , loadings              : "" + PerformPCA.pc_loadings
+              , meansd                : "" + PerformPCA.mean_sd
+              , variant_weights       :      TrainModel.variant_weights
+              , score_weights         : "" + score_weights
+              , pca_variants          : "" + kept_pca_variants
+              , original_pca_variants : "" + pca_variants
+              , query_file            : "" + select_first([query_vcf, query_file_])
+              , base_memory           :      GetMemoryForReference.gigabytes
             },
             docker_image = ubuntu_docker_image
     }

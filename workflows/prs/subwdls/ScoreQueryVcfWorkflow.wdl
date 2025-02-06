@@ -3,7 +3,7 @@ version 1.0
 import "../palantir/ScoringTasks.wdl"
 import "../palantir/PCATasks.wdl"
 import "../tasks/HelperTasks.wdl"
-import "../palantir/Structs.wdl"
+import "../tasks/PRSStructs.wdl"
 
 workflow ScoreQueryVcf {
   input {
@@ -42,20 +42,20 @@ workflow ScoreQueryVcf {
   # --------------------------------------------------------------------------
 
   WeightSet weight_set = object {
-    linear_weights : model_data.weights
+    linear_weights : model_data.scoring_inputs[0].variant_weights
   }
 
   call ScoringTasks.CheckWeightsCoverSitesUsedInTraining {
     input:
-        sites_used_in_training = model_data.training_variants
+        sites_used_in_training = model_data.scoring_inputs[0].training_variants
       , weight_set             = weight_set
   }
 
   call ScoringTasks.ScoreVcf as ScoreQueryVcf {
     input:
         vcf                 = query_vcf_
-      , weights             = model_data.variant_weights[0]
-      , sites               = model_data.training_variants
+      , weights             = model_data.scoring_inputs[0].variant_weights
+      , sites               = model_data.scoring_inputs[0].training_variants
       , chromosome_encoding = "MT"
       , base_mem            = base_memory
       , basename            = name

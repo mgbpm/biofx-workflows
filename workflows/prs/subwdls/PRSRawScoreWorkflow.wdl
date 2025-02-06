@@ -35,22 +35,25 @@ workflow PRSRawScoreWorkflow {
     }
 
     # Check weights files and score VCF
-    scatter (i in range(length(model_data.var_weights))) {
-        File var_weights_file = model_data.var_weights[i]
+    scatter (scoring_inputs in model_data.scoring_inputs) {
+
+        File variant_weights = scoring_inputs.variant_weights
 
         call ScoringTasks.CheckWeightsCoverSitesUsedInTraining {
             input:
-                sites_used_in_training = model_data.training_variants,
-                weight_set = object {linear_weights : var_weights_file}
+                sites_used_in_training = scoring_inputs.training_variants
+              , weight_set             = object {
+                                                  linear_weights : variant_weights
+                                                }
         }
 
         call ScoringTasks.ScoreVcf {
             input:
-                vcf = input_vcf_,
-                basename = basename(var_weights_file),
-                weights = var_weights_file,
-                base_mem = GetBaseMemoryFromVcf.gigabytes,
-                sites = model_data.training_variants,
+                vcf                 = input_vcf_,
+                basename            = basename(variant_weights),
+                weights             = variant_weights,
+                base_mem            = GetBaseMemoryFromVcf.gigabytes,
+                sites               = scoring_inputs.training_variants,
                 chromosome_encoding = "MT"
         }
     }
