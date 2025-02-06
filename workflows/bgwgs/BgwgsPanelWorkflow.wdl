@@ -323,7 +323,8 @@ task LMMVariantReportTask {
         --out ~{xls_report_out} \
         --snp ~{snps_out} \
         --xml ~{xml_report_out} \
-        --webservice-config gil-client-config.json 
+        --webservice-config gil-client-config.json \
+        --batch 1
         
     >>>
 
