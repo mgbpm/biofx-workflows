@@ -120,7 +120,7 @@ workflow PRSOrchestrationWorkflow {
             # Get the PRS mix raw score for each condition
             call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
                 input:
-                    condition_name = condition_name,
+                    output_basename = condition_name,
                     raw_scores = PRSRawScores.prs_raw_scores,
                     score_weights = select_first([model_data.score_weights])
             }
@@ -128,7 +128,7 @@ workflow PRSOrchestrationWorkflow {
             # Adjust the PRS mix raw score with PCA and model
             call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
                 input:
-                    condition_name = condition_name,
+                    output_basename = condition_name,
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
                     adjustment_model_manifest = model_manifests[i],
                     prs_raw_scores = PRSMixScores.prs_mix_raw_score,

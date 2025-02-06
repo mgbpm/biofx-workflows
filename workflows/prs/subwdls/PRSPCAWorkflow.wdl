@@ -8,7 +8,7 @@ import "../tasks/PRSStructs.wdl"
 
 workflow PRSPCAWorkflow {
     input {
-        String condition_name
+        String output_basename
         File input_vcf
         File adjustment_model_manifest
         File? prs_raw_scores
@@ -31,7 +31,7 @@ workflow PRSPCAWorkflow {
         input:
             vcf = input_vcf_,
             pruning_sites = model_data.pca_variants,
-            basename = condition_name,
+            basename = output_basename,
             mem = model_data.base_memory
     }
 
@@ -43,7 +43,7 @@ workflow PRSPCAWorkflow {
             fam = QueryBed.fam,
             pc_loadings = model_data.loadings,
             pc_meansd = model_data.meansd,
-            basename = condition_name + "_pca",
+            basename = output_basename + "_pca",
             mem = model_data.base_memory
     }
 

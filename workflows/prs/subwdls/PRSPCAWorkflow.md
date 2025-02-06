@@ -4,7 +4,7 @@
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| File | condition_name | Yes | Name of condition/disease | |
+| File | output_basename | Yes | Basename to use for output file | |
 | File | input_vcf | Yes | Imputed VCF or VCF with genome data | |
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | File? | prs_raw_scores | No | Raw PRS scores for all subjects to adjust | |
