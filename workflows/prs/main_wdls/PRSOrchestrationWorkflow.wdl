@@ -56,17 +56,6 @@ workflow PRSOrchestrationWorkflow {
         String InputVcfError = "If GLIMPSE is not being run, please input a VCF for running PRS."
     }
 
-    scatter (i in range(length(model_manifests))) {
-        AdjustmentModelData model_data = read_json(model_manifests[i])
-
-        call HelperTasks.CheckInputWeightFiles {
-            input:
-                score_weights = select_first([model_data.score_weights]),
-                variant_weights = select_first([model_data.variant_weights]),
-                docker_image = ubuntu_docker_image
-        }
-    }
-
     String input_check_result = select_first([GlimpseInputError, GlimpseReferenceInputError, InputVcfError, "No error"])
 
     if (input_check_result != "No error") {
@@ -76,7 +65,7 @@ workflow PRSOrchestrationWorkflow {
         }
     }
 
-    if (defined(CheckInputWeightFiles.input_result) && (input_check_result == "No error")) {
+    if (input_check_result == "No error") {
         if (run_glimpse) {
             # Run GLIMPSE to get imputed low-pass variants
             call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {

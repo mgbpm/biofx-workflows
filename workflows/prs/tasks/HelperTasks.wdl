@@ -527,13 +527,15 @@ task CheckInputWeightFiles {
     Int n_variant_weights = length(variant_weights)
 
     command <<<
+        set -euxo pipefail
+
         # Make a list of PGS IDs from the variants weights files
         for file in '~{sep="' '" variant_weights}'; do
-            printf "${file}" >> pgs_ids.txt
+            printf -- "${file}\n" >> pgs_ids.txt
         done
 
         # Check for equivalent number of PGS IDs
-        if [ "~{n_variant_weights}" != $(wc -l $(tail -n +2 "~{score_weights}")) ]; then
+        if [ "~{n_variant_weights}" != $(tail -n +2 "~{score_weights}" | wc -l) ]; then
             echo "ERROR: Number of PGS IDs does not match" 1>&2
             exit 1
         fi
@@ -549,7 +551,7 @@ task CheckInputWeightFiles {
     >>>
 
     runtime {
-        docker: "~{docker_image}"
+        docker: docker_image
         disks: "local-disk " + disk_size + " SSD"
         memory: mem_size + "GB"
         preemptible: preemptible

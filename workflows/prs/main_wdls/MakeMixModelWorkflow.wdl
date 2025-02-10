@@ -17,6 +17,13 @@ workflow MakeMixModelWorkflow {
         String ubuntu_docker_image = "ubuntu:21.10"
     }
 
+    call HelperTasks.CheckInputWeightFiles {
+        input:
+            score_weights = score_weights,
+            variant_weights = var_weights,
+            docker_image = ubuntu_docker_image
+    }
+
     if (! norename) {
       # Clean up weights, pca, and reference inputs
       scatter (i in range(length(var_weights))) {
