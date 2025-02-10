@@ -34,7 +34,7 @@ workflow PRSOrchestrationWorkflow {
         Array[File] model_manifests
         File conditions_config
         String ubuntu_docker_image = "ubuntu:latest"
-        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250122"
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250210"
         Boolean norename = false
         
         # DEBUGGING INPUTS
@@ -174,19 +174,19 @@ task SummarizeScores {
 
         # Make a list of scores files for python to access
         for s in '~{sep="' '" scores}'; do
-            printf "${s}" >> WORK/scores_files_list.txt
+            printf -- "${s}\n" >> WORK/scores_files_list.txt
         done
 
         # Make a list of condition_names
         for c in '~{sep="' '" condition_codes}'; do
-            printf "${c}" >> WORK/condition_codes_list.txt
+            printf -- "${c}\n" >> WORK/condition_codes_list.txt
         done
-        
-        ${PACKAGESDIR}/biofx-prs/bin/summarize_mix_scores.py \
+
+        summarize_mix_scores.py \
             --condition-config "~{conditions_config}" \
             --scores-list WORK/scores_files_list.txt \
             --condition-codes WORK/condition_codes_list.txt \
-            --output-file "~{output_filename}" \
+            --output-file "~{output_filename}.tsv" \
             --output-dir OUTPUT
     >>>
 
@@ -198,6 +198,6 @@ task SummarizeScores {
     }
 
     output {
-        File risk_summary = "~{output_filename}"
+        File risk_summary = "OUTPUT/~{output_filename}.tsv"
     }
 }
