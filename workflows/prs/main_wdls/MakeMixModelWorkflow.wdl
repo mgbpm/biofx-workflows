@@ -12,16 +12,18 @@ workflow MakeMixModelWorkflow {
         File pca_variants
         File reference_vcf
         File query_file
-        File score_weights
+        File? score_weights
         Boolean norename = false
         String ubuntu_docker_image = "ubuntu:21.10"
     }
 
-    call HelperTasks.CheckInputWeightFiles {
-        input:
-            score_weights = score_weights,
-            variant_weights = var_weights,
-            docker_image = ubuntu_docker_image
+    if (defined(score_weights)) {
+      call HelperTasks.CheckInputWeightFiles {
+          input:
+              score_weights = select_first([score_weights]),
+              variant_weights = var_weights,
+              docker_image = ubuntu_docker_image
+      }
     }
 
     if (! norename) {
