@@ -93,16 +93,16 @@ workflow PRSOrchestrationWorkflow {
             }
         }
 
-        scatter (i in range(length(model_manifests))) {
-            String condition_name = sub(basename(model_manifests[i]), "_[[0-9]]+\\.json$", "")
+        scatter (model_manifest in model_manifests) {
+            String condition_name = sub(basename(model_manifest), "_[[0-9]]+\\.json$", "")
 
-            AdjustmentModelData model_data = read_json(model_manifests[i])
+            AdjustmentModelData model_data = read_json(model_manifest)
 
             # Get PRS raw scores for each condition
             call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
                 input:
-                    input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = model_manifests[i],
+                    query_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
+                    adjustment_model_manifest = model_manifest,
                     norename = norename
             }
 
@@ -119,7 +119,7 @@ workflow PRSOrchestrationWorkflow {
                 input:
                     output_basename = condition_name,
                     input_vcf = select_first([RunGlimpse.imputed_vcf, query_vcf]),
-                    adjustment_model_manifest = model_manifests[i],
+                    adjustment_model_manifest = model_manifest,
                     prs_raw_scores = PRSMixScores.prs_mix_raw_score,
                     norename = norename
             }

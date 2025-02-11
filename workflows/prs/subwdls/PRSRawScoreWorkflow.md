@@ -4,7 +4,7 @@
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| File | input_vcf | Yes | Joint or single-sample VCF to score | |
+| File | query_vcf | Yes | Joint or single-sample VCF to score | |
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomesInVcf` on `input_vcf` | false |
 

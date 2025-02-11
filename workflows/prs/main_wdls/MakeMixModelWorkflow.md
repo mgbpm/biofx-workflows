@@ -5,7 +5,7 @@
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | File | condition_name | Yes | Name of condition/disease | |
-| Array[File] | var_weights | Yes | Array of different PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
+| Array[File] | variant_weights | Yes | Array of different PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
 | File | pca_variants | Yes | Variants used in PCA projection | |
 | File | reference_vcf | Yes | Reference VCF of population for creating/training model | |
 | File | query_file | Yes | VCF or TSV to score | |

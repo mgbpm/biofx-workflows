@@ -6,7 +6,7 @@ import "../tasks/PRSStructs.wdl"
 
 workflow PRSRawScoreWorkflow {
     input {
-        File input_vcf
+        File query_vcf
         File adjustment_model_manifest
         Boolean norename = false
     }
@@ -17,20 +17,20 @@ workflow PRSRawScoreWorkflow {
     if (! norename) {
         call HelperTasks.RenameChromosomesInVcf as RenameVcf {
             input:
-                vcf = input_vcf
+                vcf = query_vcf
         }
     }
 
-    File input_vcf_ = select_first([RenameVcf.renamed, input_vcf])
+    File query_vcf_ = select_first([RenameVcf.renamed, query_vcf])
 
     call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
         input:
-            vcf = input_vcf_
+            vcf = query_vcf_
     }
 
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
-            vcf = input_vcf_,
+            vcf = query_vcf_,
             mem = GetBaseMemoryFromVcf.gigabytes
     }
 
@@ -49,7 +49,7 @@ workflow PRSRawScoreWorkflow {
 
         call ScoringTasks.ScoreVcf {
             input:
-                vcf                 = input_vcf_,
+                vcf                 = query_vcf_,
                 basename            = basename(variant_weights),
                 weights             = variant_weights,
                 base_mem            = GetBaseMemoryFromVcf.gigabytes,

@@ -18,12 +18,12 @@ workflow RunPRS {
 
   call MakeMixModelWorkflow.MakeMixModelWorkflow as MakeAdjustmentModel {
     input:
-        var_weights    = [weights]
-      , pca_variants   = pca_variants
-      , reference_vcf  = reference_vcf
-      , query_file     = query_vcf
-      , condition_name = model_name
-      , norename       = norename
+        variant_weights = [weights]
+      , pca_variants    = pca_variants
+      , reference_vcf   = reference_vcf
+      , query_file      = query_vcf
+      , condition_name  = model_name
+      , norename        = norename
   }
 
   String resolved_query_name = select_first([query_name,
@@ -40,7 +40,7 @@ workflow RunPRS {
 
   output {
     File    adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
-    Boolean converged                 = MakeAdjustmentModel.fit_converged
+    Boolean converged                 = MakeAdjustmentModel.converged
     File    raw_reference_scores      = MakeAdjustmentModel.raw_reference_scores[0]
     File    adjusted_reference_scores = MakeAdjustmentModel.adjusted_reference_scores
 

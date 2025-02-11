@@ -8,7 +8,7 @@ import "../tasks/HelperTasks.wdl" as HelperTasks
 workflow MakeMixModelWorkflow {
     input {
         String condition_name
-        Array[File] var_weights
+        Array[File] variant_weights
         File pca_variants
         File reference_vcf
         File query_file
@@ -21,17 +21,17 @@ workflow MakeMixModelWorkflow {
       call HelperTasks.CheckInputWeightFiles {
           input:
               score_weights = select_first([score_weights]),
-              variant_weights = var_weights,
+              variant_weights = variant_weights,
               docker_image = ubuntu_docker_image
       }
     }
 
     if (! norename) {
       # Clean up weights, pca, and reference inputs
-      scatter (i in range(length(var_weights))) {
+      scatter (tsv in variant_weights) {
           call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
               input:
-                  tsv = var_weights[i],
+                  tsv = tsv,
                   skipheader = true
           }
       }
@@ -48,8 +48,8 @@ workflow MakeMixModelWorkflow {
       }
     }
 
-    Array[File] var_weights_ = select_first([RenameChromosomesInWeights.renamed,
-                                             var_weights])
+    Array[File] variant_weights_ = select_first([RenameChromosomesInWeights.renamed,
+                                                 variant_weights])
     File pca_variants_ = select_first([RenameChromosomesInPcaVariants.renamed,
                                        pca_variants])
     File reference_vcf_ = select_first([RenameChromosomesInReferenceVcf.renamed,
@@ -139,16 +139,16 @@ workflow MakeMixModelWorkflow {
     call PRSTrainMixModelWorkflow.PRSTrainMixModelWorkflow as TrainModel {
         input:
             condition_name = condition_name,
-            var_weights = var_weights_,
-            scoring_sites = query_variants,
-            reference_vcf = reference_vcf_,
-            score_weights = score_weights,
-            scoring_mem = GetMemoryForReference.gigabytes,
+            var_weights    = variant_weights_,
+            scoring_sites  = query_variants,
+            reference_vcf  = reference_vcf_,
+            score_weights  = score_weights,
+            scoring_mem    = GetMemoryForReference.gigabytes,
             population_pcs = PerformPCA.pcs
     }
 
     # Bundle model outputs in JSON
-    Array[String] renamed_weights = var_weights_
+    Array[String] renamed_weights = variant_weights_
 
     call BundleAdjustmentModel {
         # Convert files to string types so a VM is not used
@@ -172,7 +172,7 @@ workflow MakeMixModelWorkflow {
     output {
         # Model outputs
         File adjustment_model_manifest = BundleAdjustmentModel.manifest
-        Boolean fit_converged = TrainModel.fit_converged
+        Boolean converged = TrainModel.fit_converged
         # Score outputs
         Array[File] raw_reference_scores = TrainModel.raw_population_scores
         File? mixed_reference_scores = TrainModel.mixed_population_scores
