@@ -26,7 +26,6 @@ workflow PRSMixScoreWorkflow {
 task CalculateMixScore {
     input {
         Array[File] raw_scores
-        Int raw_scores_len = length(raw_scores)
         File score_weights
         String output_basename
         String docker_image
@@ -38,32 +37,28 @@ task CalculateMixScore {
     command <<<
         set -euxo pipefail
 
-
-        # Extract all sample IDs from a raw score file
         score_file_array=('~{sep="' '" raw_scores}')
-        sed '1d;' ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
+        tail -n +2 ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
 
-        # Set up score file headers
-        printf "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}.mix.sscore"
+        printf -- "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}.mix.sscore"
 
-        while read line; do
-            # Initialize sum of sample's raw scores
+        while read sample_id; do
+
             score_sum=0
+            weight_sum=0
 
-            # Add the raw score from each file to the sum of raw scores
-            for c in '~{sep="' '" raw_scores}'; do
-                pgs_id=$(basename $c | grep -i -o "pgs[0-9]*")
+            for score_file in '~{sep="' '" raw_scores}'; do
+                pgs_id=$(basename $score_file | grep --ignore-case --only-matching "pgs[0-9]*")
                 score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f 2)
-                raw_score=$(grep "${line}" $c | cut -f 4)
+                raw_score=$(grep "${sample_id}" $score_file | cut -f 4)
                 weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
                 score_sum=$(awk -v x=${weighted_score} -v y=${score_sum} 'BEGIN {print x+y}')
+                weight_sum=$(awk -v x=${score_weight} -v y=${weight_sum} 'BEGIN {print x+y}')
             done
 
-            # Get the weighted average for raw scores (the PRS mix score)
-            weighted_avg=$(awk -v x=${score_sum} -v y="~{raw_scores_len}" 'BEGIN {print x/y}')
+            score_avg=$(awk -v x=${score_sum} -v y=${weight_sum} 'BEGIN {print x/y}')
 
-            # Print info for the sample
-            printf "${line}\t0\t${weighted_avg}\t${score_sum}\n" >> "~{output_basename}.mix.sscore"
+            printf -- "${sample_id}\t0\t${score_avg}\t${score_sum}\n" >> "~{output_basename}.mix.sscore"
 
         done < sample_ids.txt
     >>>
