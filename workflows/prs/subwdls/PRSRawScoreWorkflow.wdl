@@ -62,5 +62,6 @@ workflow PRSRawScoreWorkflow {
         Array[File] prs_raw_scores = ScoreVcf.score
         Array[File] prs_raw_scores_log = ScoreVcf.log
         Array[File] sites_scored = ScoreVcf.sites_scored
+        File kept_variants = ExtractQueryVariants.ids
     }
 }
