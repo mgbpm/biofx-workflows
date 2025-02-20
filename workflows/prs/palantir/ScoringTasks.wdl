@@ -22,34 +22,7 @@ task ScoreVcf {
 
   Int disk_space     = 3 * ceil(size(vcf, "GB")) + 20
 
-  String devdir     = 'DEV'
-  String inputsdir  = devdir + '/INPUTS'
-  String outputsdir = devdir + '/OUTPUTS'
-
-  Array[String] inputs = if defined(sites)
-                         then [inputsdir + '/vcf',
-                               inputsdir + '/weights',
-                               inputsdir + '/sites']
-                         else [inputsdir + '/vcf',
-                               inputsdir + '/weights']
-
   command <<<
-    ### DEV START ###
-    set -o errexit
-    set -o pipefail
-    set -o nounset
-    set -o xtrace
-
-    mkdir --parents '~{inputsdir}' '~{outputsdir}'
-    cp '~{vcf}'     "~{inputsdir}/vcf"
-    cp '~{weights}' "~{inputsdir}/weights"
-
-    if '~{if defined(sites) then "true" else "false"}'
-    then
-        cp '~{sites}' "~{inputsdir}/sites"
-    fi
-    # ------------------------------------------------------------------------
-    ### DEV END ###
     COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
     /plink2                                               \
         --allow-extra-chr          ~{extra_args}          \
@@ -72,7 +45,6 @@ task ScoreVcf {
     File score = "~{basename}.sscore"
     File log = "~{basename}.log"
     File sites_scored = "~{basename}.sscore.vars"
-    Array[File] INPUTS = inputs
   }
 
   runtime {
