@@ -15,6 +15,8 @@ workflow Glimpse2Imputation {
         String output_basename
 
         File ref_dict
+        String af_cutoff
+        File gnomadAF_ref_vcf
 
         Boolean impute_reference_only_variants = false
         Boolean call_indels = false
@@ -28,8 +30,6 @@ workflow Glimpse2Imputation {
         Int preemptible = 1
         String docker = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String docker_extract_num_sites_from_reference_chunk = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
-        Int cpu_ligate = 4
-        Int mem_gb_ligate = 4
         File? monitoring_script
     }
 
@@ -100,9 +100,15 @@ workflow Glimpse2Imputation {
             ref_dict = ref_dict,
             preemptible = preemptible,
             docker = docker,
-            cpu = cpu_ligate,
-            mem_gb = mem_gb_ligate,
             monitoring_script = monitoring_script
+    }
+
+    call Filter_af {
+        input:
+            input_vcf = GlimpseLigate.imputed_vcf,
+            gnomadAF_ref_vcf = gnomadAF_ref_vcf,
+            af_cutoff = af_cutoff,
+            output_basename = output_basename,
     }
 
     if (collect_qc_metrics) {
@@ -115,9 +121,8 @@ workflow Glimpse2Imputation {
     }
 
     output {
-        File imputed_vcf = GlimpseLigate.imputed_vcf
-        File imputed_vcf_index = GlimpseLigate.imputed_vcf_index
-        
+        File imputed_afFiltered_vcf = Filter_af.imputed_afFiltered_vcf
+        File imputed_afFiltered_vcf_index = Filter_af.imputed_afFiltered_vcf_index
         File? qc_metrics = CollectQCMetrics.qc_metrics
 
         Array[File?] glimpse_phase_monitoring = GlimpsePhase.monitoring
@@ -143,11 +148,11 @@ task GlimpsePhase {
         Int? n_main
         Int? effective_population_size
 
-        Int mem_gb = 4
-        Int cpu = 4
+        Int mem_gb = 16
+        Int cpu = 8
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
         Int preemptible = 1
-        Int max_retries = 3
+        Int max_retries = 1
         String docker
         File? monitoring_script
     }
@@ -227,11 +232,11 @@ task GlimpseLigate {
         String output_basename
         File ref_dict
 
-        Int mem_gb = 4
-        Int cpu = 4
+        Int mem_gb = 16
+        Int cpu = 8
         Int disk_size_gb = ceil(2.2 * size(imputed_chunks, "GiB") + 100)
         Int preemptible = 1
-        Int max_retries = 3
+        Int max_retries = 1
         String docker
         File? monitoring_script
     }
@@ -255,7 +260,9 @@ task GlimpseLigate {
         java -jar /picard.jar UpdateVcfSequenceDictionary -I old_header.vcf --SD ~{ref_dict} -O new_header.vcf        
         bcftools reheader -h new_header.vcf -o ~{output_basename}.imputed.vcf.gz ligated_cleaned.vcf.gz
         tabix ~{output_basename}.imputed.vcf.gz
-        rm ligated.vcf.gz ligated.vcf.gz.csi
+
+        # Remove intermediary files. Note: Sometimes, ligated.vcf.gz.csi cannot be created due to "[E::hts_idx_push] Chromosome blocks not continuous"
+        rm ligated.vcf.gz
         rm ligated_cleaned.vcf.gz
     >>>
 
@@ -336,7 +343,7 @@ task GetNumberOfSitesInChunk {
         Int cpu = 4
         Int disk_size_gb = ceil(size(reference_chunk, "GiB") + 10)
         Int preemptible = 1
-        Int max_retries = 3
+        Int max_retries = 1
     }
 
     command <<<
@@ -405,6 +412,8 @@ task SelectResourceParameters {
         # try to keep expected runtime under 4 hours, but don't ask for more than 32 cpus, or 256 GB memory
         estimated_needed_threads = min(math.ceil(5e-6*n_sites*n_samples/240), 32)
         estimated_needed_memory_gb = min(math.ceil((800e-3 + 0.97e-6 * n_rare * estimated_needed_threads + 14.6e-6 * n_common * estimated_needed_threads + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples))), 256)
+        #estimated_needed_memory_gb = min(math.ceil((1 + 1.5e-6 * n_rare * estimated_needed_threads + 25e-6 * n_common * estimated_needed_threads + 10e-9 * (n_rare + n_common) * n_samples + 25e-3 * n_samples + 3e-6*(n_rare + n_common)*math.log(n_samples))), 256)
+
         # recalc allowable threads, may be some additional threads available due to rounding memory up
         threads_to_use = max(math.floor((estimated_needed_memory_gb - (800e-3 + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples)))/(0.97e-6 * n_rare + 14.6e-6 * n_common)), 1) 
         #estimated_needed_memory_gb = math.ceil(1.2 * estimated_needed_memory_gb)
@@ -424,5 +433,74 @@ task SelectResourceParameters {
     output {
         Int memory_gb = read_int("memory_gb.txt")
         Int request_n_cpus = read_int("n_cpus_request.txt")
+    }
+}
+
+task Filter_af {
+    input{
+        String input_vcf
+        String af_cutoff = ">=0.0001"
+        String gnomadAF_ref_vcf
+        String output_basename
+
+        Int mem_gb = 16
+        Int cpu = 4
+        Int disk_size_gb = ceil(2.5 * (size(input_vcf, "GiB") + size(gnomadAF_ref_vcf, "GiB"))) + 10
+        Int preemptible = 1
+        Int max_retries = 1
+        String bcftools_docker = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
+    }
+
+    String input_vcf_name = basename(input_vcf)
+    String input_vcf_index = basename(input_vcf) + ".tbi"
+    #String input_vcf_filtered_name = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + "_filtered.vcf.gz"
+    #String input_vcf_filtered_name_index = input_vcf_filtered_name + ".tbi"
+
+    String gnomadAF_ref_vcf_name = basename(gnomadAF_ref_vcf)
+    String gnomadAF_ref_vcf_index = basename(gnomadAF_ref_vcf) + ".tbi"
+    String gnomadAF_ref_vcf_filtered_name = sub(basename(gnomadAF_ref_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + "_filtered.vcf.gz"
+
+    File input_vcf_file = input_vcf
+    File input_vcf_file_index = input_vcf_file + ".tbi"
+    File gnomadAF_ref_vcf_file = gnomadAF_ref_vcf
+    File gnomadAF_ref_vcf_file_index = gnomadAF_ref_vcf_file + ".tbi"
+
+    command <<<
+        set -euo pipefail
+
+        mkdir vcf_dir
+        mkdir sort_tmp_dir
+        ln -s ~{input_vcf_file} vcf_dir/~{input_vcf_name}
+        ln -s ~{input_vcf_file_index} vcf_dir/~{input_vcf_index}
+        ln -s ~{gnomadAF_ref_vcf_file} vcf_dir/~{gnomadAF_ref_vcf_name}
+        ln -s ~{gnomadAF_ref_vcf_file_index} vcf_dir/~{gnomadAF_ref_vcf_index}
+
+        bcftools filter -i "INFO/VEP_gnomad4.1_joint_frequency_AF_grpmax_joint ~{af_cutoff}" \
+                 vcf_dir/~{gnomadAF_ref_vcf_name} \
+                 -Oz \
+                 -o ~{gnomadAF_ref_vcf_filtered_name}
+        bcftools index -ft ~{gnomadAF_ref_vcf_filtered_name}
+
+        bcftools isec -p '.' -w1 -Oz vcf_dir/~{input_vcf_name} ~{gnomadAF_ref_vcf_filtered_name}
+
+        #mv 0002.vcf.gz ~{output_basename}.imputed.filtered.vcf.gz
+        #mv 0002.vcf.gz.tbi ~{output_basename}.imputed.filtered.vcf.gz.tbi
+
+        bcftools sort --temp-dir sort_tmp_dir -Oz -o ~{output_basename}.imputed.filtered.vcf.gz 0002.vcf.gz
+        bcftools index -ft ~{output_basename}.imputed.filtered.vcf.gz
+    >>>
+
+    runtime {
+        docker: bcftools_docker
+        disks: "local-disk " + disk_size_gb + " HDD"
+        memory: mem_gb + " GiB"
+        cpu: cpu
+        preemptible: preemptible
+        maxRetries: max_retries
+    }
+
+    output {
+        File imputed_afFiltered_vcf = "~{output_basename}.imputed.filtered.vcf.gz"
+        File imputed_afFiltered_vcf_index = "~{output_basename}.imputed.filtered.vcf.gz.tbi"
     }
 }
