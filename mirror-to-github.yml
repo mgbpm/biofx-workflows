@@ -1,5 +1,5 @@
 # Pipeline that mirrors this repository to github.com/mgbpm/biofx-workflows on every commit
-name: "$(Build.BuildId) - Mirror biofx-workflows repository to GitHub" 
+name: "$(Build.BuildId) - Mirror biofx-workflows repository to GitHub"
 
 trigger:
   branches:
