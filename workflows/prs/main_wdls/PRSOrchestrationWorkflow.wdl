@@ -1,6 +1,7 @@
 version 1.0
 
 import "../../../steps/Utilities.wdl"
+import "../../../steps/FileUtils.wdl"
 import "../../lowpassimputation/Glimpse2Imputation.wdl"
 import "../subwdls/PRSRawScoreWorkflow.wdl"
 import "../subwdls/PRSMixScoreWorkflow.wdl"
@@ -10,32 +11,37 @@ import "../tasks/HelperTasks.wdl"
 
 workflow PRSOrchestrationWorkflow {
     input {
+        # FETCH FILE INPUTS
+        String? data_location
+        String sample_id
+        String subject_id
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203"
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
+        String workspace_name
+        Int fetch_disk_size = 75
+
         # GLIMPSE2 INPUTS
         File? glimpse_reference_chunks
-        File? input_cram
-        File? input_crai
-        String sample_id
         Boolean impute_reference_only_variants = false
         Boolean call_indels = false
         Int? n_burnin
         Int? n_main
         Int? effective_population_size
         Boolean collect_glimpse_qc = true
-        String glimpse_docker_image = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
-        String glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
         File? glimpse_monitoring_script
         File? ref_fasta
         File? ref_fai
         File? ref_dict
+        String glimpse_docker_image = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
+        String glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
 
         # PRS INPUTS
-        String subject_id
         String prs_test_code
         Array[File] model_manifests
         File conditions_config
+        Boolean norename = false
         String ubuntu_docker_image = "ubuntu:latest"
         String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250210"
-        Boolean norename = false
         
         # DEBUGGING INPUTS
         Boolean run_glimpse = true
@@ -44,8 +50,8 @@ workflow PRSOrchestrationWorkflow {
 
     # Run input checks
     if (run_glimpse) {
-        if (!defined(glimpse_reference_chunks) || !defined(input_cram) || !defined(input_crai)) {
-            String GlimpseInputError = "Missing one or more GLIMPSE inputs: ref chunks, input cram, and/or input crai."
+        if (!defined(glimpse_reference_chunks) || !defined(data_location)) {
+            String GlimpseInputError = "Missing ref chunks and/or data location for GLIMPSE."
         }
         if (!defined(ref_fasta) || !defined(ref_fai) || !defined(ref_dict)) {
             String GlimpseReferenceInputError = "Missing one or more reference files for GLIMPSE: fasta, fai, and/or dict."
@@ -67,12 +73,25 @@ workflow PRSOrchestrationWorkflow {
 
     if (input_check_result == "No error") {
         if (run_glimpse) {
+            # Fetch CRAM AND CRAI for sample
+            call FileUtils.FetchFilesTask as FetchFiles {
+                input:
+                    data_location = select_first([data_location]),
+                    file_types = ["cram", "crai"],
+                    recursive = false,
+                    file_match_keys = [subject_id, sample_id],
+                    docker_image = orchutils_docker_image,
+                    gcp_project_id = gcp_project_id,
+                    workspace_name = workspace_name,
+                    disk_size = fetch_disk_size
+            }
+
             # Run GLIMPSE to get imputed low-pass variants
             call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
                 input:
                     reference_chunks = select_first([glimpse_reference_chunks]),
-                    crams = select_all(select_first([[input_cram], []])),
-                    cram_indices = select_all(select_first([[input_crai], []])),
+                    crams = select_all(select_first([[FetchFiles.cram], []])),
+                    cram_indices = select_all(select_first([[FetchFiles.crai], []])),
                     sample_ids = [sample_id],
                     fasta = select_first([ref_fasta]),
                     fasta_index = select_first([ref_fai]),
@@ -148,8 +167,6 @@ workflow PRSOrchestrationWorkflow {
         Array[Array[File]]? prs_raw_scores = PRSRawScores.prs_raw_scores
         Array[File]? prs_mix_raw_score = PRSMixScores.prs_mix_raw_score
         Array[File?]? prs_adjusted_score = PerformPCA.adjusted_scores
-        Array[File]? pc_projection = PerformPCA.pc_projection
-        Array[File]? pc_plot = PerformPCA.pc_plot
 
         # Individual Outputs
         File? risk_summary = SummarizeScores.risk_summary
