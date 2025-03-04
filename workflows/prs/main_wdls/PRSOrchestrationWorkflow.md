@@ -2,11 +2,13 @@
 
 This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percentiles of individuals for a certain disease and model(s). The workflow is designed for single sample input. The model manifests used for each desired condition in the assay are to be generated before running this workflow using the MakeAdjustmentModelWorkflow WDL. It is also recommended that the inputs for running the model -- and thus those consequently used in this workflow -- are cleaned using the PreparePrsMixInputsWorkflow WDL to ensure no errors occur when using flashpca.
 
+This workflow is also designed to be used with Sample Tracker.
+
 ## Fetch File Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| String | data_location | Required if running GLIMPSE imputation | Source location of cram and crai |
+| String | data_location | Required if running GLIMPSE imputation | Source location of CRAM and CRAI | |
 | String | sample_id | Yes | Sample ID for CRAM and CRAI | |
 | String | subject_id | Yes | Subject ID to match the input sample ID | |
 | String | orchutils_docker_image | No | Docker image for orchestration tasks, such as fetching CRAM and CRAI | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203" |
@@ -59,8 +61,6 @@ For debugging purposes, there are several boolean values that can be used to tur
 | File | glimpse_vcf | If run_glimpse is true | Output imputed VCF from running GLIMPSE |
 | File | glimpse_vcf_index | If run_glimpse is true | Output imputer VCF index from running GLIMPSE |
 | File | glimpse_qc_metrics | If run_glimpse is true and when collect_glimpse_qc = "true" | QC metrics from running GLIMPSE |
-| Array[File] | glimpse_phase_monitoring | If run_glimpse is true | |
-| File | glimpse_ligate_monitoring | If run_glimpse is true | |
 | Array[File] | prs_raw_scores | Always | PRS raw scores |
 | File | prs_mix_raw_score | Always | PRS mix raw scores |
 | File | prs_adjusted_score | Always | PRS scores or mix scores adjusted with population models |

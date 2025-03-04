@@ -160,8 +160,6 @@ workflow PRSOrchestrationWorkflow {
         File? glimpse_vcf = RunGlimpse.imputed_vcf
         File? glimpse_vcf_index = RunGlimpse.imputed_vcf_index
         File? glimpse_qc_metrics = RunGlimpse.qc_metrics
-        Array[File?]? glimpse_phase_monitoring = RunGlimpse.glimpse_phase_monitoring
-        File? glimpse_ligate_monitoring = RunGlimpse.glimpse_ligate_monitoring
 
         # PRS Outputs
         Array[Array[File]]? prs_raw_scores = PRSRawScores.prs_raw_scores
