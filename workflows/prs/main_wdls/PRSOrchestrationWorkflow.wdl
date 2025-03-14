@@ -57,30 +57,30 @@ workflow PRSOrchestrationWorkflow {
             disk_size = fetch_disk_size
     }
 
-        # Run GLIMPSE to get imputed low-pass variants
-        call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
-            input:
-                reference_chunks = select_first([glimpse_reference_chunks]),
-                crams = select_all(select_first([[FetchFiles.cram], []])),
-                cram_indices = select_all(select_first([[FetchFiles.crai], []])),
-                sample_ids = [sample_id],
-                fasta = ref_fasta,
-                fasta_index = ref_fai,
-                ref_dict = ref_dict,
-                output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
-                impute_reference_only_variants = impute_reference_only_variants,
-                call_indels = call_indels,
-                n_burnin = n_burnin,
-                n_main = n_main,
-                effective_population_size = effective_population_size,
-                collect_qc_metrics = collect_glimpse_qc,
-                preemptible = 9,
-                docker = glimpse_docker_image,
-                docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
-                cpu_ligate = 4,
-                mem_gb_ligate = 4,
-                monitoring_script = glimpse_monitoring_script
-        }
+    # Run GLIMPSE to get imputed low-pass variants
+    call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
+        input:
+            reference_chunks = select_first([glimpse_reference_chunks]),
+            crams = select_all(select_first([[FetchFiles.cram], []])),
+            cram_indices = select_all(select_first([[FetchFiles.crai], []])),
+            sample_ids = [sample_id],
+            fasta = ref_fasta,
+            fasta_index = ref_fai,
+            ref_dict = ref_dict,
+            output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
+            impute_reference_only_variants = impute_reference_only_variants,
+            call_indels = call_indels,
+            n_burnin = n_burnin,
+            n_main = n_main,
+            effective_population_size = effective_population_size,
+            collect_qc_metrics = collect_glimpse_qc,
+            preemptible = 9,
+            docker = glimpse_docker_image,
+            docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
+            cpu_ligate = 4,
+            mem_gb_ligate = 4,
+            monitoring_script = glimpse_monitoring_script
+    }
 
     scatter (i in range(length(model_manifests))) {
         String condition_name = sub(basename(model_manifests[i]), "_[[0-9]]+\\.json$", "")
