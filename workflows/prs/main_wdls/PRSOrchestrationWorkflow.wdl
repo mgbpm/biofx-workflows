@@ -48,10 +48,9 @@ workflow PRSOrchestrationWorkflow {
         String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250210"
     }
 
-    # Fetch CRAM AND CRAI for sample
     call FileUtils.FetchFilesTask as FetchFiles {
         input:
-            data_location = select_first([data_location]),
+            data_location = data_location,
             file_types = ["cram", "crai"],
             recursive = false,
             file_match_keys = [subject_id, sample_id],
@@ -61,7 +60,6 @@ workflow PRSOrchestrationWorkflow {
             disk_size = fetch_disk_size
     }
 
-    # Run GLIMPSE to get imputed low-pass variants
     call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
         input:
             reference_chunks = glimpse_reference_chunks,
@@ -90,7 +88,6 @@ workflow PRSOrchestrationWorkflow {
 
         AdjustmentModelData model_data = read_json(model_manifests[i])
 
-        # Get PRS raw scores for each condition
         call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
             input:
                 input_vcf = RunGlimpse.imputed_afFiltered_vcf,
@@ -98,7 +95,6 @@ workflow PRSOrchestrationWorkflow {
                 norename = norename
         }
 
-        # Get the PRS mix raw score for each condition
         call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
             input:
                 output_basename = condition_name,
@@ -106,7 +102,6 @@ workflow PRSOrchestrationWorkflow {
                 score_weights = select_first([model_data.score_weights])
         }
 
-        # Adjust the PRS mix raw score with PCA and model
         call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
             input:
                 output_basename = condition_name,
@@ -117,7 +112,6 @@ workflow PRSOrchestrationWorkflow {
         }
     }
 
-    # Create summary of risk score, percentile, and condition info for reporting
     call SummarizeScores {
         input:
             condition_codes = select_first([select_all(condition_name)]),
