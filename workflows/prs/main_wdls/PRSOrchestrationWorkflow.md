@@ -20,17 +20,20 @@ This workflow is also designed to be used with Sample Tracker.
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| File | glimpse_reference_chunks | Yes | | |
+| File | glimpse_reference_chunks | Yes | List of file paths to files that contain reference chunks for GLIMPSE | |
+| File | ref_fasta | Yes | HG38 reference FASTA file | |
+| File | ref_fai | Yes | HG38 reference FASTA index file | |
+| File | reference_dict | Yes | HG38 Reference dict file | |
+| String | glimpse_af_cutoff | No | | ">=0.0001" |
+| File | gnomadAF_ref_vcf | Yes | | |
 | Boolean | impute_reference_only_variants | No | | false |
 | Boolean | call_indels | No | | false |
+| Boolean | keep_monomorphic_ref_sites | No | | false |
 | Int | n_burnin | No | | |
 | Int | n_main | No | | |
 | Int | effective_population_size | No | | |
 | Boolean | collect_glimpse_qc | No | Whether or not to collect qc metrics when running GLIMPSE imputation | true |
 | File | glimpse_monitoring_script | No | Script to monitor GLIMPSE imputation | |
-| File | ref_fasta | Yes | HG38 reference FASTA file | |
-| File | ref_fai | Yes | HG38 reference FASTA index file | |
-| File | reference_dict | Yes | HG38 Reference dict file | |
 | String | glimpse_docker_image | No | Docker image for running GLIMPSE imputation | "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56" |
 | String | glimpse_extract_docker_image | No | Docker image to get the number of sites in a GLIMPSE reference chunnk | "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a" |
 

@@ -22,16 +22,20 @@ workflow PRSOrchestrationWorkflow {
 
         # GLIMPSE2 INPUTS
         File glimpse_reference_chunks
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        String glimpse_af_cutoff = ">=0.0001"
+        File gnomadAF_ref_vcf
         Boolean impute_reference_only_variants = false
         Boolean call_indels = false
+        Boolean keep_monomorphic_ref_sites = false
         Int? n_burnin
         Int? n_main
         Int? effective_population_size
         Boolean collect_glimpse_qc = true
+        Int glimpse_preemptible = 1
         File? glimpse_monitoring_script
-        File ref_fasta
-        File ref_fai
-        File ref_dict
         String glimpse_docker_image = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
 
@@ -60,9 +64,9 @@ workflow PRSOrchestrationWorkflow {
     # Run GLIMPSE to get imputed low-pass variants
     call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
         input:
-            reference_chunks = select_first([glimpse_reference_chunks]),
-            crams = select_all(select_first([[FetchFiles.cram], []])),
-            cram_indices = select_all(select_first([[FetchFiles.crai], []])),
+            reference_chunks = glimpse_reference_chunks,
+            crams = select_all([FetchFiles.cram]),
+            cram_indices = select_all([FetchFiles.crai]),
             sample_ids = [sample_id],
             fasta = ref_fasta,
             fasta_index = ref_fai,
@@ -70,15 +74,14 @@ workflow PRSOrchestrationWorkflow {
             output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
             impute_reference_only_variants = impute_reference_only_variants,
             call_indels = call_indels,
+            keep_monomorphic_ref_sites = keep_monomorphic_ref_sites,
             n_burnin = n_burnin,
             n_main = n_main,
             effective_population_size = effective_population_size,
             collect_qc_metrics = collect_glimpse_qc,
-            preemptible = 9,
+            preemptible = glimpse_preemptible,
             docker = glimpse_docker_image,
             docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
-            cpu_ligate = 4,
-            mem_gb_ligate = 4,
             monitoring_script = glimpse_monitoring_script
     }
 
@@ -90,7 +93,7 @@ workflow PRSOrchestrationWorkflow {
         # Get PRS raw scores for each condition
         call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
             input:
-                input_vcf = RunGlimpse.imputed_vcf,
+                input_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
                 norename = norename
         }
@@ -107,7 +110,7 @@ workflow PRSOrchestrationWorkflow {
         call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
             input:
                 output_basename = condition_name,
-                input_vcf = RunGlimpse.imputed_vcf,
+                input_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
                 prs_raw_scores = PRSMixScores.prs_mix_raw_score,
                 norename = norename
@@ -126,8 +129,8 @@ workflow PRSOrchestrationWorkflow {
 
     output {
         # Glimpse outputs
-        File glimpse_vcf = RunGlimpse.imputed_vcf
-        File glimpse_vcf_index = RunGlimpse.imputed_vcf_index
+        File glimpse_vcf = RunGlimpse.imputed_afFiltered_vcf
+        File glimpse_vcf_index = RunGlimpse.imputed_afFiltered_vcf_index
         File? glimpse_qc_metrics = RunGlimpse.qc_metrics
 
         # PRS Outputs
