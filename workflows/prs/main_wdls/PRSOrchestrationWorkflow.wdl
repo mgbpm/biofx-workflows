@@ -70,6 +70,8 @@ workflow PRSOrchestrationWorkflow {
             fasta_index = ref_fai,
             ref_dict = ref_dict,
             output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
+            af_cutoff = glimpse_af_cutoff,
+            gnomadAF_ref_vcf = gnomadAF_ref_vcf,
             impute_reference_only_variants = impute_reference_only_variants,
             call_indels = call_indels,
             keep_monomorphic_ref_sites = keep_monomorphic_ref_sites,
