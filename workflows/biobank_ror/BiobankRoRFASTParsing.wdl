@@ -22,7 +22,7 @@ workflow FASTParsingWorkflow {
         String? fast_annotated_sample_data_saved_filter_name
         # Reporting steps
         Boolean create_parsed_output = false
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250111"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250205"
         File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type = "B"
         Boolean gatk_source = false
