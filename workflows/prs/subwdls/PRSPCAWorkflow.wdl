@@ -13,6 +13,7 @@ workflow PRSPCAWorkflow {
         File adjustment_model_manifest
         File? prs_raw_scores
         Boolean norename = false
+        File renaming_lookup = "gs://fc-secure-9ea53c3d-d71a-4f59-92c3-63c75c622a88/reference/etc/rename_chromosomes.tsv"
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)
@@ -21,7 +22,8 @@ workflow PRSPCAWorkflow {
         # Clean up the query VCF
         call HelperTasks.RenameChromosomesInVcf as RenameVcf {
             input:
-                vcf = input_vcf
+                vcf = input_vcf,
+                rename = renaming_lookup
         }
     }
 

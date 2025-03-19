@@ -44,6 +44,7 @@ workflow PRSOrchestrationWorkflow {
         Array[File] model_manifests
         File conditions_config
         Boolean norename = false
+        File renaming_lookup = "gs://fc-secure-f6c26f53-13e0-4cb5-a8cc-526d1b7dbe90/reference/rename_chromosomes.tsv"
         String ubuntu_docker_image = "ubuntu:latest"
         String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250210"
     }
@@ -94,7 +95,8 @@ workflow PRSOrchestrationWorkflow {
             input:
                 input_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
-                norename = norename
+                norename = norename,
+                renaming_lookup = renaming_lookup
         }
 
         call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
@@ -110,7 +112,8 @@ workflow PRSOrchestrationWorkflow {
                 input_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
                 prs_raw_scores = PRSMixScores.prs_mix_raw_score,
-                norename = norename
+                norename = norename,
+                renaming_lookup = renaming_lookup
         }
     }
 
