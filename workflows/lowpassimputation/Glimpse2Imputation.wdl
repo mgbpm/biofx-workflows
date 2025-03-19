@@ -152,7 +152,7 @@ task GlimpsePhase {
         Int cpu = 8
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
         Int preemptible = 1
-        Int max_retries = 1
+        Int max_retries = 2
         String docker
         File? monitoring_script
     }
@@ -232,7 +232,7 @@ task GlimpseLigate {
         String output_basename
         File ref_dict
 
-        Int mem_gb = 16
+        Int mem_gb = 24
         Int cpu = 8
         Int disk_size_gb = ceil(2.2 * size(imputed_chunks, "GiB") + 100)
         Int preemptible = 1
@@ -416,7 +416,7 @@ task SelectResourceParameters {
 
         # recalc allowable threads, may be some additional threads available due to rounding memory up
         threads_to_use = max(math.floor((estimated_needed_memory_gb - (800e-3 + 6.5e-9 * (n_rare + n_common) * n_samples + 13.7e-3 * n_samples + 1.8e-6*(n_rare + n_common)*math.log(n_samples)))/(0.97e-6 * n_rare + 14.6e-6 * n_common)), 1) 
-        #estimated_needed_memory_gb = math.ceil(1.2 * estimated_needed_memory_gb)
+        estimated_needed_memory_gb = math.ceil(2 * estimated_needed_memory_gb)
 
         with open("n_cpus_request.txt", "w") as f_cpus_request:
             f_cpus_request.write(f'{int(threads_to_use)}')
