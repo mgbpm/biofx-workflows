@@ -9,7 +9,7 @@ import "PRSMixScoreWorkflow.wdl"
 workflow PRSTrainMixModelWorkflow {
     input {
         # Scoring inputs
-        String condition_name
+        String condition_code
         Array[File]+ var_weights
         File scoring_sites
         File reference_vcf
@@ -54,7 +54,7 @@ workflow PRSTrainMixModelWorkflow {
         # Calculate PRS mix score for population VCF
         call PRSMixScoreWorkflow.PRSMixScoreWorkflow as GetMixScore {
             input:
-                output_basename = condition_name + "_" + basename(reference_vcf),
+                output_basename = condition_code + "_" + basename(reference_vcf),
                 raw_scores = ScorePopulationVCF.score,
                 score_weights = select_first([score_weights]),
         }
@@ -68,7 +68,7 @@ workflow PRSTrainMixModelWorkflow {
           input:
               population_pcs = population_pcs,
               population_scores = population_scores,
-              output_basename = condition_name + "_MixModel"
+              output_basename = condition_code + "_MixModel"
       }
 
     }

@@ -7,6 +7,7 @@ struct ScoringInputs {
 }
 
 struct AdjustmentModelData {
+  String               condition_code
   File                 parameters
 
   File                 principal_components

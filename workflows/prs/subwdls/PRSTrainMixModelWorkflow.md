@@ -4,7 +4,7 @@
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
-| File | condition_name | Yes | Name of condition/disease | |
+| File | condition_code | Yes | Code for condition/disease | |
 | Array[File] | var_weights | Yes | Array of different PGS variant weight files, with 3 columns: variant ID, effect allele, and score | |
 | File | scoring_sites | Yes | Sites to use in scoring the VCF | |
 | File | reference_vcf | Yes | VCF to score; from PerformPopulationPCA WDL; variant IDs much match those in var_weights | |

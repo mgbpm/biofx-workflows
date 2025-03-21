@@ -87,9 +87,9 @@ workflow PRSOrchestrationWorkflow {
     }
 
     scatter (i in range(length(model_manifests))) {
-        String condition_name = sub(basename(model_manifests[i]), "_[[0-9]]+\\.json$", "")
-
         AdjustmentModelData model_data = read_json(model_manifests[i])
+
+        String condition_code = model_data.condition_code
 
         call PRSRawScoreWorkflow.PRSRawScoreWorkflow as PRSRawScores {
             input:
@@ -101,14 +101,14 @@ workflow PRSOrchestrationWorkflow {
 
         call PRSMixScoreWorkflow.PRSMixScoreWorkflow as PRSMixScores {
             input:
-                output_basename = condition_name,
+                output_basename = condition_code,
                 raw_scores = PRSRawScores.prs_raw_scores,
                 score_weights = select_first([model_data.score_weights])
         }
 
         call PRSPCAWorkflow.PRSPCAWorkflow as PerformPCA {
             input:
-                output_basename = condition_name,
+                output_basename = condition_code,
                 input_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
                 prs_raw_scores = PRSMixScores.prs_mix_raw_score,
@@ -119,7 +119,7 @@ workflow PRSOrchestrationWorkflow {
 
     call SummarizeScores {
         input:
-            condition_codes = select_first([select_all(condition_name)]),
+            condition_codes = condition_code,
             scores = select_first([select_all(PerformPCA.adjusted_scores)]),
             conditions_config = conditions_config,
             output_filename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results.tsv",

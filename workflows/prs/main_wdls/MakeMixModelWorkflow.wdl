@@ -7,7 +7,7 @@ import "../tasks/HelperTasks.wdl" as HelperTasks
 
 workflow MakeMixModelWorkflow {
     input {
-        String condition_name
+        String condition_code
         Array[File] var_weights
         File pca_variants
         File reference_vcf
@@ -136,7 +136,7 @@ workflow MakeMixModelWorkflow {
     # Train ancestry adjustment model
     call PRSTrainMixModelWorkflow.PRSTrainMixModelWorkflow as TrainModel {
         input:
-            condition_name = condition_name,
+            condition_code = condition_code,
             var_weights = var_weights_,
             scoring_sites = query_variants,
             reference_vcf = reference_vcf_,
@@ -152,7 +152,8 @@ workflow MakeMixModelWorkflow {
         # Convert files to string types so a VM is not used
         input:
             model_data = object {
-                parameters            : "" + TrainModel.fitted_params
+                condition_code        : condition_code
+              , parameters            : "" + TrainModel.fitted_params
               , scoring_inputs        :      TrainModel.scoring_inputs
               , principal_components  : "" + PerformPCA.pcs
               , loadings              : "" + PerformPCA.pc_loadings
