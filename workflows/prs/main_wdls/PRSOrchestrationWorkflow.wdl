@@ -172,7 +172,7 @@ task SummarizeScores {
             --condition-config "~{conditions_config}" \
             --scores-list WORK/scores_files_list.txt \
             --condition-codes WORK/condition_codes_list.txt \
-            --output-file "~{output_filename}.tsv" \
+            --output-file "~{output_filename}" \
             --output-dir OUTPUT
     >>>
 
