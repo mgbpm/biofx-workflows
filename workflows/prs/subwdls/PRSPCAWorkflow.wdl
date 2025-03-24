@@ -62,7 +62,8 @@ workflow PRSPCAWorkflow {
             input:
                 fitted_model_params = model_data.parameters,
                 pcs = ProjectPCA.projections,
-                scores = select_first([prs_raw_scores])
+                scores = select_first([prs_raw_scores]),
+                output_basename = output_basename
         }
     }
     

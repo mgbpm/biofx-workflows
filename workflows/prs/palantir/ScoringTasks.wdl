@@ -575,6 +575,7 @@ task AdjustScores {
     File fitted_model_params
     File pcs
     File scores
+    String output_basename
     Int mem = 2
   }
 
@@ -618,7 +619,7 @@ task AdjustScores {
       adjusted_scores <- adjusted_scores %>% mutate(percentile=pnorm(adjusted_score,0))
 
       # return array scores
-      write_tsv(adjusted_scores, "adjusted_scores.tsv")
+      write_tsv(adjusted_scores, "~{output_basename}_adjusted_scores.tsv")
     EOF
   >>>
 

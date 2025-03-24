@@ -85,6 +85,7 @@ workflow ScoreQueryVcf {
         fitted_model_params = model_data.parameters
       , pcs                 = ProjectQuery.projections
       , scores              = ScoreQueryVcf.score
+      , output_basename     = name
   }
 
   call ScoringTasks.MakePCAPlot {
