@@ -44,6 +44,7 @@ This workflow is also designed to be used with Sample Tracker.
 | String | prs_test_code | Yes | Test code that defines config files and assay | |
 | Array[File] | model_manifests | Yes | Adjustment model manifest file from MakeAdjustmentModelWorkflow WDL | |
 | File | conditions_config | Yes | TSV file with condition-specific data on bins, odds-ratios, codes, etc. | |
+| File | percentiles | Yes | TSV file with PRS scores corresponding to percentiles (0-100) for each condition | |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 | File | renaming_lookup | No | Mapping file for renaming chromosomes | "gs://fc-secure-f6c26f53-13e0-4cb5-a8cc-526d1b7dbe90/reference/rename_chromosomes.tsv"; Default exists in the prod-prs-mix workspace |
 | String | ubuntu_docker_image | No | Ubuntu Docker image | "ubuntu:latest" |

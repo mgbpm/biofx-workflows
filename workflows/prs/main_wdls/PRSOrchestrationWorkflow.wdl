@@ -43,6 +43,7 @@ workflow PRSOrchestrationWorkflow {
         String prs_test_code
         Array[File] model_manifests
         File conditions_config
+        File percentiles
         Boolean norename = false
         File renaming_lookup = "gs://fc-secure-f6c26f53-13e0-4cb5-a8cc-526d1b7dbe90/reference/rename_chromosomes.tsv"
         String ubuntu_docker_image = "ubuntu:latest"
@@ -122,6 +123,7 @@ workflow PRSOrchestrationWorkflow {
             condition_codes = condition_code,
             scores = select_first([select_all(PerformPCA.adjusted_scores)]),
             conditions_config = conditions_config,
+            percentiles = percentiles,
             output_filename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results.tsv",
             docker_image = prs_docker_image
     }
@@ -147,6 +149,7 @@ task SummarizeScores {
         Array[String] condition_codes
         Array[File] scores
         File conditions_config
+        File percentiles
         String output_filename
         String docker_image
         Int disk_size = ceil(size(scores, "GB") + size(conditions_config, "GB")) + 10
@@ -170,6 +173,7 @@ task SummarizeScores {
 
         summarize_mix_scores.py \
             --condition-config "~{conditions_config}" \
+            --percentiles "~{percentiles}" \
             --scores-list WORK/scores_files_list.txt \
             --condition-codes WORK/condition_codes_list.txt \
             --output-file "~{output_filename}" \
