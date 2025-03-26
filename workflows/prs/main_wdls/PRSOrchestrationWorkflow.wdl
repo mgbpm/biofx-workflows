@@ -46,7 +46,7 @@ workflow PRSOrchestrationWorkflow {
         Boolean norename = false
         File renaming_lookup = "gs://fc-secure-f6c26f53-13e0-4cb5-a8cc-526d1b7dbe90/reference/rename_chromosomes.tsv"
         String ubuntu_docker_image = "ubuntu:latest"
-        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250210"
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250326"
     }
 
     call FileUtils.FetchFilesTask as FetchFiles {
