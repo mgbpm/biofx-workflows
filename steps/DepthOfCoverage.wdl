@@ -274,7 +274,7 @@ task DepthOfCoverageSummaryTask {
     }
 
     command <<<
-        set -euxo pipefail
+        set -ux
         # Split the gene summaries into known and unknown genes
         head -1 "~{sample_gene_summaries[0]}" > "~{gene_summary_file}"
         for file in ~{sep=' ' sample_gene_summaries}; do 
@@ -292,6 +292,11 @@ task DepthOfCoverageSummaryTask {
             head -1 "~{sample_interval_summary}" > "~{mt_summary_file}"
             grep -E "^(MT|chrM)" "~{sample_interval_summary}" >> "~{mt_summary_file}"
         fi
+
+        # The following ensures that the task will exit with status 0, as long
+        # as the execution makes it this far.  (This is necessary because for
+        # this task the errexit and pipefail options are not enabled.)
+        true
     >>>
 
     runtime {
@@ -304,6 +309,6 @@ task DepthOfCoverageSummaryTask {
         File gene_summary = gene_summary_file
         File gene_summary_unknown = gene_summary_unknown_file
         File gene_summary_entrez = gene_summary_entrez_file
-        File mt_summary = mt_summary_file
+        File? mt_summary = mt_summary_file
     }
 }
