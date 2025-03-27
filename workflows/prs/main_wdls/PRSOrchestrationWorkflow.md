@@ -48,7 +48,7 @@ This workflow is also designed to be used with Sample Tracker.
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 | File | renaming_lookup | No | Mapping file for renaming chromosomes | "gs://fc-secure-f6c26f53-13e0-4cb5-a8cc-526d1b7dbe90/reference/rename_chromosomes.tsv"; Default exists in the prod-prs-mix workspace |
 | String | ubuntu_docker_image | No | Ubuntu Docker image | "ubuntu:latest" |
-| String | prs_docker_image | No | Docker image with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250326" |
+| String | prs_docker_image | No | Docker image with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250327" |
 
 ## Output Parameters
 
