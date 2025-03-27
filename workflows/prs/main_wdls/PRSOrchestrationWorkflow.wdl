@@ -124,7 +124,7 @@ workflow PRSOrchestrationWorkflow {
             scores = select_first([select_all(PerformPCA.adjusted_scores)]),
             conditions_config = conditions_config,
             percentiles = percentiles,
-            output_filename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results.tsv",
+            basename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results",
             docker_image = prs_docker_image
     }
 
@@ -150,7 +150,7 @@ task SummarizeScores {
         Array[File] scores
         File conditions_config
         File percentiles
-        String output_filename
+        String basename
         String docker_image
         Int disk_size = ceil(size(scores, "GB") + size(conditions_config, "GB")) + 10
         Int mem_size = 2
@@ -176,7 +176,7 @@ task SummarizeScores {
             --percentiles "~{percentiles}" \
             --scores-list WORK/scores_files_list.txt \
             --condition-codes WORK/condition_codes_list.txt \
-            --output-file "~{output_filename}" \
+            --output-file "~{basename}.tsv" \
             --output-dir OUTPUT
     >>>
 
@@ -188,6 +188,6 @@ task SummarizeScores {
     }
 
     output {
-        File risk_summary = "OUTPUT/~{output_filename}.tsv"
+        File risk_summary = "OUTPUT/~{basename}.tsv"
     }
 }
