@@ -624,7 +624,7 @@ task AdjustScores {
   >>>
 
   output {
-    File adjusted_scores = "adjusted_scores.tsv"
+    File adjusted_scores = "~{output_basename}_adjusted_scores.tsv"
   }
 
   runtime {
