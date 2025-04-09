@@ -8,8 +8,14 @@ workflow GCSToBaseSpaceUpload {
         Int max_concurrent_uploads_per_vm = 10
         Int chunk_size_mb = 25
         Int check_interval_seconds = 60
-        String? basespace_access_token
+        String basespace_access_token
         String docker_image = "google/cloud-sdk:latest"
+    }
+
+   #First create basespace config file
+    call create_config_file {
+        input:
+            basespace_access_token = basespace_access_token
     }
 
     # First create the BaseSpace project
@@ -17,7 +23,8 @@ workflow GCSToBaseSpaceUpload {
         input:
             project_name = basespace_project_name,
             basespace_access_token = basespace_access_token,
-            docker_image = docker_image
+            docker_image = docker_image,
+            config_file = create_config_file.config_file
     }
 
     # List all files in the GCS bucket with their sizes and paths
@@ -46,7 +53,8 @@ workflow GCSToBaseSpaceUpload {
                 chunk_size_mb = chunk_size_mb,
                 check_interval_seconds = check_interval_seconds,
                 basespace_access_token = basespace_access_token,
-                docker_image = docker_image
+                docker_image = docker_image,
+                config_file = create_config_file.config_file
         }
     }
 
@@ -56,7 +64,8 @@ workflow GCSToBaseSpaceUpload {
             batch_results = ProcessBatch.batch_result,
             project_id = CreateBaseSpaceProject.project_id,
             basespace_access_token = basespace_access_token,
-            docker_image = docker_image
+            docker_image = docker_image,
+            config_file = create_config_file.config_file
     }
 
     output {
@@ -68,11 +77,31 @@ workflow GCSToBaseSpaceUpload {
     }
 }
 
+task CreateConfigFile {
+    input {
+        String basespace_access_token
+    }
+
+    command <<<
+        echo "apiServer   = https://api.basespace.illumina.com" > default.cfg
+        echo "accessToken = ~{basespace_access_token}" >> default.cfg
+    >>>
+
+    output {
+        File config_file = "default.cfg"
+    }
+
+    runtime {
+        docker: "ubuntu:latest"
+    }
+}
+
 task CreateBaseSpaceProject {
     input {
         String project_name
         String? basespace_access_token
         String docker_image
+        File config_file
     }
 
     command <<<
@@ -87,10 +116,10 @@ task CreateBaseSpaceProject {
 
         # Set up authentication if token is provided
         if [ ! -z "~{basespace_access_token}" ]; then
-            bs auth --api-server=https://api.basespace.illumina.com/ --access-token=~{basespace_access_token}
+            # Copy config to expected working dir
+            cp ~{config_file} ~/.basespace/default.cfg
         else
             echo "No access token provided, assuming BaseSpace CLI is already configured"
-            bs auth status
         fi
 
         # Create project
@@ -339,6 +368,7 @@ task ProcessBatch {
         Int check_interval_seconds
         String? basespace_access_token
         String docker_image
+        File config_file
     }
 
     command <<<
@@ -353,10 +383,10 @@ task ProcessBatch {
 
         # Set up authentication if token is provided
         if [ ! -z "~{basespace_access_token}" ]; then
-            bs auth --api-server=https://api.basespace.illumina.com/ --access-token=~{basespace_access_token}
+            # Copy config to expected working dir
+            cp ~{config_file} ~/.basespace/default.cfg
         else
             echo "No access token provided, assuming BaseSpace CLI is already configured"
-            bs auth status
         fi
 
         # Create directories
@@ -447,6 +477,7 @@ task VerifyAllUploads {
         String project_id
         String? basespace_access_token
         String docker_image
+        File config_file
     }
 
     command <<<
@@ -461,10 +492,10 @@ task VerifyAllUploads {
 
         # Set up authentication if token is provided
         if [ ! -z "~{basespace_access_token}" ]; then
-            bs auth --api-server=https://api.basespace.illumina.com/ --access-token=~{basespace_access_token}
+            # Copy config to expected working dir
+            cp ~{config_file} ~/.basespace/default.cfg
         else
             echo "No access token provided, assuming BaseSpace CLI is already configured"
-            bs auth status
         fi
 
         # Check project status
