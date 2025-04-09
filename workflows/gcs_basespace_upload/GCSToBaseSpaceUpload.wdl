@@ -4,6 +4,7 @@ workflow GCSToBaseSpaceUpload {
     input {
         String gs_bucket_path
         String basespace_project_name
+        String? default_project_id
         Float max_batch_size_gb = 50.0
         Int max_concurrent_uploads_per_vm = 10
         Int chunk_size_mb = 25
@@ -30,6 +31,9 @@ workflow GCSToBaseSpaceUpload {
             config_file = select_first([CreateConfigFile.config_file, ""])
     }
 
+    # Determine which project ID to use - use default if returned value is empty
+    String effective_project_id = if (CheckOrCreateBaseSpaceProject.project_id == "") then select_first([default_project_id, ""]) else CheckOrCreateBaseSpaceProject.project_id
+
     # List all files in the GCS bucket with their sizes and paths
     call ListGCSFilesWithSizes {
         input:
@@ -51,7 +55,7 @@ workflow GCSToBaseSpaceUpload {
             input:
                 batch_file = batch_file,
                 gs_bucket_path = gs_bucket_path,
-                project_id = CheckOrCreateBaseSpaceProject.project_id,
+                project_id = effective_project_id,
                 max_concurrent_uploads = max_concurrent_uploads_per_vm,
                 chunk_size_mb = chunk_size_mb,
                 check_interval_seconds = check_interval_seconds,
@@ -65,14 +69,14 @@ workflow GCSToBaseSpaceUpload {
     call VerifyAllUploads {
         input:
             batch_results = ProcessBatch.batch_result,
-            project_id = CheckOrCreateBaseSpaceProject.project_id,
+            project_id = effective_project_id,
             basespace_access_token = basespace_access_token,
             docker_image = docker_image,
             config_file = select_first([CreateConfigFile.config_file, ""])
     }
 
     output {
-        String basespace_project_id = CheckOrCreateBaseSpaceProject.project_id
+        String basespace_project_id = effective_project_id
         String basespace_project_url = CheckOrCreateBaseSpaceProject.project_url
         Array[File] batch_upload_logs = ProcessBatch.upload_log
         String upload_summary = VerifyAllUploads.summary
@@ -164,8 +168,20 @@ task CheckOrCreateBaseSpaceProject {
             echo "Created project with ID: $PROJECT_ID"
         fi
 
-        echo $PROJECT_ID > project_id.txt
-        echo $PROJECT_URL > project_url.txt
+        # Handle potential null or empty project ID
+        if [ -z "$PROJECT_ID" ]; then
+            echo "Failed to get or create project ID"
+            echo "" > project_id.txt
+        else
+            echo $PROJECT_ID > project_id.txt
+        fi
+        
+        # Handle potential null or empty project URL
+        if [ -z "$PROJECT_URL" ]; then
+            echo "" > project_url.txt
+        else
+            echo $PROJECT_URL > project_url.txt
+        fi
     >>>
 
     output {
@@ -513,6 +529,28 @@ task ProcessBatch {
         file_count=$(jq length ~{batch_file})
         echo "Batch contains $file_count files"
 
+        # Check if project_id is empty
+        if [ -z "~{project_id}" ]; then
+            echo "ERROR: No valid project ID available" >> upload_errors.log
+            echo "FAILED" > result.txt
+            echo "Failed to upload batch $batch_name - No valid project ID"
+            
+            # Create batch result JSON for failed upload
+            timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+            cat <<EOF > batch_result.json
+{
+  "batch_name": "$batch_name",
+  "total_files": $file_count,
+  "result": "FAILED",
+  "error": "No valid project ID available",
+  "timestamp": "$timestamp"
+}
+EOF
+            # Create empty log file
+            echo "ERROR: No valid project ID available" > batch_upload.log
+            exit 0
+        fi
+
         # Extract all files in the batch
         jq -r '.[] | .full_path + "," + .relative_path' ~{batch_file} > batch_files.csv
 
@@ -609,6 +647,43 @@ task VerifyAllUploads {
             echo "Authenticating with BaseSpace..."
         else
             echo "Using existing BaseSpace authentication..."
+        fi
+
+        # Check if project_id is empty
+        if [ -z "~{project_id}" ]; then
+            echo "ERROR: No valid project ID available for verification" >> verification_errors.log
+            
+            # Create empty datasets file
+            echo "[]" > datasets.json
+            
+            # Create result summary with error
+            cat <<EOF > summary.txt
+===== Upload Summary =====
+ERROR: No valid project ID available for verification
+Total batches processed: 0
+Successfully uploaded batches: 0
+Failed batch uploads: 0
+Total files processed: 0
+Datasets in BaseSpace project: 0
+========================
+EOF
+
+            # Create detailed results JSON
+            cat <<EOF > detailed_results.json
+{
+  "batches": [],
+  "summary": {
+    "error": "No valid project ID available for verification",
+    "total_batches": 0,
+    "successful_batches": 0,
+    "failed_batches": 0,
+    "total_files": 0,
+    "datasets_in_basespace": 0
+  }
+}
+EOF
+            cat summary.txt
+            exit 0
         fi
 
         # Check project status
