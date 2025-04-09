@@ -1,6 +1,6 @@
 version 1.0
 
-workflow CopySampleFilesWorkflow {
+workflow CopyFileListWorkflow {
     input {
         Array[String] file_list
         Boolean flatten = false
@@ -64,7 +64,7 @@ task CopyFilesTask{
             # execute script to copy files
             mkdir "${ROOTDIR}/fetched"
             ./bin/copy_files.py ~{if flatten then "--flatten" else ""} ~{if recursive then "" else "--no-recursive"} ~{if verbose then "--verbose" else ""} \
-            --source "${src_file}" --target "${FINAL_TARGET_LOC}/${base_name}" ${FILE_TYPE_ARG} ${MATCH_KEY_ARG} ${FILE_MATCHERS_ARG} \
+            --source "${src_file}" --target "${FINAL_TARGET_LOC}/${base_name}" \
             --source-files-fofn "${ROOTDIR}/source-file-list.txt" --target-files-fofn "${ROOTDIR}/target-file-list.txt"
         done        
 
