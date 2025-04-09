@@ -5,6 +5,7 @@ workflow CopyFileListWorkflow {
         Array[String] file_list
         Boolean flatten = false
         Boolean recursive = true
+        String source_location
         String target_location
         String orchutils_docker_image = "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
         String gcp_project_id
@@ -14,6 +15,7 @@ workflow CopyFileListWorkflow {
     call CopyFilesTask {
         input:
             file_list = file_list,
+            source_location = source_location,
             target_location = target_location,
             flatten = flatten,
             recursive = recursive,
@@ -34,6 +36,7 @@ workflow CopyFileListWorkflow {
 task CopyFilesTask{
     input {
         Array[String] file_list = []
+        String source_location
         String? target_location
         Boolean flatten = false
         Boolean recursive = true
@@ -54,6 +57,7 @@ task CopyFilesTask{
         [ -z "${FINAL_TARGET_LOC}" ] && FINAL_TARGET_LOC="${ROOTDIR}/fetched"
 
         # run script to setup rclone remotes
+        ./bin/setup-rclone-remote.sh -p "~{gcp_project_id}" -w "~{workspace_name}" -r "~{source_location}"
         ./bin/setup-rclone-remote.sh -p "~{gcp_project_id}" -w "~{workspace_name}" -r "${FINAL_TARGET_LOC}"
 
         FILE_LIST=(~{sep=" " file_list})

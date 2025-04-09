@@ -4,6 +4,7 @@ task for more details.
 
 ### Input Parameters
 * Array[String] file_list - required - the source location to copy from
+* String source_location - required - the source location to copy from
 * String target_location - required - the target location to copy to
 * Boolean flatten - optional - if true, don't replicate the relative directory structure in source location; defaults to false
 * Boolean recursive - optional - if true, search recursively for files to copy; defaults to true
