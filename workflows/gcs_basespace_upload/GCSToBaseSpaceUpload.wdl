@@ -80,8 +80,8 @@ task CreateBaseSpaceProject {
         apt-get update && apt-get install -y wget curl jq unzip
 
         # Install BaseSpace CLI
-        #wget "https://launch.basespace.illumina.com/CLI/latest/amd64-linux/bs"
-        wget "https://launch.basespace.illumina.com/CLI/latest/amd64-osx/bs"
+        wget "https://launch.basespace.illumina.com/CLI/latest/amd64-linux/bs"
+        #get "https://launch.basespace.illumina.com/CLI/latest/amd64-osx/bs"
         mv bs /usr/local/bin/
         chmod +x /usr/local/bin/bs
 
@@ -346,8 +346,8 @@ task ProcessBatch {
         apt-get update && apt-get install -y wget curl jq unzip
 
         # Install BaseSpace CLI
-        #wget "https://launch.basespace.illumina.com/CLI/latest/amd64-linux/bs"
-        wget "https://launch.basespace.illumina.com/CLI/latest/amd64-osx/bs"
+        wget "https://launch.basespace.illumina.com/CLI/latest/amd64-linux/bs"
+        #wget "https://launch.basespace.illumina.com/CLI/latest/amd64-osx/bs"
         mv bs /usr/local/bin/
         chmod +x /usr/local/bin/bs
 
@@ -454,8 +454,8 @@ task VerifyAllUploads {
         apt-get update && apt-get install -y wget curl jq unzip
 
         # Install BaseSpace CLI
-        #wget "https://launch.basespace.illumina.com/CLI/latest/amd64-linux/bs"
-        wget "https://launch.basespace.illumina.com/CLI/latest/amd64-osx/bs"
+        wget "https://launch.basespace.illumina.com/CLI/latest/amd64-linux/bs"
+        #wget "https://launch.basespace.illumina.com/CLI/latest/amd64-osx/bs"
         mv bs /usr/local/bin/
         chmod +x /usr/local/bin/bs
 
