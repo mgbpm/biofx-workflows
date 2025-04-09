@@ -159,8 +159,8 @@ task CheckOrCreateBaseSpaceProject {
             # Create project
             echo "Creating BaseSpace project: $project_name"
             RESPONSE=$(bs create project --name="$project_name" --format=json)
-            PROJECT_ID=$(echo $RESPONSE | jq -r '.Response.Id')
-            PROJECT_URL=$(echo $RESPONSE | jq -r '.Response.HrefBaseSpaceUI')
+            PROJECT_ID=$(echo $RESPONSE | jq -r '.Id')
+            PROJECT_URL=$(echo $RESPONSE | jq -r '.HrefBaseSpaceUI')
             echo "Created project with ID: $PROJECT_ID"
         fi
 
