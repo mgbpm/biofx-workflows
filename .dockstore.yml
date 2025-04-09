@@ -328,3 +328,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - Glimpse2SplitReference_*
+  - name: CopyFileListWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/orchestration/CopyFileListWorkflow.wdl
+    readMePath: /workflows/orchestration/CopyFileListWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
