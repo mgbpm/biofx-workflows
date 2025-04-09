@@ -139,8 +139,16 @@ task CheckOrCreateBaseSpaceProject {
 
         # Check if project with the same name already exists
         echo "Checking if BaseSpace project already exists: ~{project_name}"
-        EXISTING_PROJECTS=$(bs list projects --format=json)
-        PROJECT_EXISTS=$(echo "$EXISTING_PROJECTS" | jq -r --arg name "~{project_name}" '.[] | select(.Name == $name)')
+        EXISTING_PROJECTS=$(bs list projects --format=json 2>/dev/null || echo '[]')
+
+        # Validate JSON before processing
+        if ! echo "$EXISTING_PROJECTS" | jq empty 2>/dev/null; then
+            echo "Warning: Invalid JSON response when listing projects. Proceeding with creating a new project."
+            EXISTING_PROJECTS='[]'
+        fi
+
+        PROJECT_EXISTS=$(echo "$EXISTING_PROJECTS" | jq -r --arg name "~{project_name}" '.[] | select(.Name == $name)' 2>/dev/null || echo '')
+
 
         if [ -n "$PROJECT_EXISTS" ]; then
             PROJECT_ID=$(echo "$PROJECT_EXISTS" | jq -r '.Id')
@@ -149,8 +157,8 @@ task CheckOrCreateBaseSpaceProject {
             echo "Using existing project instead of creating a new one"
         else
             # Create project
-            echo "Creating BaseSpace project: ~{project_name}"
-            RESPONSE=$(bs create project --name="~{project_name}" --format=json)
+            echo "Creating BaseSpace project: $project_name"
+            RESPONSE=$(bs create project --name="$project_name" --format=json)
             PROJECT_ID=$(echo $RESPONSE | jq -r '.Response.Id')
             PROJECT_URL=$(echo $RESPONSE | jq -r '.Response.HrefBaseSpaceUI')
             echo "Created project with ID: $PROJECT_ID"
