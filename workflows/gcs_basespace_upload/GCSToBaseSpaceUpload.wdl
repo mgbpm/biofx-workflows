@@ -287,6 +287,7 @@ EOF
     }
 }
 
+
 task CreateFileBatches {
     input {
         File file_manifest
@@ -299,115 +300,157 @@ task CreateFileBatches {
         apt-get update && apt-get install -y jq bc
 
         # Convert max_batch_size_gb to bytes for comparison
-        max_batch_size_bytes=$(echo "~{max_batch_size_gb} * 1073741824" | bc)
+        # Keep as floating point for more precise comparisons
+        max_batch_size_bytes=$(echo "~{max_batch_size_gb} * 1073741824" | bc -l)
+        echo "Max batch size: ~{max_batch_size_gb} GB ($max_batch_size_bytes bytes)"
 
         # Create a working directory for batch files
         mkdir -p batches
 
-        # Extract CSV data from JSON
-        echo "full_path,relative_path,size_bytes,size_gb" > files.csv
-        jq -r '.[] | [.full_path, .relative_path, .size_bytes, .size_gb] | @csv' ~{file_manifest} >> files.csv
+        # Debug: Print the file manifest structure
+        echo "File manifest structure:"
+        jq '.' ~{file_manifest} | head -n 20
+        echo "..."
 
-        # Sort by size (largest first) for better packing
-        tail -n +2 files.csv > temp.csv
-        sort -t, -k3 -nr temp.csv > sorted_files.csv
+        # Count total files
+        total_files=$(jq 'length' ~{file_manifest})
+        echo "Total files in manifest: $total_files"
 
+        # Sort files by size (largest first) to optimize packing
+        jq -r 'sort_by(-.size_bytes) | .[] | [.full_path, .relative_path, .size_bytes, .size_gb] | @csv' ~{file_manifest} > sorted_files.csv
+        echo "Sorted files by size (largest first)"
+
+        # Initialize batching variables
         batch_num=0
-        batch_files=()
         current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
         current_batch_size=0
-        batch_count=0
+        file_count_in_current_batch=0
+        total_batches=0
 
-        # Start the first batch
-        touch "$current_batch_file"
+        # Create the first batch file
+        echo "[]" > "$current_batch_file"
 
-        # Process each file
+        # Process each file from the sorted list
         while IFS=, read -r full_path relative_path size_bytes size_gb; do
             # Remove quotes if present
             full_path=$(echo "$full_path" | sed 's/"//g')
             relative_path=$(echo "$relative_path" | sed 's/"//g')
+            size_bytes=$(echo "$size_bytes" | sed 's/"//g')
             
+            echo "Processing file: $relative_path ($size_bytes bytes)"
+            
+            # Use bc for floating point comparison
             # If this single file is larger than max batch size, it gets its own batch
-            if (( size_bytes > max_batch_size_bytes )); then
-                # If we've already started a batch, close it if it has content
-                if [ -s "$current_batch_file" ]; then
-                    batch_count=$((batch_count + 1))
+            if (( $(echo "$size_bytes > $max_batch_size_bytes" | bc -l) )); then
+                echo "Large file detected: $relative_path exceeds batch size limit"
+                
+                # If we've already added files to the current batch, close it
+                if [ "$file_count_in_current_batch" -gt 0 ]; then
+                    echo "Closing current batch with $file_count_in_current_batch files"
+                    total_batches=$((total_batches + 1))
                     batch_num=$((batch_num + 1))
                     current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-                    touch "$current_batch_file"
+                    echo "[]" > "$current_batch_file"
                     current_batch_size=0
+                    file_count_in_current_batch=0
                 fi
 
-                # Add this file to a dedicated batch
-                echo "$full_path,$relative_path" > "$current_batch_file"
+                # Create a JSON entry for this large file batch
+                cat <<EOF > "$current_batch_file"
+[
+  {
+    "full_path": "$full_path",
+    "relative_path": "$relative_path",
+    "size_bytes": $size_bytes
+  }
+]
+EOF
                 
-                # Process this large file batch immediately
-                batch_count=$((batch_count + 1))
+                # Move to next batch
+                total_batches=$((total_batches + 1))
                 batch_num=$((batch_num + 1))
                 current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-                touch "$current_batch_file"
+                echo "[]" > "$current_batch_file"
                 current_batch_size=0
+                file_count_in_current_batch=0
                 continue
             fi
 
-            # If adding this file would exceed the batch size, start a new batch
-            if (( current_batch_size + size_bytes > max_batch_size_bytes )) && [ -s "$current_batch_file" ]; then
-                batch_count=$((batch_count + 1))
+            # Calculate new batch size
+            new_batch_size=$(echo "$current_batch_size + $size_bytes" | bc -l)
+            
+            # Check if adding this file would exceed the batch size
+            # Use bc for floating point comparison
+            if (( $(echo "$new_batch_size > $max_batch_size_bytes" | bc -l) )) && [ "$file_count_in_current_batch" -gt 0 ]; then
+                echo "Batch size limit reached. Creating new batch."
+                total_batches=$((total_batches + 1))
                 batch_num=$((batch_num + 1))
                 current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-                touch "$current_batch_file"
+                echo "[]" > "$current_batch_file"
                 current_batch_size=0
+                file_count_in_current_batch=0
             fi
 
+            # Read the current batch content
+            current_batch_content=$(cat "$current_batch_file")
+            
             # Add file to current batch
-            echo "$full_path,$relative_path" >> "$current_batch_file"
-            current_batch_size=$((current_batch_size + size_bytes))
+            if [ "$file_count_in_current_batch" -eq 0 ]; then
+                # First file in the batch
+                cat <<EOF > "$current_batch_file"
+[
+  {
+    "full_path": "$full_path",
+    "relative_path": "$relative_path",
+    "size_bytes": $size_bytes
+  }
+]
+EOF
+            else
+                # Add file to existing batch
+                # Remove the last line (closing bracket)
+                sed -i '$d' "$current_batch_file"
+                
+                # Add comma and new file entry
+                cat <<EOF >> "$current_batch_file"
+,
+  {
+    "full_path": "$full_path",
+    "relative_path": "$relative_path",
+    "size_bytes": $size_bytes
+  }
+]
+EOF
+            fi
+            
+            # Update current batch size using bc for floating point arithmetic
+            current_batch_size=$(echo "$current_batch_size + $size_bytes" | bc -l)
+            file_count_in_current_batch=$((file_count_in_current_batch + 1))
+            echo "Added file to batch $batch_num. Current batch size: $current_batch_size bytes with $file_count_in_current_batch files"
         done < sorted_files.csv
 
-        # Close the last batch if not empty
-        if [ -s "$current_batch_file" ]; then
-            batch_count=$((batch_count + 1))
+        # Update the final batch count if the last batch has files
+        if [ "$file_count_in_current_batch" -gt 0 ]; then
+            total_batches=$((total_batches + 1))
         else
-            # Remove the empty file
+            # Remove empty batch file
             rm -f "$current_batch_file"
         fi
 
-        # List all batch files
-        find batches -name "batch_*.txt" | sort > batch_files.txt
-
-        # Generate summary for each batch and convert to JSON
-        for batch_file in $(cat batch_files.txt); do
-            file_count=$(wc -l < "$batch_file")
-            batch_name=$(basename "$batch_file")
-            
-            # Convert each batch file to JSON format
-            echo "[" > "${batch_file}.json"
-            first_file=true
-            
-            while IFS=, read -r full_path relative_path; do
-                if [ "$first_file" = true ]; then
-                    first_file=false
-                else
-                    echo "," >> "${batch_file}.json"
-                fi
-                
-                cat <<EOF >> "${batch_file}.json"
-  {
-    "full_path": "$full_path",
-    "relative_path": "$relative_path"
-  }
-EOF
-            done < "$batch_file"
-            
-            echo "]" >> "${batch_file}.json"
-            
-            # Replace the txt file with the json file
-            mv "${batch_file}.json" "$batch_file"
-            
-            echo "Batch $(basename $batch_file): $file_count files"
+        # List all batch files and count the number of files in each
+        echo "Final batch summary:"
+        for batch_file in batches/batch_*.txt; do
+            if [ -f "$batch_file" ]; then
+                file_count=$(jq '. | length' "$batch_file")
+                batch_size=$(jq 'reduce .[] as $item (0; . + ($item.size_bytes // 0))' "$batch_file" 2>/dev/null || echo "Unknown")
+                batch_size_gb=$(echo "scale=4; $batch_size / 1073741824" | bc -l 2>/dev/null || echo "Unknown")
+                echo "Batch $(basename $batch_file): $file_count files, approx. $batch_size bytes ($batch_size_gb GB)"
+            fi
         done
 
-        echo "Created $batch_count batches"
+        echo "Created $total_batches batches in total"
+        find batches -name "batch_*.txt" | sort > batch_files.txt
+        echo "Found $(wc -l < batch_files.txt) batch files"
     >>>
 
     output {
@@ -421,6 +464,7 @@ EOF
         disks: "local-disk 10 SSD"
     }
 }
+
 
 task ProcessBatch {
     input {
