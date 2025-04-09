@@ -128,7 +128,7 @@ task CheckOrCreateBaseSpaceProject {
             
             # Copy config file if provided
             if [ ! -z "~{config_file}" ]; then
-                cp ~{config_file} ~/.basespace/default.cfg
+                gsutil cp ~{config_file} ~/.basespace/default.cfg
             fi
             
             # Authenticated with BaseSpace
@@ -446,7 +446,7 @@ task ProcessBatch {
             
             # Copy config file if provided
             if [ ! -z "~{config_file}" ]; then
-                cp ~{config_file} ~/.basespace/default.cfg
+                gsutil cp ~{config_file} ~/.basespace/default.cfg
             fi
             
             # Authenticated with BaseSpace
@@ -552,7 +552,7 @@ task VerifyAllUploads {
             
             # Copy config file if provided
             if [ ! -z "~{config_file}" ]; then
-                cp ~{config_file} ~/.basespace/default.cfg
+                gsutil cp ~{config_file} ~/.basespace/default.cfg
             fi
             
             # Authenticate with BaseSpace
