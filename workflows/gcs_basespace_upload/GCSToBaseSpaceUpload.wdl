@@ -300,7 +300,6 @@ task CreateFileBatches {
         apt-get update && apt-get install -y jq bc
 
         # Convert max_batch_size_gb to bytes for comparison
-        # Keep as floating point for more precise comparisons
         max_batch_size_bytes=$(echo "~{max_batch_size_gb} * 1073741824" | bc -l)
         echo "Max batch size: ~{max_batch_size_gb} GB ($max_batch_size_bytes bytes)"
 
@@ -339,9 +338,10 @@ task CreateFileBatches {
             
             echo "Processing file: $relative_path ($size_bytes bytes)"
             
-            # Use bc for floating point comparison
             # If this single file is larger than max batch size, it gets its own batch
-            if (( $(echo "$size_bytes > $max_batch_size_bytes" | bc -l) )); then
+            # Use bc for comparison, not bash arithmetic
+            is_larger=$(echo "$size_bytes > $max_batch_size_bytes" | bc -l)
+            if [ "$is_larger" -eq 1 ]; then
                 echo "Large file detected: $relative_path exceeds batch size limit"
                 
                 # If we've already added files to the current batch, close it
@@ -380,8 +380,9 @@ EOF
             new_batch_size=$(echo "$current_batch_size + $size_bytes" | bc -l)
             
             # Check if adding this file would exceed the batch size
-            # Use bc for floating point comparison
-            if (( $(echo "$new_batch_size > $max_batch_size_bytes" | bc -l) )) && [ "$file_count_in_current_batch" -gt 0 ]; then
+            # Use bc for comparison, not bash arithmetic
+            would_exceed=$(echo "$new_batch_size > $max_batch_size_bytes" | bc -l)
+            if [ "$would_exceed" -eq 1 ] && [ "$file_count_in_current_batch" -gt 0 ]; then
                 echo "Batch size limit reached. Creating new batch."
                 total_batches=$((total_batches + 1))
                 batch_num=$((batch_num + 1))
@@ -391,9 +392,6 @@ EOF
                 file_count_in_current_batch=0
             fi
 
-            # Read the current batch content
-            current_batch_content=$(cat "$current_batch_file")
-            
             # Add file to current batch
             if [ "$file_count_in_current_batch" -eq 0 ]; then
                 # First file in the batch
