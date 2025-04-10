@@ -590,12 +590,14 @@ EOF
                         # Extract part after third underscore
                         remainder=$(echo "$file_name" | cut -d'_' -f4-)
                         
-                        # For Illumina fastq files, the pattern is typically:
-                        # something_Lxxx_Rx_001.fastq.gz with the last 4 underscores
+                        # Define file extension pattern to support both .fastq and .fastq.gz
+                        ext_pattern="\.fastq(\.gz)?"
                         
-                        # Identify where the last 4 underscores start - usually with _L00x_
-                        # This assumes the pattern _L[0-9]+_R[0-9]+_[0-9]+.fastq.gz at the end
-                        if [[ "$remainder" =~ (.*)(_L[0-9]+_R[0-9]+_[0-9]+\.fastq\.gz) ]]; then
+                        # Updated pattern for Illumina fastq files:
+                        # - Include _S[0-9]+ as part of the suffix pattern to preserve
+                        # - Support both .fastq and .fastq.gz extensions
+                        # Pattern looks for: prefix_S[digits]_L[digits]_R[digits]_[digits].fastq[.gz]
+                        if [[ "$remainder" =~ (.*)(_S[0-9]+_L[0-9]+_R[0-9]+_[0-9]+${ext_pattern}) ]]; then
                             prefix="${BASH_REMATCH[1]}"
                             suffix="${BASH_REMATCH[2]}"
                             
