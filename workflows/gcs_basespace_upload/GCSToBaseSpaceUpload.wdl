@@ -573,51 +573,55 @@ EOF
             
             # Check if file is fastq or fastq.gz and rename if needed
             if [[ "$rel_path" == *.fastq ]] || [[ "$rel_path" == *.fastq.gz ]]; then
-                echo "Found fastq file: $rel_path - renaming according to rules"
+                echo "Found fastq file: $rel_path - checking for renaming"
                 
                 # Get file name without directory
                 file_name=$(basename "$rel_path")
                 
-                # Calculate new file name by stripping before and including 3rd underscore
-                # and replacing underscores with hyphens except the last 4 underscores
-                
-                # Count total underscores in the filename
+                # First check: ensure file has at least 7 underscores total
                 total_underscores=$(echo "$file_name" | tr -cd '_' | wc -c)
                 
-                if [ $total_underscores -ge 7 ]; then  # Only proceed if there are at least 7 underscores (3 to strip + 4 to preserve)
+                if [ $total_underscores -ge 7 ]; then  # Only proceed if there are at least 7 underscores
+                    echo "File has $total_underscores underscores, proceeding with renaming"
+                    
                     # Strip everything before and including the 3rd underscore
-                    # Find position of 3rd underscore
-                    third_underscore_pos=$(echo "$file_name" | awk -F_ '{print length($1) + length($2) + length($3) + 3}')
-                    remainder=${file_name:$third_underscore_pos}
-                    
-                    # Count remaining underscores
-                    remaining_underscores=$(echo "$remainder" | tr -cd '_' | wc -c)
-                    
-                    # Calculate how many underscores to replace with hyphens
-                    # We want to preserve the last 4 underscores
-                    underscores_to_replace=$((remaining_underscores - 4))
-                    
-                    if [ $underscores_to_replace -gt 0 ]; then
-                        # Replace underscores with hyphens except the last 4
-                        # Create a pattern to match the specific underscores to replace
-                        pattern=""
-                        for i in $(seq 1 $underscores_to_replace); do
-                            pattern="${pattern}s/_/-/$i;"
-                        done
+                    # First, check if we have at least 3 underscores
+                    if [ $total_underscores -ge 3 ]; then
+                        # Extract part after third underscore
+                        remainder=$(echo "$file_name" | cut -d'_' -f4-)
                         
-                        # Apply the pattern using sed
-                        new_name=$(echo "$remainder" | sed "$pattern")
+                        # For Illumina fastq files, the pattern is typically:
+                        # something_Lxxx_Rx_001.fastq.gz with the last 4 underscores
                         
-                        # Move file to new name
-                        echo "Renaming $rel_path to $dir_path/$new_name"
-                        mv "downloaded/$rel_path" "downloaded/$dir_path/$new_name"
+                        # Identify where the last 4 underscores start - usually with _L00x_
+                        # This assumes the pattern _L[0-9]+_R[0-9]+_[0-9]+.fastq.gz at the end
+                        if [[ "$remainder" =~ (.*)(_L[0-9]+_R[0-9]+_[0-9]+\.fastq\.gz) ]]; then
+                            prefix="${BASH_REMATCH[1]}"
+                            suffix="${BASH_REMATCH[2]}"
+                            
+                            # Replace all underscores with hyphens in the prefix part
+                            modified_prefix=${prefix//_/-}
+                            
+                            # Combine back with the suffix that keeps its underscores
+                            new_name="${modified_prefix}${suffix}"
+                            
+                            # Debug output
+                            echo "Original: $remainder"
+                            echo "Prefix: $prefix (will replace _ with -)"
+                            echo "Suffix: $suffix (will preserve _)"
+                            echo "New name: $new_name"
+                            
+                            # Move file to new name
+                            mv "downloaded/$rel_path" "downloaded/$dir_path/$new_name"
+                        else
+                            echo "Could not identify standard Illumina fastq pattern in $remainder, keeping original name after stripping first 3 fields"
+                            mv "downloaded/$rel_path" "downloaded/$dir_path/$remainder"
+                        fi
                     else
-                        # Just keep the stripped version without replacing underscores
-                        echo "Renaming $rel_path to $dir_path/$remainder"
-                        mv "downloaded/$rel_path" "downloaded/$dir_path/$remainder"
+                        echo "File $file_name doesn't have at least 3 underscores, keeping original name"
                     fi
                 else
-                    echo "File $file_name doesn't have enough underscores for required renaming, keeping original name"
+                    echo "File $file_name has only $total_underscores underscores (needs at least 7), skipping renaming"
                 fi
             fi
         done < batch_files.csv
