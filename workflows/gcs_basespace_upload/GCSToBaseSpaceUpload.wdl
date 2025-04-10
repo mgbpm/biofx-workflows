@@ -523,6 +523,8 @@ task ProcessBatch {
 
         # Get batch name for logging
         batch_name=$(basename ~{batch_file})
+        # Remove the .txt extension for dataset name
+        dataset_name=${batch_name%.txt}
         echo "Processing batch: $batch_name"
 
         # Parse the batch file 
@@ -557,7 +559,7 @@ EOF
         # Clean up any previous downloads
         rm -rf downloaded/*
 
-        # Download all files in the batch
+        # Download all files in the batch and rename fastq/fastq.gz files
         while IFS=, read -r gs_path rel_path; do
             # Create the directory structure
             dir_path=$(dirname "$rel_path")
@@ -566,20 +568,72 @@ EOF
             echo "Downloading: $gs_path to downloaded/$rel_path"
             if ! gsutil cp "$gs_path" "downloaded/$rel_path"; then
                 echo "ERROR: Failed to download $gs_path" >> download_errors.log
+                continue
+            fi
+            
+            # Check if file is fastq or fastq.gz and rename if needed
+            if [[ "$rel_path" == *.fastq ]] || [[ "$rel_path" == *.fastq.gz ]]; then
+                echo "Found fastq file: $rel_path - renaming according to rules"
+                
+                # Get file name without directory
+                file_name=$(basename "$rel_path")
+                
+                # Calculate new file name by stripping before and including 3rd underscore
+                # and replacing underscores with hyphens except the last 4 underscores
+                
+                # Count total underscores in the filename
+                total_underscores=$(echo "$file_name" | tr -cd '_' | wc -c)
+                
+                if [ $total_underscores -ge 7 ]; then  # Only proceed if there are at least 7 underscores (3 to strip + 4 to preserve)
+                    # Strip everything before and including the 3rd underscore
+                    # Find position of 3rd underscore
+                    third_underscore_pos=$(echo "$file_name" | awk -F_ '{print length($1) + length($2) + length($3) + 3}')
+                    remainder=${file_name:$third_underscore_pos}
+                    
+                    # Count remaining underscores
+                    remaining_underscores=$(echo "$remainder" | tr -cd '_' | wc -c)
+                    
+                    # Calculate how many underscores to replace with hyphens
+                    # We want to preserve the last 4 underscores
+                    underscores_to_replace=$((remaining_underscores - 4))
+                    
+                    if [ $underscores_to_replace -gt 0 ]; then
+                        # Replace underscores with hyphens except the last 4
+                        # Create a pattern to match the specific underscores to replace
+                        pattern=""
+                        for i in $(seq 1 $underscores_to_replace); do
+                            pattern="${pattern}s/_/-/$i;"
+                        done
+                        
+                        # Apply the pattern using sed
+                        new_name=$(echo "$remainder" | sed "$pattern")
+                        
+                        # Move file to new name
+                        echo "Renaming $rel_path to $dir_path/$new_name"
+                        mv "downloaded/$rel_path" "downloaded/$dir_path/$new_name"
+                    else
+                        # Just keep the stripped version without replacing underscores
+                        echo "Renaming $rel_path to $dir_path/$remainder"
+                        mv "downloaded/$rel_path" "downloaded/$dir_path/$remainder"
+                    fi
+                else
+                    echo "File $file_name doesn't have enough underscores for required renaming, keeping original name"
+                fi
             fi
         done < batch_files.csv
 
         # Upload the entire batch to BaseSpace
-        echo "Uploading batch to BaseSpace project ID: ~{project_id}"
+        echo "Uploading batch to BaseSpace project ID: ~{project_id} with dataset name: $dataset_name"
         
         if bs upload dataset \
             --project ~{project_id} \
+            --name "$dataset_name" \
             --recursive \
             --type common.files \
             downloaded/ > "batch_upload.log" 2>&1; then
             
             echo "SUCCESS" > result.txt
-            echo "Successfully uploaded batch $batch_name"
+            echo "Successfully uploaded batch $batch_name as dataset $dataset_name"
         else
             echo "FAILED" > result.txt
             echo "Failed to upload batch $batch_name"
@@ -594,6 +648,7 @@ EOF
         cat <<EOF > batch_result.json
 {
   "batch_name": "$batch_name",
+  "dataset_name": "$dataset_name",
   "total_files": $file_count,
   "result": "$result",
   "timestamp": "$timestamp"
