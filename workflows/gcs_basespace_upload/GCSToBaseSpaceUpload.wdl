@@ -631,15 +631,34 @@ EOF
         # Upload the entire batch to BaseSpace
         echo "Uploading batch to BaseSpace project ID: ~{project_id} with dataset name: $dataset_name"
         
+        # Upload fastq files in batch
+        if bs upload dataset \
+            --project ~{project_id} \
+            --name "$dataset_name" \
+            --exclude "*" \
+            --include "*.fastq.gz" \
+            --recursive \
+            downloaded/ > "batch_upload.log" 2>&1; then
+            
+            echo "SUCCESS" > result.txt
+            echo "Successfully uploaded any fastq files in batch $batch_name as dataset $dataset_name"
+        else
+            echo "FAILED" > result.txt
+            echo "Failed to upload batch $batch_name"
+            cat batch_upload.log >> upload_errors.log
+        fi
+
+        # Upload common files in batch
         if bs upload dataset \
             --project ~{project_id} \
             --name "$dataset_name" \
             --recursive \
             --type common.files \
+            --exclude "*.fastq.gz"\
             downloaded/ > "batch_upload.log" 2>&1; then
             
             echo "SUCCESS" > result.txt
-            echo "Successfully uploaded batch $batch_name as dataset $dataset_name"
+            echo "Successfully uploaded common file in batch $batch_name as dataset $dataset_name"
         else
             echo "FAILED" > result.txt
             echo "Failed to upload batch $batch_name"
