@@ -634,14 +634,14 @@ EOF
         # Upload fastq files in batch
         if bs upload dataset \
             --project ~{project_id} \
-            --name "$dataset_name" \
+            --name "${dataset_name}_fastq" \
             --exclude "*" \
             --include "*.fastq.gz" \
             --recursive \
             downloaded/ > "batch_upload.log" 2>&1; then
             
             echo "SUCCESS" > result.txt
-            echo "Successfully uploaded any fastq files in batch $batch_name as dataset $dataset_name"
+            echo "Successfully uploaded any fastq files in batch $batch_name as dataset ${dataset_name}_fastq"
         else
             echo "FAILED" > result.txt
             echo "Failed to upload batch $batch_name"
@@ -651,14 +651,14 @@ EOF
         # Upload common files in batch
         if bs upload dataset \
             --project ~{project_id} \
-            --name "$dataset_name" \
+            "${dataset_name}_common_files" \
             --recursive \
             --type common.files \
             --exclude "*.fastq.gz"\
             downloaded/ > "batch_upload.log" 2>&1; then
             
             echo "SUCCESS" > result.txt
-            echo "Successfully uploaded common file in batch $batch_name as dataset $dataset_name"
+            echo "Successfully uploaded common files in batch $batch_name as dataset ${dataset_name}_common_files"
         else
             echo "FAILED" > result.txt
             echo "Failed to upload batch $batch_name"
