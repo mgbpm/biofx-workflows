@@ -71,6 +71,7 @@ workflow BiobankScrub {
   call ListDatasetIds {
     input:
       base_datadir = current_datadir,
+      runid        = runid,
       docker_image = docker_image
   }
 
@@ -285,6 +286,7 @@ task MaybeInitializeRundir {
 task ListDatasetIds {
   input {
     String  base_datadir
+    String  runid         # helps to thwart call-caching; not used by the task
     String  docker_image
   }
 
