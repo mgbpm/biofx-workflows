@@ -641,10 +641,8 @@ EOF
             
             # Use the bs CLI to upload all FASTQ files in one command
             if bs upload dataset \
-                --project-id ~{project_id} \
+                --project ~{project_id} \
                 --name "${dataset_name}_fastq"
-                --no-prompt \
-                --verbose \
                 --file-list fastq_list.txt > logs/fastq_upload.log 2>&1; then
                 
                 # Mark each file as successful
@@ -675,10 +673,8 @@ EOF
             
             # Use the bs CLI to upload all non-FASTQ files in one command
             if bs upload dataset \
-                --project-id ~{project_id} \
+                --project ~{project_id} \
                 --name "${dataset_name}_common_files"
-                --no-prompt \
-                --verbose \
                 --type common.files
                 --file-list common_list.txt > logs/common_upload.log 2>&1; then
                 
