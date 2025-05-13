@@ -630,40 +630,79 @@ EOF
 
         # Upload the entire batch to BaseSpace
         echo "Uploading batch to BaseSpace project ID: ~{project_id} with dataset name: $dataset_name"
-        
-        # Upload fastq files in batch
-        if bs upload dataset \
-            --project ~{project_id} \
-            --name "${dataset_name}_fastq" \
-            --exclude "*" \
-            --include "*.fastq.gz" \
-            --recursive \
-            downloaded/ > "batch_upload.log" 2>&1; then
-            
-            echo "SUCCESS" > result.txt
-            echo "Successfully uploaded any fastq files in batch $batch_name as dataset ${dataset_name}_fastq"
-        else
-            echo "FAILED" > result.txt
-            echo "Failed to upload batch $batch_name"
-            cat batch_upload.log >> upload_errors.log
-        fi
 
-        # Upload common files in batch
-        if bs upload dataset \
-            --project ~{project_id} \
-            "${dataset_name}_common_files" \
-            --recursive \
-            --type common.files \
-            --exclude "*.fastq.gz"\
-            downloaded/ > "batch_upload.log" 2>&1; then
+
+        # Upload FASTQ files first (if any exist)
+        FASTQ_FILES=$(find downloaded -type f -name "*.fastq*" | wc -l)
+        if [ $FASTQ_FILES -gt 0 ]; then
+            echo "Uploading $FASTQ_FILES FASTQ files to BaseSpace"
+            # Create a list of FASTQ files to upload
+            find downloaded -type f -name "*.fastq*" > fastq_list.txt
             
-            echo "SUCCESS" > result.txt
-            echo "Successfully uploaded common files in batch $batch_name as dataset ${dataset_name}_common_files"
+            # Use the bs CLI to upload all FASTQ files in one command
+            if bs upload dataset \
+                --project-id ~{project_id} \
+                --name "${dataset_name}_fastq"
+                --no-prompt \
+                --verbose \
+                --file-list fastq_list.txt > logs/fastq_upload.log 2>&1; then
+                
+                # Mark each file as successful
+                while read -r file_path; do
+                    rel_path=${file_path#downloaded/}
+                    gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
+                    echo "$gs_path,SUCCESS" >> results.csv
+                done < fastq_list.txt
+            else
+                # Mark each file as failed
+                while read -r file_path; do
+                    rel_path=${file_path#downloaded/}
+                    gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
+                    echo "$gs_path,UPLOAD_FAILED" >> results.csv
+                done < fastq_list.txt
+                cat logs/fastq_upload.log >> upload_errors.log
+            fi
         else
-            echo "FAILED" > result.txt
-            echo "Failed to upload batch $batch_name"
-            cat batch_upload.log >> upload_errors.log
+            echo "No FASTQ files found to upload"
         fi
+        
+        # Upload all non-FASTQ files (if any exist)
+        NON_FASTQ_FILES=$(find downloaded -type f ! -name "*.fastq*" | wc -l)
+        if [ $NON_FASTQ_FILES -gt 0 ]; then
+            echo "Uploading $NON_FASTQ_FILES non-FASTQ files to BaseSpace"
+            # Create a list of non-FASTQ files to upload
+            find downloaded -type f ! -name "*.fastq*" > common_list.txt
+            
+            # Use the bs CLI to upload all non-FASTQ files in one command
+            if bs upload dataset \
+                --project-id ~{project_id} \
+                --name "${dataset_name}_common_files"
+                --no-prompt \
+                --verbose \
+                --type common.files
+                --file-list common_list.txt > logs/common_upload.log 2>&1; then
+                
+                # Mark each file as successful
+                while read -r file_path; do
+                    rel_path=${file_path#downloaded/}
+                    gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
+                    echo "$gs_path,SUCCESS" >> results.csv
+                done < common_list.txt
+            else
+                # Mark each file as failed
+                while read -r file_path; do
+                    rel_path=${file_path#downloaded/}
+                    gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
+                    echo "$gs_path,UPLOAD_FAILED" >> results.csv
+                done < common_list.txt
+                cat logs/common_upload.log >> upload_errors.log
+            fi
+        else
+            echo "No non-FASTQ files found to upload"
+        fi
+        
+        # Combine logs
+        cat logs/*.log > batch_upload.log
         
         # Create result summary
         timestamp=$(date '+%Y-%m-%d %H:%M:%S')
@@ -684,6 +723,7 @@ EOF
     output {
         File batch_result = "batch_result.json"
         File upload_log = "batch_upload.log"
+        File results_detail = "results.csv"
     }
 
     runtime {
