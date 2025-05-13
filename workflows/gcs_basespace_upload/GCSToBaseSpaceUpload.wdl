@@ -316,169 +316,233 @@ task CreateFileBatches {
         apt-get update && apt-get install -y jq bc
 
         # Convert max_batch_size_gb to bytes for comparison
-        max_batch_size_bytes=$(echo "~{max_batch_size_gb} * 1073741824" | bc -l)
-        echo "Max batch size: ~{max_batch_size_gb} GB ($max_batch_size_bytes bytes)"
+        max_batch_size_bytes=$(echo "~{max_batch_size_gb} * 1073741824" | bc)
 
         # Create a working directory for batch files
         mkdir -p batches
 
-        # Debug: Print the file manifest structure
-        echo "File manifest structure:"
-        jq '.' ~{file_manifest} | head -n 20
-        echo "..."
+        # Group paired-end files first
+        echo "Grouping paired-end fastq files..."
+        jq -r '.[] | select(.relative_path | test("_R[12]_001\\.fastq\\.gz$")) | 
+            (.relative_path | gsub("_R[12]_001\\.fastq\\.gz$"; ""))' ~{file_manifest} | 
+            sort | uniq > paired_base_names.txt
 
-        # Count total files
-        total_files=$(jq 'length' ~{file_manifest})
-        echo "Total files in manifest: $total_files"
-
-        # Sort files by size (largest first) to optimize packing
-        jq -r 'sort_by(-.size_bytes) | .[] | [.full_path, .relative_path, .size_bytes, .size_gb] | @csv' ~{file_manifest} > sorted_files.csv
-        echo "Sorted files by size (largest first)"
-
-        # Initialize batching variables
-        batch_num=0
-        current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-        current_batch_size=0
-        file_count_in_current_batch=0
-        total_batches=0
-
-        # Create the first batch file
-        echo "[]" > "$current_batch_file"
-
-        # Process each file from the sorted list
-        while IFS=, read -r full_path relative_path size_bytes size_gb; do
-            # Remove quotes if present
-            full_path=$(echo "$full_path" | sed 's/"//g')
-            relative_path=$(echo "$relative_path" | sed 's/"//g')
-            size_bytes=$(echo "$size_bytes" | sed 's/"//g')
+        # Create a map of paired files
+        echo "{" > paired_files_map.json
+        first_entry=true
+        
+        while read -r base_name; do
+            # Find R1 and R2 files for this base
+            r1_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R1_001.fastq.gz")' ~{file_manifest})
+            r2_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R2_001.fastq.gz")' ~{file_manifest})
             
-            echo "Processing file: $relative_path ($size_bytes bytes)"
-            
-            # If this single file is larger than max batch size, it gets its own batch
-            # Use bc for comparison, not bash arithmetic
-            is_larger=$(echo "$size_bytes > $max_batch_size_bytes" | bc -l)
-            if [ "$is_larger" -eq 1 ]; then
-                echo "Large file detected: $relative_path exceeds batch size limit"
-                
-                # If we've already added files to the current batch, close it
-                if [ "$file_count_in_current_batch" -gt 0 ]; then
-                    echo "Closing current batch with $file_count_in_current_batch files"
-                    total_batches=$((total_batches + 1))
-                    batch_num=$((batch_num + 1))
-                    current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-                    echo "[]" > "$current_batch_file"
-                    current_batch_size=0
-                    file_count_in_current_batch=0
-                fi
-
-                # Create a JSON entry for this large file batch
-                cat <<EOF > "$current_batch_file"
-[
-  {
-    "full_path": "$full_path",
-    "relative_path": "$relative_path",
-    "size_bytes": $size_bytes
-  }
-]
-EOF
-                
-                # Move to next batch
-                total_batches=$((total_batches + 1))
-                batch_num=$((batch_num + 1))
-                current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-                echo "[]" > "$current_batch_file"
-                current_batch_size=0
-                file_count_in_current_batch=0
+            # Skip if either file is missing
+            if [[ -z "$r1_file" || -z "$r2_file" || "$r1_file" == "null" || "$r2_file" == "null" ]]; then
                 continue
             fi
-
-            # Calculate new batch size
-            new_batch_size=$(echo "$current_batch_size + $size_bytes" | bc -l)
             
-            # Check if adding this file would exceed the batch size
-            # Use bc for comparison, not bash arithmetic
-            would_exceed=$(echo "$new_batch_size > $max_batch_size_bytes" | bc -l)
-            if [ "$would_exceed" -eq 1 ] && [ "$file_count_in_current_batch" -gt 0 ]; then
-                echo "Batch size limit reached. Creating new batch."
-                total_batches=$((total_batches + 1))
-                batch_num=$((batch_num + 1))
-                current_batch_file="batches/batch_$(printf "%04d" $batch_num).txt"
-                echo "[]" > "$current_batch_file"
-                current_batch_size=0
-                file_count_in_current_batch=0
-            fi
-
-            # Add file to current batch
-            if [ "$file_count_in_current_batch" -eq 0 ]; then
-                # First file in the batch
-                cat <<EOF > "$current_batch_file"
-[
-  {
-    "full_path": "$full_path",
-    "relative_path": "$relative_path",
-    "size_bytes": $size_bytes
-  }
-]
-EOF
+            # Add to map
+            if [ "$first_entry" = true ]; then
+                first_entry=false
             else
-                # Add file to existing batch
-                # Remove the last line (closing bracket)
-                sed -i '$d' "$current_batch_file"
-                
-                # Add comma and new file entry
-                cat <<EOF >> "$current_batch_file"
-,
-  {
-    "full_path": "$full_path",
-    "relative_path": "$relative_path",
-    "size_bytes": $size_bytes
-  }
-]
-EOF
+                echo "," >> paired_files_map.json
             fi
             
-            # Update current batch size using bc for floating point arithmetic
-            current_batch_size=$(echo "$current_batch_size + $size_bytes" | bc -l)
-            file_count_in_current_batch=$((file_count_in_current_batch + 1))
-            echo "Added file to batch $batch_num. Current batch size: $current_batch_size bytes with $file_count_in_current_batch files"
-        done < sorted_files.csv
+            echo "  \"$base_name\": [" >> paired_files_map.json
+            echo "    $r1_file," >> paired_files_map.json
+            echo "    $r2_file" >> paired_files_map.json
+            echo "  ]" >> paired_files_map.json
+        done < paired_base_names.txt
+        
+        echo "}" >> paired_files_map.json
 
-        # Update the final batch count if the last batch has files
-        if [ "$file_count_in_current_batch" -gt 0 ]; then
-            total_batches=$((total_batches + 1))
+        # Create a list of all paired files to exclude from regular processing
+        jq -r '.[] | .[] | .full_path' paired_files_map.json 2>/dev/null > paired_files_list.txt
+        if [ ! -s paired_files_list.txt ]; then
+            # Create empty file if no paired files found
+            touch paired_files_list.txt
+        fi
+
+        # Sort remaining non-paired files by size (largest first) for better packing
+        jq -r '.[] | select(.full_path | contains("_R1_001.fastq.gz") or contains("_R2_001.fastq.gz") | not) | .' ~{file_manifest} > non_paired_files.json
+        jq -r '.[] | select(.full_path | contains("_R1_001.fastq.gz") or contains("_R2_001.fastq.gz")) | 
+            select(.full_path as $path | every(inputs | . != $path; inputs < $path))' ~{file_manifest} non_paired_files.json > all_non_paired.json
+        jq -r 'sort_by(.size_bytes) | reverse | .[]' all_non_paired.json > sorted_non_paired.json
+
+        # Initialize batch variables
+        batch_num=0
+        batch_files=()
+        current_batch_file="batches/batch_$(printf "%04d" $batch_num).json"
+        current_batch_size=0
+        batch_count=0
+
+        # Start the first batch
+        echo "[" > "$current_batch_file"
+        first_in_batch=true
+
+        # First, handle paired-end files which must stay together
+        jq -r 'to_entries[] | .key' paired_files_map.json 2>/dev/null | while read -r base_name; do
+            # Get paired files info
+            r1_file=$(jq -r '.["'"$base_name"'"][0]' paired_files_map.json)
+            r2_file=$(jq -r '.["'"$base_name"'"][1]' paired_files_map.json)
+            
+            r1_size=$(echo "$r1_file" | jq -r '.size_bytes')
+            r2_size=$(echo "$r2_file" | jq -r '.size_bytes')
+            pair_total_size=$((r1_size + r2_size))
+            
+            # If current batch isn't empty and adding this pair would exceed max size,
+            # close current batch and start a new one
+            if [ "$first_in_batch" = false ] && (( current_batch_size + pair_total_size > max_batch_size_bytes )); then
+                echo "]" >> "$current_batch_file"
+                batch_count=$((batch_count + 1))
+                
+                # Start a new batch
+                batch_num=$((batch_num + 1))
+                current_batch_file="batches/batch_$(printf "%04d" $batch_num).json"
+                echo "[" > "$current_batch_file"
+                first_in_batch=true
+                current_batch_size=0
+            fi
+            
+            # Add both paired files to the current batch (always kept together)
+            if [ "$first_in_batch" = false ]; then
+                echo "," >> "$current_batch_file"
+            else
+                first_in_batch=false
+            fi
+            
+            # Add R1 file
+            echo "$r1_file" >> "$current_batch_file"
+            echo "," >> "$current_batch_file"
+            
+            # Add R2 file
+            echo "$r2_file" >> "$current_batch_file"
+            
+            current_batch_size=$((current_batch_size + pair_total_size))
+            
+            echo "Added paired files $base_name (${pair_total_size} bytes) to batch $batch_num"
+        done
+
+        # Now process individual non-paired files
+        cat sorted_non_paired.json | while read -r file_json; do
+            # Skip empty lines
+            if [ -z "$file_json" ]; then
+                continue
+            fi
+            
+            # Extract file size and path
+            file_size=$(echo "$file_json" | jq -r '.size_bytes')
+            file_path=$(echo "$file_json" | jq -r '.full_path')
+            
+            # If this single file is larger than max batch size, it gets its own batch
+            if (( file_size > max_batch_size_bytes )); then
+                # If we've already started a batch with content, close it
+                if [ "$first_in_batch" = false ]; then
+                    echo "]" >> "$current_batch_file"
+                    batch_count=$((batch_count + 1))
+                    
+                    # Start a new batch for this single large file
+                    batch_num=$((batch_num + 1))
+                    current_batch_file="batches/batch_$(printf "%04d" $batch_num).json"
+                    echo "[" > "$current_batch_file"
+                    first_in_batch=true
+                    current_batch_size=0
+                fi
+                
+                # Add this file to its own batch
+                if [ "$first_in_batch" = false ]; then
+                    echo "," >> "$current_batch_file"
+                else
+                    first_in_batch=false
+                fi
+                
+                echo "$file_json" >> "$current_batch_file"
+                current_batch_size=$((current_batch_size + file_size))
+                
+                # Close this batch and start a new one
+                echo "]" >> "$current_batch_file"
+                batch_count=$((batch_count + 1))
+                
+                batch_num=$((batch_num + 1))
+                current_batch_file="batches/batch_$(printf "%04d" $batch_num).json"
+                echo "[" > "$current_batch_file"
+                first_in_batch=true
+                current_batch_size=0
+                
+                echo "Added large file $file_path (${file_size} bytes) to dedicated batch"
+                continue
+            }
+            
+            # If adding this file would exceed the batch size, start a new batch
+            if (( current_batch_size + file_size > max_batch_size_bytes )) && [ "$first_in_batch" = false ]; then
+                echo "]" >> "$current_batch_file"
+                batch_count=$((batch_count + 1))
+                
+                # Start a new batch
+                batch_num=$((batch_num + 1))
+                current_batch_file="batches/batch_$(printf "%04d" $batch_num).json"
+                echo "[" > "$current_batch_file"
+                first_in_batch=true
+                current_batch_size=0
+            fi
+            
+            # Add comma separator if not the first file in the batch
+            if [ "$first_in_batch" = false ]; then
+                echo "," >> "$current_batch_file"
+            else
+                first_in_batch=false
+            fi
+            
+            # Add file to current batch
+            echo "$file_json" >> "$current_batch_file"
+            current_batch_size=$((current_batch_size + file_size))
+            
+            echo "Added file $file_path (${file_size} bytes) to batch $batch_num"
+        done
+
+        # Close the last batch if not empty
+        if [ "$first_in_batch" = false ]; then
+            echo "]" >> "$current_batch_file"
+            batch_count=$((batch_count + 1))
         else
-            # Remove empty batch file
+            # Remove the empty file
             rm -f "$current_batch_file"
         fi
 
-        # List all batch files and count the number of files in each
-        echo "Final batch summary:"
-        for batch_file in batches/batch_*.txt; do
-            if [ -f "$batch_file" ]; then
-                file_count=$(jq '. | length' "$batch_file")
-                batch_size=$(jq 'reduce .[] as $item (0; . + ($item.size_bytes // 0))' "$batch_file" 2>/dev/null || echo "Unknown")
-                batch_size_gb=$(echo "scale=4; $batch_size / 1073741824" | bc -l 2>/dev/null || echo "Unknown")
-                echo "Batch $(basename $batch_file): $file_count files, approx. $batch_size bytes ($batch_size_gb GB)"
+        # List all batch files
+        find batches -name "batch_*.json" | sort > batch_files.txt
+        
+        # Generate summary for each batch
+        echo "Batch summary:"
+        for batch_file in $(cat batch_files.txt); do
+            file_count=$(jq 'length' "$batch_file")
+            batch_size_bytes=$(jq 'map(.size_bytes) | add' "$batch_file")
+            batch_size_gb=$(echo "scale=2; $batch_size_bytes / 1073741824" | bc)
+            
+            # Check for paired files in this batch
+            paired_count=$(jq '[.[] | select(.relative_path | test("_R[12]_001\\.fastq\\.gz$"))] | length' "$batch_file")
+            if [ "$paired_count" -gt 0 ]; then
+                pair_sets=$((paired_count / 2))
+                echo "Batch $(basename $batch_file): $file_count files ($pair_sets paired sets), $batch_size_gb GB"
+            else
+                echo "Batch $(basename $batch_file): $file_count files, $batch_size_gb GB"
             fi
         done
 
-        echo "Created $total_batches batches in total"
-        find batches -name "batch_*.txt" | sort > batch_files.txt
-        echo "Found $(wc -l < batch_files.txt) batch files"
+        echo "Created $batch_count batches"
     >>>
 
     output {
-        Array[File] batch_files = glob("batches/batch_*.txt")
+        Array[File] batch_files = glob("batches/batch_*.json")
     }
 
     runtime {
         docker: docker_image
-        cpu: 2
-        memory: "4 GB"
-        disks: "local-disk 10 SSD"
+        cpu: 4  # Increased CPU to handle regex processing
+        memory: "8 GB"  # Increased memory for larger datasets
+        disks: "local-disk 20 SSD"  # Increased disk space
     }
 }
-
 
 task ProcessBatch {
     input {
@@ -652,6 +716,8 @@ EOF
                     gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
                     echo "$gs_path,SUCCESS" >> results.csv
                 done < fastq_list.txt
+                echo "SUCCESS" > result.txt
+                echo "Successfully uploaded common files in batch $batch_name as dataset ${dataset_name}_common_files"
             else
                 # Mark each file as failed
                 while read -r file_path; do
@@ -659,6 +725,8 @@ EOF
                     gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
                     echo "$gs_path,UPLOAD_FAILED" >> results.csv
                 done < fastq_list.txt
+                echo "FAILED" > result.txt
+                echo "Failed to upload batch ${batch_name}_fastq"
                 cat logs/fastq_upload.log >> upload_errors.log
             fi
         else
@@ -687,6 +755,8 @@ EOF
                     gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
                     echo "$gs_path,SUCCESS" >> results.csv
                 done < common_list.txt
+                echo "SUCCESS" > result.txt
+                echo "Successfully uploaded common files in batch $batch_name as dataset ${dataset_name}_common_files"
             else
                 # Mark each file as failed
                 while read -r file_path; do
@@ -694,6 +764,8 @@ EOF
                     gs_path=$(grep ",$rel_path$" batch_files.csv | cut -d, -f1)
                     echo "$gs_path,UPLOAD_FAILED" >> results.csv
                 done < common_list.txt
+                echo "FAILED" > result.txt
+                echo "Failed to upload batch ${batch_name}_fastq"
                 cat logs/common_upload.log >> upload_errors.log
             fi
         else
