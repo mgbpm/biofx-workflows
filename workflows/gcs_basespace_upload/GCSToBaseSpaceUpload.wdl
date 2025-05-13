@@ -643,8 +643,6 @@ EOF
             if bs upload dataset \
                 --project ~{project_id} \
                 --name "${dataset_name}_fastq" \
-                --exclude '*' \
-                --include "*.fastq*" \
                 --recursive \
                 downloaded/ > logs/fastq_upload.log 2>&1; then
                 
