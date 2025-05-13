@@ -643,7 +643,10 @@ EOF
             if bs upload dataset \
                 --project ~{project_id} \
                 --name "${dataset_name}_fastq"
-                --file-list fastq_list.txt > logs/fastq_upload.log 2>&1; then
+                --exclude '*'
+                --include "*.fastq*" \
+                --recursive \
+                downloaded/ > logs/fastq_upload.log 2>&1; then
                 
                 # Mark each file as successful
                 while read -r file_path; do
@@ -675,8 +678,10 @@ EOF
             if bs upload dataset \
                 --project ~{project_id} \
                 --name "${dataset_name}_common_files"
-                --type common.files
-                --file-list common_list.txt > logs/common_upload.log 2>&1; then
+                --recursive \
+                --type common.files \
+                --exclude "*.fastq*"\
+                downloaded/ > logs/common_upload.log 2>&1; then
                 
                 # Mark each file as successful
                 while read -r file_path; do
