@@ -286,12 +286,12 @@ workflows:
         - /.+/
       tags:
         - BiobankSharding_*
-  - name: BiobankScrub
+  - name: BiobankScrubWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank-scrub/BiobankScrubWorkflow.wdl
     filters:
       branches:
-        - /.+/
+        - /.*[a-zA-Z0-9].*/
       tags:
         - BiobankScrub_*
   - name: insiMWorkflow
