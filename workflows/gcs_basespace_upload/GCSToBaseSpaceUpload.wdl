@@ -381,7 +381,7 @@ task CreateFileBatches {
         first_in_batch=true
 
         # First, handle paired-end files which must stay together
-        jq -r 'to_entries[] | .key' paired_files_map.json 2>/dev/null | while read -r base_name; do
+        while read -r base_name; do
             # Get paired files info
             r1_file=$(jq -r '.["'"$base_name"'"][0]' paired_files_map.json)
             r2_file=$(jq -r '.["'"$base_name"'"][1]' paired_files_map.json)
@@ -421,10 +421,10 @@ task CreateFileBatches {
             current_batch_size=$((current_batch_size + pair_total_size))
             
             echo "Added paired files $base_name (${pair_total_size} bytes) to batch $batch_num"
-        done
+        done < <(jq -r 'to_entries[] | .key' paired_files_map.json 2>/dev/null)
 
         # Now process individual non-paired files
-        cat sorted_non_paired.json | while read -r file_json; do
+        while read -r file_json; do
             # Skip empty lines
             if [ -z "$file_json" ]; then
                 continue
@@ -498,7 +498,7 @@ task CreateFileBatches {
             current_batch_size=$((current_batch_size + file_size))
             
             echo "Added file $file_path (${file_size} bytes) to batch $batch_num"
-        done
+        done < sorted_non_paired.json
 
         # Close the last batch if not empty
         if [ "$first_in_batch" = false ]; then
