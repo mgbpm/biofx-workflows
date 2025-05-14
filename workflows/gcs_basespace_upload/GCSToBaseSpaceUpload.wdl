@@ -471,6 +471,7 @@ task CreateFileBatches {
                 
                 echo "Added large file $file_path (${file_size} bytes) to dedicated batch"
                 continue
+            fi
             
             # If adding this file would exceed the batch size, start a new batch
             if (( current_batch_size + file_size > max_batch_size_bytes )) && [ "$first_in_batch" = false ]; then
