@@ -317,17 +317,22 @@ task CreateFileBatches {
 
         # Convert max_batch_size_gb to bytes for comparison
         max_batch_size_bytes=$(echo "~{max_batch_size_gb} * 1073741824" | bc)
+        echo "Maximum batch size: ~{max_batch_size_gb} GB ($max_batch_size_bytes bytes)"
 
         # Create a working directory for batch files
         mkdir -p batches
 
         # Group paired-end files first
         echo "Grouping paired-end fastq files..."
-        jq -r '.[] | select(.relative_path | test("_R[12]_001\\.fastq\\.gz$")) | 
+        
+        # Extract base names for paired files (remove _R1_001.fastq.gz or _R2_001.fastq.gz)
+        jq -r '.[] | select(.relative_path | endswith("_R1_001.fastq.gz") or endswith("_R2_001.fastq.gz")) | 
             (.relative_path | gsub("_R[12]_001\\.fastq\\.gz$"; ""))' ~{file_manifest} | 
             sort | uniq > paired_base_names.txt
+            
+        echo "Found $(wc -l < paired_base_names.txt) potential paired file sets"
 
-        # Create a map of paired files
+        # Create paired files map
         echo "{" > paired_files_map.json
         first_entry=true
         
@@ -338,6 +343,7 @@ task CreateFileBatches {
             
             # Skip if either file is missing
             if [[ -z "$r1_file" || -z "$r2_file" || "$r1_file" == "null" || "$r2_file" == "null" ]]; then
+                echo "Skipping incomplete pair for base: $base_name"
                 continue
             fi
             
@@ -352,39 +358,47 @@ task CreateFileBatches {
             echo "    $r1_file," >> paired_files_map.json
             echo "    $r2_file" >> paired_files_map.json
             echo "  ]" >> paired_files_map.json
+            
+            echo "Found complete pair for: $base_name"
         done < paired_base_names.txt
         
         echo "}" >> paired_files_map.json
 
-        # Create a list of all paired files to exclude from regular processing
-        jq -r '.[] | .[] | .full_path' paired_files_map.json 2>/dev/null > paired_files_list.txt
-        if [ ! -s paired_files_list.txt ]; then
-            # Create empty file if no paired files found
-            touch paired_files_list.txt
-        fi
+        # Create list of all paired file paths
+        echo "Creating list of paired files..."
+        jq -r 'if . == {} then [] else to_entries[] | .value[] | .full_path end' paired_files_map.json > paired_files_list.txt
 
         # Process non-paired files
-        # This part had issues with the 'every' function - let's fix it
         echo "Processing non-paired files..."
         
-        # Create a list of paired file paths for filtering
-        cat paired_files_list.txt | sort > sorted_paired_files_list.txt
+        # Initialize non_paired_files.json
+        echo "[]" > non_paired_files.json
         
-        # Get all non-paired files by excluding the paired ones
-        jq -r '.[] | select(.full_path | contains("_R1_001.fastq.gz") or contains("_R2_001.fastq.gz") | not) | .' ~{file_manifest} > temp_non_paired.json
-        
-        # Also exclude R1/R2 files that are already in paired files list
-        jq -r '.[]' ~{file_manifest} | while read -r file_json; do
+        # Get all files that are not in the paired files list
+        jq -r '.[] | @json' ~{file_manifest} | while read -r file_json; do
             file_path=$(echo "$file_json" | jq -r '.full_path')
-            if ! grep -q "^$file_path$" sorted_paired_files_list.txt; then
-                echo "$file_json" >> non_paired_files.json
+            
+            # Check if file is in paired files list
+            if ! grep -q "^$file_path$" paired_files_list.txt; then
+                # Add to non-paired files
+                non_paired_files_temp=$(cat non_paired_files.json)
+                if [ "$non_paired_files_temp" = "[]" ]; then
+                    echo "[$file_json]" > non_paired_files.json
+                else
+                    # Remove closing bracket, add comma and new entry, then close bracket
+                    sed -i '$ s/]$/,/' non_paired_files.json
+                    echo "$file_json]" >> non_paired_files.json
+                fi
+                echo "Added non-paired file: $file_path"
             fi
         done
         
         # Sort non-paired files by size (largest first) for better packing
-        if [ -s non_paired_files.json ]; then
-            jq -s 'sort_by(.size_bytes) | reverse | .[]' non_paired_files.json > sorted_non_paired.json
+        if [ -s non_paired_files.json ] && [ "$(jq 'length' non_paired_files.json)" -gt 0 ]; then
+            echo "Sorting $(jq 'length' non_paired_files.json) non-paired files by size..."
+            jq 'sort_by(.size_bytes) | reverse' non_paired_files.json > sorted_non_paired.json
         else
+            echo "No non-paired files found, creating empty sorted file"
             echo "[]" > sorted_non_paired.json
         fi
 
@@ -401,14 +415,13 @@ task CreateFileBatches {
         # First, handle paired-end files which must stay together
         if [ -s paired_files_map.json ] && [ "$(jq 'length' paired_files_map.json)" -gt 0 ]; then
             echo "Processing paired-end files..."
-            jq -r 'to_entries[] | .key' paired_files_map.json 2>/dev/null | while read -r base_name; do
-                if [ -z "$base_name" ]; then
-                    continue
-                fi
+            
+            jq -r 'to_entries[] | @json' paired_files_map.json | while read -r pair_entry; do
+                base_name=$(echo "$pair_entry" | jq -r '.key')
                 
                 # Get paired files info
-                r1_file=$(jq -r '.["'"$base_name"'"][0]' paired_files_map.json)
-                r2_file=$(jq -r '.["'"$base_name"'"][1]' paired_files_map.json)
+                r1_file=$(echo "$pair_entry" | jq -r '.value[0]')
+                r2_file=$(echo "$pair_entry" | jq -r '.value[1]')
                 
                 r1_size=$(echo "$r1_file" | jq -r '.size_bytes')
                 r2_size=$(echo "$r2_file" | jq -r '.size_bytes')
@@ -447,13 +460,13 @@ task CreateFileBatches {
                 echo "Added paired files $base_name (${pair_total_size} bytes) to batch $batch_num"
             done
         else
-            echo "No paired files found"
+            echo "No paired files found to process"
         fi
 
         # Now process individual non-paired files
         echo "Processing non-paired files..."
-        if [ -s sorted_non_paired.json ]; then
-            cat sorted_non_paired.json | while read -r file_json; do
+        if [ -s sorted_non_paired.json ] && [ "$(jq 'length' sorted_non_paired.json)" -gt 0 ]; then
+            jq -r '.[] | @json' sorted_non_paired.json | while read -r file_json; do
                 # Skip empty lines
                 if [ -z "$file_json" ]; then
                     continue
@@ -479,14 +492,9 @@ task CreateFileBatches {
                     fi
                     
                     # Add this file to its own batch
-                    if [ "$first_in_batch" = false ]; then
-                        echo "," >> "$current_batch_file"
-                    else
-                        first_in_batch=false
-                    fi
-                    
                     echo "$file_json" >> "$current_batch_file"
                     current_batch_size=$((current_batch_size + file_size))
+                    first_in_batch=false
                     
                     # Close this batch and start a new one
                     echo "]" >> "$current_batch_file"
@@ -529,7 +537,7 @@ task CreateFileBatches {
                 echo "Added file $file_path (${file_size} bytes) to batch $batch_num"
             done
         else
-            echo "No non-paired files found"
+            echo "No non-paired files found to process"
         fi
 
         # Close the last batch if not empty
@@ -552,7 +560,7 @@ task CreateFileBatches {
             batch_size_gb=$(echo "scale=2; $batch_size_bytes / 1073741824" | bc)
             
             # Check for paired files in this batch
-            paired_count=$(jq '[.[] | select(.relative_path | test("_R[12]_001\\.fastq\\.gz$"))] | length' "$batch_file")
+            paired_count=$(jq '[.[] | select(.relative_path | endswith("_R1_001.fastq.gz") or endswith("_R2_001.fastq.gz"))] | length' "$batch_file")
             if [ "$paired_count" -gt 0 ]; then
                 pair_sets=$((paired_count / 2))
                 echo "Batch $(basename $batch_file): $file_count files ($pair_sets paired sets), $batch_size_gb GB"
