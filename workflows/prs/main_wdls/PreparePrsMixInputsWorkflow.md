@@ -17,7 +17,7 @@ is compatible with the remaining input parameters.
 | Boolean     | resuming         | No    | whether this run is the resumption of an earlier run | false |
 | Boolean     | norename         | No    | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 | Array[File] | query_vcfs       | Yes   | array of gz-compressed VCF files of the samples to be scored | |
-| String      | prs_docker_image | No    | docker image equipped with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250401" |
+| String      | prs_docker_image | No    | docker image equipped with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515" |
 
 ## Output Parameters
 

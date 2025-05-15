@@ -47,7 +47,7 @@ workflow MixOrchestrationWorkflow {
         Boolean norename = false
         File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
         String ubuntu_docker_image = "ubuntu:latest"
-        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250401"
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
     }
 
     call FileUtils.FetchFilesTask as FetchFiles {
