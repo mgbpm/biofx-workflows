@@ -30,7 +30,7 @@ task CalculateMixScore {
         String output_basename
         String docker_image
         Int disk_size = ceil(size(raw_scores, "GB") + size(score_weights, "GB")) + 10
-        Int mem_size = 2
+        Int mem_size = 4
         Int preemptible = 1
     }
 
