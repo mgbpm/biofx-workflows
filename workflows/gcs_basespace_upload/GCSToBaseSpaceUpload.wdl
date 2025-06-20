@@ -81,6 +81,8 @@ workflow GCSToBaseSpaceUpload {
         Array[File] batch_upload_logs = ProcessBatch.upload_log
         String upload_summary = VerifyAllUploads.summary
         File detailed_results = VerifyAllUploads.detailed_results
+        File orphaned_r2_files = CreateFileBatches.orphaned_r2_files
+        File orphaned_r2_summary = CreateFileBatches.orphaned_r2_summary
     }
 }
 
@@ -322,17 +324,73 @@ task CreateFileBatches {
         # Create a working directory for batch files
         mkdir -p batches
 
-        # Group paired-end files first
-        echo "Grouping paired-end fastq files..."
+        # Group paired-end files and identify orphaned R2 files
+        echo "Analyzing paired-end fastq files..."
         
-        # Extract base names for paired files (remove _R1_001.fastq.gz or _R2_001.fastq.gz)
-        jq -r '.[] | select(.relative_path | endswith("_R1_001.fastq.gz") or endswith("_R2_001.fastq.gz")) | 
-            (.relative_path | gsub("_R[12]_001\\.fastq\\.gz$"; ""))' ~{file_manifest} | 
-            sort | uniq > paired_base_names.txt
+        # Extract base names for R1 files
+        jq -r '.[] | select(.relative_path | endswith("_R1_001.fastq.gz")) | 
+            (.relative_path | gsub("_R1_001\\.fastq\\.gz$"; ""))' ~{file_manifest} | 
+            sort | uniq > r1_base_names.txt
             
-        echo "Found $(wc -l < paired_base_names.txt) potential paired file sets"
+        # Extract base names for R2 files
+        jq -r '.[] | select(.relative_path | endswith("_R2_001.fastq.gz")) | 
+            (.relative_path | gsub("_R2_001\\.fastq\\.gz$"; ""))' ~{file_manifest} | 
+            sort | uniq > r2_base_names.txt
+            
+        echo "Found $(wc -l < r1_base_names.txt) R1 files"
+        echo "Found $(wc -l < r2_base_names.txt) R2 files"
 
-        # Create paired files map
+        # Find orphaned R2 files (R2 files without corresponding R1)
+        echo "Identifying orphaned R2 files..."
+        comm -23 r2_base_names.txt r1_base_names.txt > orphaned_r2_base_names.txt
+        orphaned_r2_count=$(wc -l < orphaned_r2_base_names.txt)
+        
+        if [ $orphaned_r2_count -gt 0 ]; then
+            echo "WARNING: Found $orphaned_r2_count orphaned R2 files (R2 files without corresponding R1 files)"
+            
+            # Create detailed list of orphaned R2 files
+            echo "[]" > orphaned_r2_files.json
+            while read -r base_name; do
+                # Find the R2 file for this base
+                r2_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R2_001.fastq.gz")' ~{file_manifest})
+                
+                if [[ -n "$r2_file" && "$r2_file" != "null" ]]; then
+                    # Add to orphaned R2 files list
+                    orphaned_r2_files_temp=$(cat orphaned_r2_files.json)
+                    if [ "$orphaned_r2_files_temp" = "[]" ]; then
+                        echo "[$r2_file]" > orphaned_r2_files.json
+                    else
+                        # Remove closing bracket, add comma and new entry, then close bracket
+                        sed -i '$ s/]$/,/' orphaned_r2_files.json
+                        echo "$r2_file]" >> orphaned_r2_files.json
+                    fi
+                    echo "Found orphaned R2 file: ${base_name}_R2_001.fastq.gz"
+                fi
+            done < orphaned_r2_base_names.txt
+            
+            # Create human-readable summary of orphaned R2 files
+            echo "Orphaned R2 Files (files without corresponding R1 files):" > orphaned_r2_summary.txt
+            echo "=========================================================" >> orphaned_r2_summary.txt
+            echo "Total orphaned R2 files: $orphaned_r2_count" >> orphaned_r2_summary.txt
+            echo "" >> orphaned_r2_summary.txt
+            echo "File list:" >> orphaned_r2_summary.txt
+            jq -r '.[] | "- " + .relative_path + " (" + (.size_gb | tostring) + " GB)"' orphaned_r2_files.json >> orphaned_r2_summary.txt
+            echo "" >> orphaned_r2_summary.txt
+            echo "These files have been excluded from batches and require manual review." >> orphaned_r2_summary.txt
+            
+        else
+            echo "No orphaned R2 files found"
+            echo "[]" > orphaned_r2_files.json
+            echo "No orphaned R2 files found." > orphaned_r2_summary.txt
+        fi
+
+        # Find properly paired files (both R1 and R2 exist)
+        echo "Identifying properly paired files..."
+        comm -12 r1_base_names.txt r2_base_names.txt > paired_base_names.txt
+        paired_count=$(wc -l < paired_base_names.txt)
+        echo "Found $paired_count complete paired file sets"
+
+        # Create paired files map (only for complete pairs)
         echo "{" > paired_files_map.json
         first_entry=true
         
@@ -341,9 +399,9 @@ task CreateFileBatches {
             r1_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R1_001.fastq.gz")' ~{file_manifest})
             r2_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R2_001.fastq.gz")' ~{file_manifest})
             
-            # Skip if either file is missing
+            # Skip if either file is missing (shouldn't happen with comm -12, but safety check)
             if [[ -z "$r1_file" || -z "$r2_file" || "$r1_file" == "null" || "$r2_file" == "null" ]]; then
-                echo "Skipping incomplete pair for base: $base_name"
+                echo "Warning: Skipping incomplete pair for base: $base_name"
                 continue
             fi
             
@@ -359,27 +417,31 @@ task CreateFileBatches {
             echo "    $r2_file" >> paired_files_map.json
             echo "  ]" >> paired_files_map.json
             
-            echo "Found complete pair for: $base_name"
+            echo "Added complete pair for: $base_name"
         done < paired_base_names.txt
         
         echo "}" >> paired_files_map.json
 
-        # Create list of all paired file paths
-        echo "Creating list of paired files..."
+        # Create list of all paired file paths and orphaned R2 file paths
+        echo "Creating exclusion list..."
         jq -r 'if . == {} then [] else to_entries[] | .value[] | .full_path end' paired_files_map.json > paired_files_list.txt
+        jq -r '.[] | .full_path' orphaned_r2_files.json > orphaned_r2_files_list.txt
+        
+        # Combine both lists for exclusion
+        cat paired_files_list.txt orphaned_r2_files_list.txt > excluded_files_list.txt
 
-        # Process non-paired files
-        echo "Processing non-paired files..."
+        # Process non-paired files (excluding orphaned R2 files)
+        echo "Processing non-paired files (excluding orphaned R2 files)..."
         
         # Initialize non_paired_files.json
         echo "[]" > non_paired_files.json
         
-        # Get all files that are not in the paired files list
+        # Get all files that are not in the excluded files list
         jq -r '.[] | @json' ~{file_manifest} | while read -r file_json; do
             file_path=$(echo "$file_json" | jq -r '.full_path')
             
-            # Check if file is in paired files list
-            if ! grep -q "^$file_path$" paired_files_list.txt 2>/dev/null; then
+            # Check if file is in excluded files list
+            if ! grep -q "^$file_path$" excluded_files_list.txt 2>/dev/null; then
                 # Add to non-paired files
                 non_paired_files_temp=$(cat non_paired_files.json)
                 if [ "$non_paired_files_temp" = "[]" ]; then
@@ -464,7 +526,7 @@ task CreateFileBatches {
             echo "No paired files found to process"
         fi
 
-        # Now process individual non-paired files
+        # Now process individual non-paired files (orphaned R2 files already excluded)
         echo "Processing non-paired files..."
         if [ -s sorted_non_paired.json ] && [ "$(jq '. | length' sorted_non_paired.json)" -gt 0 ]; then
             # Use process substitution to avoid subshell issues
@@ -598,10 +660,23 @@ task CreateFileBatches {
         fi
 
         echo "Created $batch_count batches"
+        
+        # Final summary
+        echo ""
+        echo "=== BATCH CREATION SUMMARY ==="
+        echo "Total batches created: $batch_count"
+        echo "Complete paired file sets processed: $paired_count"
+        echo "Orphaned R2 files found: $orphaned_r2_count"
+        if [ $orphaned_r2_count -gt 0 ]; then
+            echo "WARNING: Orphaned R2 files have been excluded from batches and saved for manual review."
+        fi
+        echo "==============================="
     >>>
 
     output {
         Array[File] batch_files = glob("batches/batch_*.json")
+        File orphaned_r2_files = "orphaned_r2_files.json"
+        File orphaned_r2_summary = "orphaned_r2_summary.txt"
     }
 
     runtime {
@@ -611,6 +686,9 @@ task CreateFileBatches {
         disks: "local-disk 20 SSD"
     }
 }
+
+
+
 
 task ProcessBatch {
     input {
