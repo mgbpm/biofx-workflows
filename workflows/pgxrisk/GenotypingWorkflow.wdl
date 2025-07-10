@@ -64,7 +64,7 @@ task AddAnnotationsTask {
     command <<<
         set -euxo pipefail
 
-        python /biofx-qceval/bin/annotate_with_caller.py \
+        python $MGBPMBIOFXPATH/biofx-qceval/bin/annotate_with_caller.py \
             ~{all_calls_vcf_file} \
             ~{annotated_vcf}
         
