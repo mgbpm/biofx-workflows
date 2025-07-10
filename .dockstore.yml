@@ -405,3 +405,13 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - PRSMix_*
+  - name: GenotypingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/pgxrisk/GenotypingWorkflow.wdl
+    readMePath: /workflows/pgxrisk/GenotypingWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
+  
