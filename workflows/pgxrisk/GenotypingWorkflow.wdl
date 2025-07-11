@@ -46,6 +46,7 @@ workflow GenotypingWorkflow {
         input:
             all_calls_vcf_file = HaplotypeCallerTask.all_calls_vcf_file,
             annotated_vcf = annotated_vcf,
+            out_path = out_path,
             mgbpmbiofx_docker_image = mgbpmbiofx_docker_image
     }
 
@@ -58,11 +59,14 @@ task AddAnnotationsTask {
     input {
         File all_calls_vcf_file
         String annotated_vcf
+        String out_path
         String mgbpmbiofx_docker_image
     }
 
     command <<<
         set -euxo pipefail
+
+        mkdir -p ~{out_path}
 
         python $MGBPMBIOFXPATH/biofx-qceval/bin/annotate_with_caller.py \
             ~{all_calls_vcf_file} \
