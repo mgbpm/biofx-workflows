@@ -19,7 +19,7 @@ workflow BgwgsWorkflow {
         String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
         String workspace_name
         # Orchestration utils docker
-        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230828"
+        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
         # bcftools docker image
         String bcftools_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
         # subject, sample id and data location
@@ -254,8 +254,10 @@ workflow BgwgsWorkflow {
         String alamut_anno_src_id = "228"
         String alamut_anno_min_age = "P6M"
         # qceval inputs
-        String qceval_project_type = "WGS"
-        String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20230630"
+        String qceval_project_type = "BGE_DRAGEN_TP_BINNING"
+        String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20250923"
+        File? thresholds = "gs://lmm-reference-data/annotation/pmeval/thresholds_20250912.tsv"
+        File? difficult_to_map_regions = "gs://lmm-reference-data/annotation/pmeval/difficult_to_map_regions_20250912.tgz"
         # gnomad annotation inputs
         File gnomad_coverage_file = "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz"
         File gnomad_coverage_file_idx = "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz.tbi"
@@ -263,7 +265,7 @@ workflow BgwgsWorkflow {
         String gnomad_column_list = "CHROM,POS,INFO/DP_gnomadG"
         # FAST loading inputs
         Boolean has_haploid_sites = false
-        String sample_data_load_config_name = "Sample_VCF_PPM_Eval"
+        String sample_data_load_config_name = "Sample_vcf_BGE"
         String gnomad_data_load_config_name = "Coverage"
         String alamut_data_load_config_name = "Alamut"
         Array[String] fast_annotated_sample_data_regions
@@ -275,7 +277,7 @@ workflow BgwgsWorkflow {
         Int fast_adi_wait_max_intervals = 144
         # Reporting steps
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250205"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250923"
         File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type = "S"
         Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]
@@ -461,12 +463,42 @@ workflow BgwgsWorkflow {
             docker_image = "~{bcftools_docker_image}"
     }
 
+
+    # The assignments at the end of the conditional block below ensure
+    # that `ref_fasta` and `ref_fasta_index` are passed to
+    # `QCEval.QCEvalTask` only when needed, avoiding unnecessary
+    # localization--especially of `ref_fasta`, which is typically
+    # large.  (Because these inputs have type `File`, they are
+    # mandatory and cannot be omitted.  If passed directly to the
+    # task, they would be localized unconditionally.  Assigning them
+    # via a conditional block adds them to the task's inputs only when
+    # needed.  In contrast, the other inputs specific to the
+    # "BGE_DRAGEN_TP_BINNING" case--`thresholds` and
+    # `difficult_to_map_regions`--have type `File?`, so they can
+    # simply be left out when not needed; localization is not an issue
+    # in this case.)
+
+    if (qceval_project_type == "BGE_DRAGEN_TP_BINNING") {
+      if (!(defined(thresholds) && defined(difficult_to_map_regions))) {
+        call Utilities.FailTask as MissingQcevalBgeDragenTpBinningInputs {
+            input:
+                error_message = "Some inputs required for QCEval with qceval_project_type = \\\"~{qceval_project_type}\\\" are missing"
+        }
+      }
+      File maybe_reference_fasta = ref_fasta
+      File maybe_reference_fasta_fai = ref_fasta_index
+    }
+
     # Annotate target VCF with QCEval INFO field
     call QCEval.QCEvalTask {
         input:
             input_vcf = FilterVCFWithBEDTask.output_vcf_gz,
             project_type = qceval_project_type,
             output_basename = subject_id + "_" + sample_id + ".qceval",
+            reference_fasta = maybe_reference_fasta,
+            reference_fasta_fai = maybe_reference_fasta_fai,
+            thresholds_tsv = thresholds,
+            regions_tgz = difficult_to_map_regions,
             docker_image = qceval_docker_image
     }
 
@@ -524,7 +556,7 @@ workflow BgwgsWorkflow {
             reference_build = reference_build,
             vcf_file = QCEvalTask.output_vcf_gz,
             has_haploid_sites = has_haploid_sites,
-            sample_data_name = subject_id + "_" + sample_id,
+            sample_data_name = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name,
             lab_batch_name = sample_id,
             data_load_config_name = sample_data_load_config_name,
             data_load_target = "SAMPLE_DATA",
@@ -612,7 +644,7 @@ workflow BgwgsWorkflow {
             call FASTUtils.FASTCreateAnnotatedSampleDataTask {
                 input:
                     annotated_sample_data_name = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name,
-                    sample_data_names_and_labels = [subject_id + "_" + sample_id],
+                    sample_data_names_and_labels = [subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name],
                     region_names_and_masks = fast_annotated_sample_data_regions,
                     scripts = fast_annotated_sample_data_scripts,
                     saved_filter_name = fast_annotated_sample_data_saved_filter_name,
