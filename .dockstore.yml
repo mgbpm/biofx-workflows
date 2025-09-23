@@ -407,8 +407,8 @@ workflows:
         - PRSMix_*
   - name: CRAMOrBAMToFASTQWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/cram_to_fastq/CRAMOrBAMToFASTQWorkflow.wdl
-    readMePath: /workflows/cram_to_fastq/CRAMOrBAMToFASTQWorkflow.md
+    primaryDescriptorPath: /workflows/cram_or_bam_to_fastq/CRAMOrBAMToFASTQWorkflow.wdl
+    readMePath: /workflows/cram_or_bam_to_fastq/CRAMOrBAMToFASTQWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
