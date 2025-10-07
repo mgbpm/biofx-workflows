@@ -47,7 +47,7 @@ workflow GCSToBaseSpaceUpload {
         input:
             file_manifest = ListGCSFilesWithSizes.file_manifest,
             max_batch_size_gb = max_batch_size_gb,
-            docker_image = docker_image
+            docker_image = docker_image,
             upload_r1_only = upload_r1_only
     }
 
