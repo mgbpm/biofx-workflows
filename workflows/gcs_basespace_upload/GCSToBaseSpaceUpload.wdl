@@ -370,35 +370,22 @@ task CreateFileBatches {
                     echo "Found orphaned R2 file: ${base_name}_R2_001.fastq.gz"
                 fi
             done < orphaned_r2_base_names.txt
-            
-            # Create human-readable summary of orphaned R2 files
-            echo "Orphaned R2 Files (files without corresponding R1 files):" > orphaned_r2_summary.txt
-            echo "=========================================================" >> orphaned_r2_summary.txt
-            echo "Total orphaned R2 files: $orphaned_r2_count" >> orphaned_r2_summary.txt
-            echo "" >> orphaned_r2_summary.txt
-            echo "File list:" >> orphaned_r2_summary.txt
-            jq -r '.[] | "- " + .relative_path + " (" + (.size_gb | tostring) + " GB)"' orphaned_r2_files.json >> orphaned_r2_summary.txt
-            echo "" >> orphaned_r2_summary.txt
-            echo "These files have been excluded from batches and require manual review." >> orphaned_r2_summary.txt
-            
-        else
-            echo "No orphaned R2 files found"
-            echo "[]" > orphaned_r2_files.json
-            echo "No orphaned R2 files found." > orphaned_r2_summary.txt
-        fi
 
-        # Filter out R2 files if upload_r1_only is true
+        # Find properly paired files (both R1 and R2 exist)
+        echo "Identifying properly paired files..."
+        comm -12 r1_base_names.txt r2_base_names.txt > paired_base_names.txt
+        paired_count=$(wc -l < paired_base_names.txt)
+        echo "Found $paired_count complete paired file sets"
+
+        # Create paired files map based on upload mode
         if [ "~{upload_r1_only}" = "true" ]; then
             echo "R1-only mode enabled: excluding all R2 files from upload"
             
-            # Get all R2 file paths
+            # Get all R2 file paths for exclusion list
             jq -r '.[] | select(.relative_path | endswith("_R2_001.fastq.gz")) | .full_path' ~{file_manifest} > r2_files_to_exclude.txt
             
-            # Add R2 files to the excluded files list
-            cat r2_files_to_exclude.txt >> excluded_files_list.txt
-            
-            # Update paired_files_map to only include R1 files
-            echo "{" > paired_files_map_r1_only.json
+            # Create paired_files_map with only R1 files
+            echo "{" > paired_files_map.json
             first_entry=true
             
             while read -r base_name; do
@@ -410,35 +397,58 @@ task CreateFileBatches {
                     if [ "$first_entry" = true ]; then
                         first_entry=false
                     else
-                        echo "," >> paired_files_map_r1_only.json
+                        echo "," >> paired_files_map.json
                     fi
                     
-                    echo "  \"$base_name\": [" >> paired_files_map_r1_only.json
-                    echo "    $r1_file" >> paired_files_map_r1_only.json
-                    echo "  ]" >> paired_files_map_r1_only.json
+                    echo "  \"$base_name\": [" >> paired_files_map.json
+                    echo "    $r1_file" >> paired_files_map.json
+                    echo "  ]" >> paired_files_map.json
                     
                     echo "Added R1-only for: $base_name"
                 fi
             done < paired_base_names.txt
             
-            echo "}" >> paired_files_map_r1_only.json
-            
-            # Replace the paired_files_map with R1-only version
-            mv paired_files_map_r1_only.json paired_files_map.json
+            echo "}" >> paired_files_map.json
             
             echo "Excluded $(wc -l < r2_files_to_exclude.txt) R2 files from upload"
+            
+        else
+            # Normal paired mode - include both R1 and R2
+            echo "{" > paired_files_map.json
+            first_entry=true
+            
+            while read -r base_name; do
+                # Find R1 and R2 files for this base
+                r1_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R1_001.fastq.gz")' ~{file_manifest})
+                r2_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R2_001.fastq.gz")' ~{file_manifest})
+                
+                # Skip if either file is missing (shouldn't happen with comm -12, but safety check)
+                if [[ -z "$r1_file" || -z "$r2_file" || "$r1_file" == "null" || "$r2_file" == "null" ]]; then
+                    echo "Warning: Skipping incomplete pair for base: $base_name"
+                    continue
+                fi
+                
+                # Add to map
+                if [ "$first_entry" = true ]; then
+                    first_entry=false
+                else
+                    echo "," >> paired_files_map.json
+                fi
+                
+                echo "  \"$base_name\": [" >> paired_files_map.json
+                echo "    $r1_file," >> paired_files_map.json
+                echo "    $r2_file" >> paired_files_map.json
+                echo "  ]" >> paired_files_map.json
+                
+                echo "Added complete pair for: $base_name"
+            done < paired_base_names.txt
+            
+            echo "}" >> paired_files_map.json
+            
+            # Create empty r2_files_to_exclude.txt for consistency
+            touch r2_files_to_exclude.txt
         fi
 
-        # Find properly paired files (both R1 and R2 exist)
-        echo "Identifying properly paired files..."
-        comm -12 r1_base_names.txt r2_base_names.txt > paired_base_names.txt
-        paired_count=$(wc -l < paired_base_names.txt)
-        echo "Found $paired_count complete paired file sets"
-
-        # Create paired files map (only for complete pairs)
-        echo "{" > paired_files_map.json
-        first_entry=true
-        
         while read -r base_name; do
             # Find R1 and R2 files for this base
             r1_file=$(jq -r '.[] | select(.relative_path == "'"$base_name"'_R1_001.fastq.gz")' ~{file_manifest})
@@ -472,8 +482,14 @@ task CreateFileBatches {
         jq -r 'if . == {} then [] else to_entries[] | .value[] | .full_path end' paired_files_map.json > paired_files_list.txt
         jq -r '.[] | .full_path' orphaned_r2_files.json > orphaned_r2_files_list.txt
         
-        # Combine both lists for exclusion
-        cat paired_files_list.txt orphaned_r2_files_list.txt > excluded_files_list.txt
+        # Combine all exclusion lists
+        if [ "~{upload_r1_only}" = "true" ]; then
+            # In R1-only mode, also exclude all R2 files
+            cat paired_files_list.txt orphaned_r2_files_list.txt r2_files_to_exclude.txt > excluded_files_list.txt
+        else
+            # In normal mode, only exclude paired files and orphaned R2s
+            cat paired_files_list.txt orphaned_r2_files_list.txt > excluded_files_list.txt
+        fi
 
         # Process non-paired files (excluding orphaned R2 files)
         echo "Processing non-paired files (excluding orphaned R2 files)..."
