@@ -946,8 +946,8 @@ EOF
     runtime {
         docker: docker_image
         cpu: 8
-        memory: "16 GB"
-        disks: "local-disk 100 SSD"
+        memory: "32 GB"
+        disks: "local-disk 200 SSD"
         preemptible: 1
     }
 }
