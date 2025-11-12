@@ -2,17 +2,62 @@ version 1.0
 
 # Forked from commit faa824e0322e2ab455ef1cb88bc82c47d753338c of https://github.com/broadinstitute/palantir-workflows
 
+task MakePCAPlot {
+  input {
+    File   population_pcs
+    File   target_pcs
+    String docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
+    Int    disk_size    = 100
+    Int    mem_size     = 2
+    Int    preemptible  = 1
+  }
+
+  command <<<
+    Rscript -<< "EOF"
+      library(dplyr)
+      library(readr)
+      library(ggplot2)
+
+      population_pcs <- read_tsv("~{population_pcs}")
+      target_pcs <- read_tsv("~{target_pcs}")
+
+      ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
+        geom_point(size=0.1, alpha=0.1) +
+        geom_point(data = target_pcs, aes(x=PC1, y=PC2, color="Target")) +
+        labs(x="PC1", y="PC2") +
+        theme_bw()
+
+      ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
+
+    EOF
+  >>>
+
+  output {
+    File pca_plot = "PCA_plot.png"
+  }
+
+  runtime {
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
+  }
+}
+
 task PerformPCA {
   input {
     File   bed
     File   bim
     File   fam
     String basename
-    Int    mem      = 8
-    Int    nthreads = 16
+    String docker_image = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
+    Int    disk_size    = 400
+    Int    mem_size     = 8
+    Int    nthreads     = 16
+    Int    preemptible  = 1
   }
 
-  Int memory = 2 + (if mem < 8 then 8 else mem)
+  Int memory = 2 + (if mem_size < 8 then 8 else mem_size)
 
   command <<<
     WORKDIR="$( mktemp --directory )"
@@ -42,9 +87,10 @@ task PerformPCA {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
-    disks: "local-disk 400 HDD"
-    memory: memory + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{memory} GB"
+    preemptible: preemptible
   }
 }
 
@@ -56,12 +102,15 @@ task ProjectArray {
     File    pc_loadings
     File    pc_meansd
     String  basename
-    Int     mem                   = 8
-    Int     nthreads              = 16
     Boolean orderIndependentCheck = false
+    String  docker_image          = "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
+    Int     disk_size             = 400
+    Int     mem_size              = 8
+    Int     nthreads              = 16
+    Int     preemptible           = 1
   }
 
-  Int memory         = 2 + (if mem < 8 then 8 else mem)
+  Int memory         = 2 + (if mem_size < 8 then 8 else mem_size)
   String postprocess = if orderIndependentCheck then "sort" else "cat"
 
   command <<<
@@ -78,8 +127,7 @@ task ProjectArray {
     diff pcloadings_ids.txt meansd_ids.txt > loadings_meansd_diff.txt
     rm pcloadings_ids.txt
 
-    if [[ -s loadings_meansd_diff.txt ]]
-    then
+    if [[ -s loadings_meansd_diff.txt ]]; then
         echo "PC loadings file and PC means file do not contain the same IDs (or in the same order); check your input files and run again." >&2
         exit 1
     fi
@@ -93,8 +141,7 @@ task ProjectArray {
     rm bim_ids.txt
     rm pc_ids.txt
 
-    if [[ -s bim_pc_diff.txt ]]
-    then
+    if [[ -s bim_pc_diff.txt ]]; then
         echo "IDs in .bim file are not the same as the IDs in the PCA files; check that you have the right files and run again." >&2
         exit 1
     fi
@@ -115,9 +162,10 @@ task ProjectArray {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/flashpca_docker@sha256:2f3ff1614b00f9c8f271be85fd8875fbddccb7566712b537488d14a2526ccf7f"
-    disks: "local-disk 400 HDD"
-    memory: memory + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{memory} GB"
+    preemptible: preemptible
   }
 }
 
@@ -127,17 +175,20 @@ task ArrayVcfToPlinkDataset {
     File   pruning_sites
     File?  subset_to_sites
     String basename
-    Int    mem = 8
+    String docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
+    Int    addldisk     = 20
+    Int    mem_size     = 8
+    Int    preemptible  = 1
   }
 
-  Int base_memory    = if mem < 8 then 8 else mem
-  Int plink_mem      = base_memory * 1000
-  Int runtime_memory = base_memory + 2
-  Int disk_space     =  3 * ceil(size(vcf, "GB")) + 20
-  String devdir      = 'DEV'
-  String inputsdir   = devdir + '/INPUTS'
-  String outputsdir  = devdir + '/OUTPUTS'
-
+  Int base_memory      = if mem_size < 8 then 8 else mem_size
+  Int plink_mem        = base_memory * 1000
+  Int runtime_memory   = base_memory + 2
+  Int file_size        = 3 * ceil(size(vcf, "GB"))
+  Int final_disk_size = addldisk + file_size
+  String devdir        = 'DEV'
+  String inputsdir     = devdir + '/INPUTS'
+  String outputsdir    = devdir + '/OUTPUTS'
   Array[String] inputs = if defined(subset_to_sites)
                          then [inputsdir + '/vcf',
                                inputsdir + '/pruning_sites',
@@ -145,7 +196,6 @@ task ArrayVcfToPlinkDataset {
                          else [inputsdir + '/vcf',
                                inputsdir + '/pruning_sites']
   command <<<
-    ### DEV START ###
     set -o errexit
     set -o pipefail
     set -o nounset
@@ -159,8 +209,7 @@ task ArrayVcfToPlinkDataset {
     then
         cp '~{subset_to_sites}' "~{inputsdir}/subset_to_sites"
     fi
-    # ------------------------------------------------------------------------
-    ### DEV END ###
+
     /plink2 \
       --vcf ~{vcf} \
       --extract-intersect ~{pruning_sites} ~{subset_to_sites} \
@@ -181,8 +230,9 @@ task ArrayVcfToPlinkDataset {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-    disks: "local-disk " + disk_space + " HDD"
-    memory: runtime_memory + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{final_disk_size} HDD"
+    memory: "~{runtime_memory} GB"
+    preemptible: preemptible
   }
 }

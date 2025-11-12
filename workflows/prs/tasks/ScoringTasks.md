@@ -11,13 +11,10 @@
 | File | weights | Yes | Variant weights file | |
 | String | extra_args | No | | |
 | File | sites | No | | |
-| File | exclude_sites | No | | |
 | String | chromosome_encoding | No | Chromosome encoding based on if mitochondrial variants are represented by 'chrM' or 'chrMT' | |
-| Boolean | use_ref_alt_for_ids | No | | false |
-| Boolean | use_dosage_annotation | No | | false |
-| String | docker_image | Yes | Docker image used for running task | "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124" |
-| Int | base_mem | No | Amount of base memory allocation | 8 |
-| Int | disk_size | No | Disk size to allocate in GB | size of input vcf x3, plus 20  |
+| String | docker_image | No | Docker image for VM | "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124" |
+| Int | addldisk | No | Extra disk size to allocate in GB | 20 |
+| Int | mem_size | No | Base amount of memory in GB | 8 |
 | Int | preemptible | No | Preemptible runtime setting | 1 |
 
 ### Output Parameters
@@ -37,9 +34,9 @@
 | :--- | :--- | :---: | :--- | :--- |
 | File | sites_used_in_training | Yes | vars file with sites used in training the population/ancestry adjustment model | |
 | WeightSet | weight_set | Yes | Struct of linear weights file, an optional interaction weights file, and SelfExclusiveSites object | |
-| String | docker_image | No | Docker image for interaction with python base | "python:3.9.10" |
-| Int | disk_size | No | Disk size to allocate in GB | size of sites_used_in_training plus 10 |
-| Int | mem_size | No | Allocated memory in GB | 2 |
+| String | docker_image | No | Docker image for VM | "python:3.9.10" |
+| Int | addldisk | No | Extra disk size to allocate in GB | 5 |
+| Int | mem_size | No | Allocated memory in GB | 4 |
 | Int | preemptible | No | Preemptible runtime setting | 1 |
 
 ## TrainAncestryModel

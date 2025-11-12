@@ -1,21 +1,21 @@
 version 1.0
 
 task GetBaseMemory {
-
-  # NB: This task computes the memory (in gigabytes) required by vcf,
-  # according to the recommendations given in
-  # https://www.cog-genomics.org/plink/2.0/other#memory
-
   input {
-    File? vcf
-    Int?  nvariants
+    File?  vcf
+    Int?   nvariants
+    String docker_image = "python:3.11"
+    Int    addldisk     = 20
+    Int    mem_size     = 2
+    Int    preemptible  = 1
   }
 
-  Int     storage   = 20 + 2 * ceil(size(vcf, "GB"))
-  Boolean ERROR     = defined(vcf) == defined(nvariants)
-  String  OUTPUTDIR = "OUTPUT"
-  String  NVARIANTS = OUTPUTDIR + "/nvariants.txt"
-  String  GIGABYTES = OUTPUTDIR + "/gigabytes.txt"
+  Int     file_size         = 2 * ceil(size(vcf, "GB"))
+  Int     final_disk_size   = addldisk + file_size
+  Boolean ERROR             = defined(vcf) == defined(nvariants)
+  String  OUTPUTDIR         = "OUTPUT"
+  String  NVARIANTS         = OUTPUTDIR + "/nvariants.txt"
+  String  GIGABYTES         = OUTPUTDIR + "/gigabytes.txt"
 
   command <<<
   set -o errexit
@@ -50,21 +50,27 @@ task GetBaseMemory {
   }
 
   runtime {
-    disks : "local-disk ~{storage} HDD"
-    docker: "python:3.11"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{final_disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
-
 
 task RenameChromosomesInTsv {
   input {
     File    tsv
     Boolean skipheader
-    File    lookup     = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    File    lookup      = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    String docker_image = "python:3.11"
+    Int    addldisk     = 20
+    Int    mem_size     = 2
+    Int    preemptible  = 1
   }
 
-  Int    storage = 20 + 2 * ceil(size(tsv, "GB"))
-  String RENAMED = "OUTPUT/renamed/" + basename(tsv)
+  Int    file_size       = 2 * ceil(size(tsv, "GB"))
+  Int    final_disk_size = addldisk + file_size
+  String RENAMED         = "OUTPUT/renamed/" + basename(tsv)
 
   command <<<
   python3 <<EOF
@@ -134,20 +140,25 @@ task RenameChromosomesInTsv {
   }
 
   runtime {
-    docker: "python:3.11"
-    disks : "local-disk ~{storage} HDD"
+    docker: "~{docker_image}"
+    disks : "local-disk ~{final_disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
-
 }
-
 
 task RenameChromosomesInVcf {
   input {
-    File vcf
-    File rename = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    File   vcf
+    File   lookup       = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    String docker_image = "biocontainers/bcftools:v1.9-1-deb_cv1"
+    Int    addldisk     = 20
+    Int    mem_size     = 2
+    Int    preemptible  = 1
   }
 
-  Int    storage = 20 + 2 * ceil(size(vcf, "GB"))
+  Int    file_size       = 2 * ceil(size(vcf, "GB"))
+  Int    final_disk_size = addldisk + file_size
   String RENAMED = "OUTPUT/renamed/" + basename(vcf)
 
   command <<<
@@ -175,7 +186,7 @@ task RenameChromosomesInVcf {
       --no-version                     \
       --output='~{RENAMED}'            \
       --output-type=z                  \
-      --rename-chr='~{rename}'         \
+      --rename-chr='~{lookup}'         \
       --set-id '%CHROM:%POS:%REF:%ALT' \
       "${INPUTVCF}"
 
@@ -186,8 +197,10 @@ task RenameChromosomesInVcf {
   }
 
   runtime {
-    docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
-    disks : "local-disk ~{storage} HDD"
+    docker: "~{docker_image}"
+    disks : "local-disk ~{final_disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
@@ -195,14 +208,19 @@ task SubsetVcf {
   input {
     File    inputvcf
     File    regions
-    String  label     = "data"
-    Boolean nocleanup = false
+    String  label        = "data"
+    Boolean nocleanup    = false
+    String  docker_image = "biocontainers/bcftools:v1.9-1-deb_cv1"
+    Int     addldisk     = 20
+    Int     mem_size     = 2
+    Int     preemptible  = 1
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String OUTPUTVCF = OUTPUTDIR + "/" + label + ".vcf.gz"
-  String NREGIONS  = OUTPUTDIR + "/NREGIONS"
-  Int    storage   = 20 + 3 * ceil(size(inputvcf, "GB"))
+  Int    file_size       = 3 * ceil(size(inputvcf, "GB"))
+  Int    final_disk_size = addldisk + file_size
+  String OUTPUTDIR       = "OUTPUT"
+  String OUTPUTVCF       = OUTPUTDIR + "/" + label + ".vcf.gz"
+  String NREGIONS        = OUTPUTDIR + "/NREGIONS"
 
   command <<<
   set -o pipefail
@@ -213,7 +231,7 @@ task SubsetVcf {
 
   # ---------------------------------------------------------------------------
 
-  printf -- 'SPECIFIED STORAGE: %d GB\n\n' '~{storage}'
+  printf -- 'SPECIFIED STORAGE: %d GB\n\n' '~{final_disk_size}'
   printf -- 'INITIAL STORAGE UTILIZATION:\n'
   df --human
   printf -- '\n'
@@ -283,30 +301,36 @@ task SubsetVcf {
   }
 
   runtime {
-    docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
-    disks : "local-disk ~{storage} HDD"
+    docker: "~{docker_image}"
+    disks : "local-disk ~{final_disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
 task Union {
   input {
     Array[File]+ lists
-    Int          storage
+    String       docker_image = "ubuntu:21.10"
+    Int          addldisk     = 20
+    Int          mem_size     = 2
+    Int          preemptible  = 1
   }
-
-  String OUTPUTDIR = "OUTPUT"
-  String RESULT    = OUTPUTDIR + "/RESULT"
+  
+  Int    final_disk_size = 20 + addldisk
+  String OUTPUTDIR       = "OUTPUT"
+  String RESULT          = OUTPUTDIR + "/RESULT"
 
   command <<<
-  set -o errexit
-  set -o pipefail
-  set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
+    set -o errexit
+    set -o pipefail
+    set -o nounset
+    # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+    # set -o xtrace
 
-  mkdir --verbose --parents '~{OUTPUTDIR}'
+    mkdir --verbose --parents '~{OUTPUTDIR}'
 
-  sort --unique '~{sep="' '" lists}' > '~{RESULT}'
+    sort --unique '~{sep="' '" lists}' > '~{RESULT}'
   >>>
 
   output {
@@ -314,8 +338,10 @@ task Union {
   }
 
   runtime {
-    docker: "ubuntu:21.10"
-    disks : "local-disk " + (20 + storage) + " HDD"
+    docker: "~{docker_image}"
+    disks : "local-disk ~{final_disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
@@ -323,30 +349,35 @@ task Intersection {
   input {
     Array[File]+ lists
     Int          storage
+    String       docker_image = "ubuntu:21.10"
+    Int          addldisk     = 20
+    Int          mem_size     = 2
+    Int          preemptible  = 1
   }
 
-  String OUTPUTDIR = "OUTPUT"
-  String RESULT    = OUTPUTDIR + "/RESULT"
+  Int    final_disk_size = 20 + addldisk
+  String OUTPUTDIR       = "OUTPUT"
+  String RESULT          = OUTPUTDIR + "/RESULT"
 
   command <<<
-  set -o errexit
-  set -o pipefail
-  set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
+    set -o errexit
+    set -o pipefail
+    set -o nounset
+    # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+    # set -o xtrace
 
-  INPUTS=( '~{sep="' '" lists}' )
+    INPUTS=( '~{sep="' '" lists}' )
 
-  HOLD="$( mktemp )"
+    HOLD="$( mktemp )"
 
-  mkdir --verbose --parents '~{OUTPUTDIR}'
+    mkdir --verbose --parents '~{OUTPUTDIR}'
 
-  sort --unique "${INPUTS[0]}" > '~{RESULT}'
-  for INPUT in "${INPUTS[@]:1}"
-  do
-      comm -1 -2 '~{RESULT}' <( sort --unique "${INPUT}" ) > "${HOLD}"
-      mv "${HOLD}" '~{RESULT}'
-  done
+    sort --unique "${INPUTS[0]}" > '~{RESULT}'
+    for INPUT in "${INPUTS[@]:1}"
+    do
+        comm -1 -2 '~{RESULT}' <( sort --unique "${INPUT}" ) > "${HOLD}"
+        mv "${HOLD}" '~{RESULT}'
+    done
   >>>
 
   output {
@@ -354,8 +385,10 @@ task Intersection {
   }
 
   runtime {
-    docker: "ubuntu:21.10"
-    disks : "local-disk " + (20 + storage) + " HDD"
+    docker: "~{docker_image}"
+    disks : "local-disk ~{final_disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
@@ -364,46 +397,49 @@ task ListShards {
     String source
     String workspace
     String docker_image
+    Int    disk_size    = 10
+    Int    mem_size     = 2
+    Int    preemptible  = 1
   }
 
   String OUTPUTDIR = "OUTPUT"
   String STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
-  set -o errexit
-  set -o pipefail
-  set -o nounset
-  set -o xtrace
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-
-  # -----------------------------------------------------------------------------
-  export WORKSPACE='~{workspace}'
-  SOURCE="$( mapurl.sh '~{source}' )"
-
-  mkdir --parents '~{OUTPUTDIR}'
-
-  rclone lsf --files-only --recursive "${SOURCE}" \
-    | grep --perl-regexp 'shards/.*\.gz$'         \
-    | perl -lne '
-        BEGIN {
-          %lookup = (
-                      X  => 23,
-                      Y  => 24,
-                      XY => 25,
-                      MT => 26
-                    )
-        }
-        $_ =~ /chr(\d+|XY|X|Y|MT)\b/;
-        $index = ( $lookup{$1} or $1 );
-        printf qq(%s\t%s\n), $index, $_;
-       '                                          \
-    | sort                                        \
-          --field-separator=$'\t'                 \
-          --key=1,1n                              \
-          --key=2,2V                              \
-    | cut --fields=2                              \
-    | tee '~{STDOUT}'                             \
-    >&2
+    set -o errexit
+    set -o pipefail
+    set -o nounset
+    set -o xtrace
+    # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  
+    # -----------------------------------------------------------------------------
+    export WORKSPACE='~{workspace}'
+    SOURCE="$( mapurl.sh '~{source}' )"
+  
+    mkdir --parents '~{OUTPUTDIR}'
+  
+    rclone lsf --files-only --recursive "${SOURCE}" \
+      | grep --perl-regexp 'shards/.*\.gz$'         \
+      | perl -lne '
+          BEGIN {
+            %lookup = (
+                        X  => 23,
+                        Y  => 24,
+                        XY => 25,
+                        MT => 26
+                      )
+          }
+          $_ =~ /chr(\d+|XY|X|Y|MT)\b/;
+          $index = ( $lookup{$1} or $1 );
+          printf qq(%s\t%s\n), $index, $_;
+         '                                          \
+      | sort                                        \
+            --field-separator=$'\t'                 \
+            --key=1,1n                              \
+            --key=2,2V                              \
+      | cut --fields=2                              \
+      | tee '~{STDOUT}'                             \
+      >&2
   >>>
 
   output {
@@ -411,7 +447,10 @@ task ListShards {
   }
 
   runtime {
-    docker: docker_image
+    docker: "~{docker_image}"
+    disks : "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
@@ -422,6 +461,10 @@ task MakeBatches {
     Array[String] exclude   = []
     Boolean       noshuffle = false
     Int?          seed
+    String        docker_image = "python:3.9.10"
+    Int           disk_size    = 10
+    Int           mem_size     = 2
+    Int           preemptible  = 1
   }
 
   Boolean no_exclude = length(exclude) == 0
@@ -510,7 +553,10 @@ task MakeBatches {
   }
 
   runtime {
-    docker: "python:3.9.10"
+    docker: "~{docker_image}"
+    disks : "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 

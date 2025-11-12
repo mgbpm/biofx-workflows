@@ -9,26 +9,29 @@ task ScoreVcf {
     File    vcf
     String  basename
     File    weights
-    Int     base_mem = 8
     String? extra_args
     File?   sites
     String? chromosome_encoding
+    String  docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
+    Int     addldisk     = 20
+    Int     mem_size     = 8
+    Int     preemptible  = 1
   }
 
-  Int base_memory    = if base_mem < 8 then 8 else base_mem
-  Int plink_mem      = base_memory * 1000
-  Int runtime_memory = base_memory + 2
-  Int disk_space     = 3 * ceil(size(vcf, "GB")) + 20
-  String devdir      = 'DEV'
-  String inputsdir   = devdir + '/INPUTS'
-  String outputsdir  = devdir + '/OUTPUTS'
-
-  Array[String] inputs = if defined(sites)
-                         then [inputsdir + '/vcf',
-                               inputsdir + '/weights',
-                               inputsdir + '/sites']
-                         else [inputsdir + '/vcf',
-                               inputsdir + '/weights']
+  Int    base_memory     = if mem_size < 8 then 8 else mem_size
+  Int    plink_memory    = base_memory * 1000
+  Int    runtime_memory  = base_memory + 2
+  Int    file_size       = 3 * ceil(size(vcf, "GB"))
+  Int    final_disk_size = file_size + addldisk
+  String devdir          = 'DEV'
+  String inputsdir       = devdir + '/INPUTS'
+  String outputsdir      = devdir + '/OUTPUTS'
+  Array[String] inputs   = if defined(sites)
+                           then [inputsdir + '/vcf',
+                                 inputsdir + '/weights',
+                                 inputsdir + '/sites']
+                           else [inputsdir + '/vcf',
+                                 inputsdir + '/weights']
 
   command <<<
     set -o errexit
@@ -40,27 +43,26 @@ task ScoreVcf {
     cp '~{vcf}'     "~{inputsdir}/vcf"
     cp '~{weights}' "~{inputsdir}/weights"
 
-    if '~{if defined(sites) then "true" else "false"}'
-    then
+    if '~{if defined(sites) then "true" else "false"}'; then
         cp '~{sites}' "~{inputsdir}/sites"
     fi
 
     COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
-    /plink2                                               \
-        --allow-extra-chr          ~{extra_args}          \
-        ~{"--extract "             + sites}               \
-        --memory                   ~{plink_mem}           \
-        --new-id-max-allele-len    1000 missing           \
-        --out                      ~{basename}            \
-        ~{"--output-chr "          + chromosome_encoding} \
-        --set-all-var-ids          '@:#:$r:$a'            \
-        --score                    '~{weights}'           \
-                                   header                 \
-                                   ignore-dup-ids         \
-                                   list-variants          \
-                                   no-mean-imputation     \
-                                   cols="${COLUMNS}"      \
-        --vcf                      '~{vcf}'
+    /plink2                                      \
+        --allow-extra-chr ~{extra_args}          \
+        ~{"--extract " + sites}                  \
+        --memory ~{plink_memory}                 \
+        --new-id-max-allele-len 1000 missing     \
+        --out ~{basename}                        \
+        ~{"--output-chr " + chromosome_encoding} \
+        --set-all-var-ids '@:#:$r:$a'            \
+        --score '~{weights}'                     \
+          header                                 \
+          ignore-dup-ids                         \
+          list-variants                          \
+          no-mean-imputation                     \
+          cols="${COLUMNS}"                      \
+        --vcf '~{vcf}'
   >>>
 
   output {
@@ -71,9 +73,10 @@ task ScoreVcf {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-    disks: "local-disk " + disk_space + " HDD"
-    memory: runtime_memory + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{final_disk_size} HDD"
+    memory: "~{runtime_memory} GB"
+    preemptible: preemptible
   }
 }
 
@@ -81,8 +84,14 @@ task CheckWeightsCoverSitesUsedInTraining {
   input {
     File      sites_used_in_training
     WeightSet weight_set
-    Int       mem = 4
+    String    docker_image = "python:3.9.10"
+    Int       addldisk     = 5
+    Int       mem_size     = 4
+    Int       preemptible  = 1
   }
+
+  Int file_size = ceil(size(sites_used_in_training, "GB"))
+  Int final_disk_size = addldisk + file_size
 
   command <<<
     python3 << "EOF"
@@ -113,8 +122,10 @@ task CheckWeightsCoverSitesUsedInTraining {
   >>>
 
   runtime {
-    docker : "python:3.9.10"
-    memory : mem + " GB"
+    docker : "~{docker_image}"
+    disks: "local-disk ~{final_disk_size} SSD"
+    memory : "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
@@ -123,7 +134,10 @@ task TrainAncestryModel {
     File   population_pcs
     File   population_scores
     String output_basename
-    Int    mem = 2
+    String docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
+    Int    disk_size    = 100
+    Int    mem_size     = 2
+    Int    preemptible  = 1
   }
 
   command <<<
@@ -232,9 +246,10 @@ task TrainAncestryModel {
   }
 
   runtime {
-    docker: "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
-    disks: "local-disk 100 HDD"
-    memory: mem + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
 
@@ -244,7 +259,10 @@ task AdjustScores {
     File   pcs
     File   scores
     String output_basename
-    Int    mem = 2
+    String docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
+    Int    disk_size    = 100
+    Int    mem_size     = 2
+    Int    preemptible  = 1
   }
 
   command <<<
@@ -295,69 +313,35 @@ task AdjustScores {
   }
 
   runtime {
-    docker: "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
-    disks: "local-disk 100 HDD"
-    memory: mem + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
   }
 }
-
-task MakePCAPlot {
-  input {
-    File population_pcs
-    File target_pcs
-  }
-
-  command <<<
-    Rscript -<< "EOF"
-      library(dplyr)
-      library(readr)
-      library(ggplot2)
-
-      population_pcs <- read_tsv("~{population_pcs}")
-      target_pcs <- read_tsv("~{target_pcs}")
-
-      ggplot(population_pcs, aes(x=PC1, y=PC2, color="Population")) +
-        geom_point(size=0.1, alpha=0.1) +
-        geom_point(data = target_pcs, aes(x=PC1, y=PC2, color="Target")) +
-        labs(x="PC1", y="PC2") +
-        theme_bw()
-
-      ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
-
-    EOF
-  >>>
-
-  output {
-    File pca_plot = "PCA_plot.png"
-  }
-
-  runtime {
-    docker: "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
-    disks: "local-disk 100 HDD"
-  }
-}
-
 
 task ExtractIDsPlink {
   input {
-    File vcf
-    Int  disk_size = 2 * ceil(size(vcf, "GB")) + 100
-    Int  mem       = 8
+    File   vcf
+    String docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
+    Int    disk_size = 2 * ceil(size(vcf, "GB")) + 100
+    Int    mem_size  = 8
+    Int    preemptible  = 1
   }
 
-  Int base_memory = if mem < 8 then 8 else mem
-  Int plink_mem = base_memory * 1000
+  Int base_memory    = if mem_size < 8 then 8 else mem_size
+  Int plink_memory   = base_memory * 1000
   Int runtime_memory = base_memory + 2
 
   command <<<
-  /plink2                                  \
-      --allow-extra-chr                    \
-      --memory                ~{plink_mem} \
-      --new-id-max-allele-len 1000 missing \
-      --rm-dup exclude-all                 \
-      --set-all-var-ids       '@:#:$r:$a'  \
-      --write-snplist         allow-dups   \
-      --vcf                   '~{vcf}'
+    /plink2                                     \
+        --allow-extra-chr                       \
+        --memory                ~{plink_memory} \
+        --new-id-max-allele-len 1000 missing    \
+        --rm-dup exclude-all                    \
+        --set-all-var-ids       '@:#:$r:$a'     \
+        --write-snplist         allow-dups      \
+        --vcf                   '~{vcf}'
   >>>
 
   output {
@@ -365,8 +349,9 @@ task ExtractIDsPlink {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
-    disks: "local-disk " + disk_size + " HDD"
-    memory: runtime_memory + " GB"
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{runtime_memory} GB"
+    preemptible: preemptible
   }
 }
