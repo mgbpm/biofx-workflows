@@ -2,7 +2,7 @@ version 1.0
 
 import "../tasks/HelperTasks.wdl" as HelperTasks
 import "../tasks/ScoringTasks.wdl" as ScoringTasks
-import "../tasks/PRSStructs.wdl"
+import "../tasks/Structs.wdl"
 
 workflow RawScoreWorkflow {
     input {

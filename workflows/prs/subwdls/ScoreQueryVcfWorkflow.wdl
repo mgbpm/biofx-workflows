@@ -3,7 +3,7 @@ version 1.0
 import "../tasks/ScoringTasks.wdl"
 import "../tasks/PCATasks.wdl"
 import "../tasks/HelperTasks.wdl"
-import "../tasks/PRSStructs.wdl"
+import "../tasks/Structs.wdl"
 
 workflow ScoreQueryVcf {
   input {

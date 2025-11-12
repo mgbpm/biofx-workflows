@@ -4,7 +4,7 @@ import "../tasks/ScoringTasks.wdl" as ScoringTasks
 import "../tasks/PCATasks.wdl" as PCATasks
 import "../tasks/HelperTasks.wdl" as HelperTasks
 import "../../../steps/Utilities.wdl"
-import "../tasks/PRSStructs.wdl"
+import "../tasks/Structs.wdl"
 
 workflow AdjustScoreWorkflow {
     input {

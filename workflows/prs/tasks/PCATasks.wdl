@@ -14,7 +14,6 @@ task PerformPCA {
 
   Int memory = 2 + (if mem < 8 then 8 else mem)
 
-  # again, based on Wallace commands
   command <<<
     WORKDIR="$( mktemp --directory )"
     PREFIX="${WORKDIR}/data"
@@ -49,21 +48,20 @@ task PerformPCA {
   }
 }
 
-# This projects the array dataset using the previously generated PCs, using flashPCA
 task ProjectArray {
   input {
-    File bim
-    File bed
-    File fam
-    File pc_loadings
-    File pc_meansd
-    String basename
-    Int mem = 8
-    Int nthreads = 16
+    File    bim
+    File    bed
+    File    fam
+    File    pc_loadings
+    File    pc_meansd
+    String  basename
+    Int     mem                   = 8
+    Int     nthreads              = 16
     Boolean orderIndependentCheck = false
   }
 
-  Int memory = 2 + (if mem < 8 then 8 else mem)
+  Int memory         = 2 + (if mem < 8 then 8 else mem)
   String postprocess = if orderIndependentCheck then "sort" else "cat"
 
   command <<<
@@ -74,8 +72,6 @@ task ProjectArray {
     cp '~{pc_loadings}' loadings.txt
     cp '~{pc_meansd}'   meansd.txt
 
-    # Check that pc loadings and pc meansd files have the same IDs, and in the
-    # same order.
     awk '{print $1}' loadings.txt | tail -n +2 > pcloadings_ids.txt
     awk '{print $1}' meansd.txt   | tail -n +2 > meansd_ids.txt
 
@@ -88,12 +84,7 @@ task ProjectArray {
         exit 1
     fi
     rm loadings_meansd_diff.txt
-
-    # If we reach this point in the execution, we know that loadings.txt and
-    # meansd.txt contain the same IDs in the same order.
-
-    # Check that .bim file and meansd files have the same IDs (possibly up to
-    # reordering).
+    
     '~{postprocess}' meansd_ids.txt > pc_ids.txt
     rm meansd_ids.txt
     awk '{print $2}' '~{basename}.bim' | '~{postprocess}' > bim_ids.txt
@@ -108,7 +99,6 @@ task ProjectArray {
         exit 1
     fi
     rm bim_pc_diff.txt
-
 
     ~/flashpca/flashpca            \
       --verbose                    \
@@ -133,21 +123,20 @@ task ProjectArray {
 
 task ArrayVcfToPlinkDataset {
   input {
-    File vcf
-    File pruning_sites
-    File? subset_to_sites
+    File   vcf
+    File   pruning_sites
+    File?  subset_to_sites
     String basename
-    Int mem = 8
+    Int    mem = 8
   }
 
-  Int base_memory = if mem < 8 then 8 else mem
-  Int plink_mem = base_memory * 1000
+  Int base_memory    = if mem < 8 then 8 else mem
+  Int plink_mem      = base_memory * 1000
   Int runtime_memory = base_memory + 2
-  Int disk_space =  3 * ceil(size(vcf, "GB")) + 20
-
-  String devdir     = 'DEV'
-  String inputsdir  = devdir + '/INPUTS'
-  String outputsdir = devdir + '/OUTPUTS'
+  Int disk_space     =  3 * ceil(size(vcf, "GB")) + 20
+  String devdir      = 'DEV'
+  String inputsdir   = devdir + '/INPUTS'
+  String outputsdir  = devdir + '/OUTPUTS'
 
   Array[String] inputs = if defined(subset_to_sites)
                          then [inputsdir + '/vcf',
@@ -185,9 +174,9 @@ task ArrayVcfToPlinkDataset {
   >>>
 
   output {
-    File bed = "~{basename}.bed"
-    File bim = "~{basename}.bim"
-    File fam = "~{basename}.fam"
+    File bed           = "~{basename}.bed"
+    File bim           = "~{basename}.bim"
+    File fam           = "~{basename}.fam"
     Array[File] INPUTS = inputs
   }
 

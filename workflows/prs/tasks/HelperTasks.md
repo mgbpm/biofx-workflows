@@ -1,4 +1,6 @@
-## GetBaseMemory Task
+# Helper Tasks for PRS
+
+## GetBaseMemory
 
 Computes the memory (in gigabytes) required by plink to process vcf,
 according to the recommendations given in
@@ -21,7 +23,7 @@ be specified.
 | Int  | gigabytes  | Always | Memory to allocate to PLINK     |
 | Int  | nvariants_ | Always | Number of variants in input VCF |
 
-## RenameChromosomesInTsv Task
+## RenameChromosomesInTsv
 
 Renames the human chromosomes mentioned in the first column of
 <code>tsv</code> to 1, 2, ..., 22, X, Y, MT.
@@ -40,7 +42,7 @@ Renames the human chromosomes mentioned in the first column of
 | :--- | :---    | :---   | :---                         |
 | File | renamed | Always | TSV with renamed chromosomes |
 
-## RenameChromosomesInVcf Task
+## RenameChromosomesInVcf
 
 Renames the human chromosomes mentioned in the <code>CHROM</code>
 column of <code>vcf</code> to 1, 2, ..., 22, X, Y, MT.
@@ -58,7 +60,7 @@ column of <code>vcf</code> to 1, 2, ..., 22, X, Y, MT.
 | :--- | :---    | :---   | :---                         |
 | File | renamed | Always | VCF with renamed chromosomes |
 
-## SubsetVcf Task
+## SubsetVcf
 
 Subset <code>inputvcf</code> to the regions specified in the
 <code>regions</code> file.
@@ -79,7 +81,7 @@ Subset <code>inputvcf</code> to the regions specified in the
 | File | result   | Always | Subsetted VCF            |
 | Int  | nregions | Always | Number of regions in VCF |
 
-## Union Task
+## Union
 
 Generate the set union of the lines in all the files in
 <code>lists</code>.  The task simply returns the output of
@@ -102,7 +104,7 @@ Generate the set union of the lines in all the files in
 | :--- | :---   | :---   | :---                                                  |
 | File | result | Always | File holding the union of lines in <code>lists</code> |
 
-## Intersection Task
+## Intersection
 
 Generate the set intersection of the lines in all the files in
 <code>lists</code>.
@@ -120,7 +122,7 @@ Generate the set intersection of the lines in all the files in
 | :--- | :---   | :---   | :---                                                      |
 | File | result | Always | File holding the intersection of lines <code>lists</code> |
 
-## ListShards Task
+## ListShards
 
 List all the VCF shard files in the directory tree rooted at
 <code>source</code>.  (Here, "VCF shard files" means files with
@@ -140,7 +142,7 @@ extension ".vcf.gz" whose parent directory's basename is "shards".)
 | :--- | :---     | :---   | :---                                                                  |
 | File | relpaths | Always | File the paths of all VCF shard paths relative to <code>source</code> |
 
-## MakeBatches Task
+## MakeBatches
 
 Distribute the items in <code>cases</code> across
 <code>nbatches</code> batches of roughly equal size.

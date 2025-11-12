@@ -6,7 +6,7 @@ import "../../lowpassimputation/Glimpse2Imputation.wdl"
 import "../subwdls/RawScoreWorkflow.wdl"
 import "../subwdls/MixScoreWorkflow.wdl"
 import "../subwdls/AdjustScoreWorkflow.wdl"
-import "../tasks/PRSStructs.wdl"
+import "../tasks/Structs.wdl"
 import "../tasks/HelperTasks.wdl"
 
 workflow MixOrchestrationWorkflow {

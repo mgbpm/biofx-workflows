@@ -2,20 +2,6 @@ version 1.0
 
 # Forked from commit faa824e0322e2ab455ef1cb88bc82c47d753338c of https://github.com/broadinstitute/palantir-workflows
 
-struct ReferencePanelContig {
-	File vcf
-	File vcf_index
-	File bcf
-	File bcf_index
-	File m3vcf
-	String contig
-}
-
-struct AncestryAdjustmentModelParams {
-	File fitted_model_params
-	File sites_used_in_scoring
-}
-
 struct SelfExclusiveSites {
 	File sites # must have columns id, chrom, pos
 	Int maxAllowed
@@ -28,14 +14,23 @@ struct WeightSet {
 																												# effect alleles listed in SelfExclusizeSites.sites is observed
 }
 
-struct NamedWeightSet {
-	String condition_name
-	WeightSet weight_set
+# FOR INTERNAL USE ONLY
+struct ScoringInputs {
+  File variant_weights
+  File training_variants
 }
 
-struct PRSWrapperConditionResource {
-	Boolean score_condition
-	Float percentile_threshold
-	NamedWeightSet named_weight_set
-	AncestryAdjustmentModelParams ancestry_model_params_and_sites
+struct AdjustmentModelData {
+  String               condition_code
+  File                 parameters
+  File                 principal_components
+  File                 loadings
+  File                 meansd
+  Array[File]          variant_weights
+  File?                score_weights
+  Array[ScoringInputs] scoring_inputs
+  File                 pca_variants
+  File                 original_pca_variants
+  File                 query_file
+  Int                  base_memory
 }

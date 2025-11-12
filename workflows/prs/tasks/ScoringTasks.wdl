@@ -4,27 +4,24 @@ version 1.0
 
 import "Structs.wdl"
 
-# score with plink2
 task ScoreVcf {
   input {
-    File vcf
-    String basename
-    File weights
-    Int base_mem = 8
+    File    vcf
+    String  basename
+    File    weights
+    Int     base_mem = 8
     String? extra_args
-    File? sites
+    File?   sites
     String? chromosome_encoding
   }
 
   Int base_memory    = if base_mem < 8 then 8 else base_mem
   Int plink_mem      = base_memory * 1000
   Int runtime_memory = base_memory + 2
-
   Int disk_space     = 3 * ceil(size(vcf, "GB")) + 20
-
-  String devdir     = 'DEV'
-  String inputsdir  = devdir + '/INPUTS'
-  String outputsdir = devdir + '/OUTPUTS'
+  String devdir      = 'DEV'
+  String inputsdir   = devdir + '/INPUTS'
+  String outputsdir  = devdir + '/OUTPUTS'
 
   Array[String] inputs = if defined(sites)
                          then [inputsdir + '/vcf',
@@ -34,7 +31,6 @@ task ScoreVcf {
                                inputsdir + '/weights']
 
   command <<<
-    ### DEV START ###
     set -o errexit
     set -o pipefail
     set -o nounset
@@ -48,8 +44,7 @@ task ScoreVcf {
     then
         cp '~{sites}' "~{inputsdir}/sites"
     fi
-    # ------------------------------------------------------------------------
-    ### DEV END ###
+
     COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
     /plink2                                               \
         --allow-extra-chr          ~{extra_args}          \
@@ -69,10 +64,10 @@ task ScoreVcf {
   >>>
 
   output {
-    File score = "~{basename}.sscore"
-    File log = "~{basename}.log"
-    File sites_scored = "~{basename}.sscore.vars"
-    Array[File] INPUTS = inputs
+    File        score        = "~{basename}.sscore"
+    File        log          = "~{basename}.log"
+    File        sites_scored = "~{basename}.sscore.vars"
+    Array[File] INPUTS       = inputs
   }
 
   runtime {
@@ -82,174 +77,11 @@ task ScoreVcf {
   }
 }
 
-
-task AddInteractionTermsToScore {
-  input {
-    File vcf
-    File interaction_weights
-    File scores
-    File? sites
-    String basename
-    SelfExclusiveSites? self_exclusive_sites # The interaction term will only be added in no more than selfExclusiveSites.maxAllowed of the
-    # effect alleles listed in SelfExclusizeSites.sites is observed
-
-    Float mem = 8
-    Int block_buffer=10000000
-  }
-
-  Int disk_space =  3*ceil(size(vcf, "GB")) + 20
-
-  command <<<
-
-    tabix ~{vcf}
-
-    python3 << "EOF"
-    from cyvcf2 import VCF
-    import pandas as pd
-    import csv
-
-    vcf = VCF("~{vcf}", lazy=True)
-    samples = vcf.samples
-
-    def add_allele_to_count(site, allele, dictionary):
-      if site in dictionary:
-        dictionary[site][allele]=[0]*len(samples)
-      else:
-        dictionary[site]={allele:[0]*len(samples)}
-
-    interactions_allele_counts = dict()
-    interactions_dict = dict()
-    positions = set()
-    if ~{if defined(sites) then "True" else "False"}:
-      with open("~{sites}") as f_sites:
-        sites = {s.strip() for s in f_sites}
-    else:
-      sites = {}
-    with open("~{interaction_weights}") as f:
-      for line in csv.DictReader(f, delimiter='\t'):
-        site_1 = line['id_1']
-        site_2 = line['id_2']
-        if len(sites) == 0 or site_1 in sites and site_2 in sites:
-          allele_1 = line['allele_1']
-          allele_2 = line['allele_2']
-          chrom_1 = line['chrom_1']
-          chrom_2 = line['chrom_2']
-          pos_1 = int(line['pos_1'])
-          pos_2 = int(line['pos_2'])
-          weight = float(line['weight'])
-
-          add_allele_to_count(site_1, allele_1, interactions_allele_counts)
-          add_allele_to_count(site_2, allele_2, interactions_allele_counts)
-          interactions_dict[(site_1, allele_1, site_2, allele_2)] = weight
-          positions.add((chrom_1, pos_1))
-          positions.add((chrom_2, pos_2))
-
-    def add_self_exclusive_site(site, allele, dictionary):
-      if site in dictionary:
-        dictionary[site].add(allele)
-      else:
-        dictionary[site]={allele}
-
-    self_exclusive_sites = dict()
-    max_self_exclusive_sites = ~{if (defined(self_exclusive_sites)) then select_first([self_exclusive_sites]).maxAllowed else 0}
-    self_exclusive_sites_counts = [0]*len(samples)
-    if ~{if (defined(self_exclusive_sites)) then "True" else "False"}:
-      with open("~{if (defined(self_exclusive_sites)) then select_first([self_exclusive_sites]).sites else ''}") as f_self_exclusive_sites:
-        for line in csv.DictReader(f_self_exclusive_sites, delimiter='\t'):
-          id = line['id']
-          if len(sites) == 0 or id in sites:
-            chrom = line['chrom']
-            pos = int(line['pos'])
-            allele = line['allele']
-            add_self_exclusive_site(id, allele, self_exclusive_sites)
-            positions.add((chrom, pos))
-
-    #select blocks to read
-    positions = sorted(positions)
-    current_chrom=positions[0][0]
-    current_start=positions[0][1]
-    current_end = current_start+1
-    buffer=~{block_buffer}
-
-    blocks_to_read=[]
-    for site in positions:
-      if site[0] != current_chrom or site[1] - current_end > buffer:
-        blocks_to_read.append(current_chrom + ":" + str(current_start) + "-" + str(current_end))
-        current_chrom=site[0]
-        current_start=site[1]
-        current_end = current_start+1
-      else:
-        current_end = site[1] + 1
-
-    #last block
-    blocks_to_read.append(current_chrom + ":" + str(current_start) + "-" + str(current_end))
-
-    #count interaction alleles for each sample
-    sites_used_in_score = set()
-    for block in blocks_to_read:
-      for variant in vcf(block):
-        alleles = [a for a_l in [[variant.REF], variant.ALT] for a in a_l]
-        vid=":".join(s for s_l in [[variant.CHROM], [str(variant.POS)], sorted(alleles)] for s in s_l)
-        if vid in interactions_allele_counts:
-          sites_used_in_score.add(vid)
-          for sample_i,gt in enumerate(variant.genotypes):
-            for gt_allele in gt[:-1]:
-              allele = alleles[gt_allele]
-              if allele in interactions_allele_counts[vid]:
-                interactions_allele_counts[vid][allele][sample_i] += 1
-        if vid in self_exclusive_sites:
-          sites_used_in_score.add(vid)
-          for sample_i,gt in enumerate(variant.genotypes):
-            for gt_allele in gt[:-1]:
-              allele = alleles[gt_allele]
-              if allele in self_exclusive_sites[vid]:
-                self_exclusive_sites_counts[sample_i] += 1
-
-    #calculate interaction scores for each sample
-    interaction_scores = [0] * len(samples)
-
-    def get_interaction_count(site_and_allele_1, site_and_allele_2, sample_i):
-      if site_and_allele_1 == site_and_allele_2:
-        return interactions_allele_counts[site_and_allele_1[0]][site_and_allele_1[1]][sample_i]//2
-      else:
-        return min(interactions_allele_counts[site_and_allele_1[0]][site_and_allele_1[1]][sample_i], interactions_allele_counts[site_and_allele_2[0]][site_and_allele_2[1]][sample_i])
-
-    for interaction in interactions_dict:
-      for sample_i in range(len(samples)):
-        if self_exclusive_sites_counts[sample_i] <= max_self_exclusive_sites:
-          site_and_allele_1 = (interaction[0], interaction[1])
-          site_and_allele_2 = (interaction[2], interaction[3])
-          interaction_scores[sample_i]+=get_interaction_count(site_and_allele_1, site_and_allele_2, sample_i) * interactions_dict[interaction]
-
-    #add interaction scores to linear scores
-    df_interaction_score = pd.DataFrame({"sample_id":samples, "interaction_score":interaction_scores}).set_index("sample_id")
-    df_scores=pd.read_csv("~{scores}", sep="\t").astype({'#IID':'string'}).set_index("#IID")
-    df_scores = df_scores.join(df_interaction_score)
-    df_scores['SCORE1_SUM'] = df_scores['SCORE1_SUM'] + df_scores['interaction_score']
-    df_scores.to_csv("~{basename}_scores_with_interactions.tsv", sep="\t")
-    with open("~{basename}_sites_used_in_interaction_score.ids", "w") as f_sites_used:
-      for site in sites_used_in_score:
-        f_sites_used.write("%s\n" % site)
-    EOF
-  >>>
-
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/imputation_interaction_python@sha256:40a8fb88fe287c3e3a11022ff63dae1ad5375f439066ae23fe089b2b61d3222e"
-    disks: "local-disk " + disk_space + " HDD"
-    memory: mem + " GB"
-  }
-
-  output {
-    File scores_with_interactions = basename + "_scores_with_interactions.tsv"
-    File sites_used_in_interaction_score = basename + "_sites_used_in_interaction_score.ids"
-  }
-}
-
 task CheckWeightsCoverSitesUsedInTraining {
   input {
-    File sites_used_in_training
+    File      sites_used_in_training
     WeightSet weight_set
-    Int mem = 4
+    Int       mem = 4
   }
 
   command <<<
@@ -278,8 +110,6 @@ task CheckWeightsCoverSitesUsedInTraining {
     if len(sites_missing_from_weight_set) > 0:
       sys.exit(f"Error: {len(sites_missing_from_weight_set)} sites used in model training are missing from weights files.")
     EOF
-
-
   >>>
 
   runtime {
@@ -288,172 +118,12 @@ task CheckWeightsCoverSitesUsedInTraining {
   }
 }
 
-task CompareScoredSitesToSitesUsedInTraining {
-  input {
-    File sites_used_in_training
-    File sites_used_in_scoring
-    WeightSet weight_set
-  }
-
-  command <<<
-    python3 << "EOF"
-    import csv
-
-    with open("~{sites_used_in_training}") as f_sites_used_in_training:
-      sites_used_in_training = {s.strip() for s in f_sites_used_in_training}
-
-    with open("~{sites_used_in_scoring}") as f_sites_used_in_scoring:
-      sites_used_in_scoring = {s.strip() for s in f_sites_used_in_scoring}
-
-    missing_sites = sites_used_in_training - sites_used_in_scoring
-
-    with open("missing_sites.txt", "w") as f_missing_sites:
-      for site in missing_sites:
-        f_missing_sites.write(site)
-
-    with open("n_missing_sites.txt", "w") as f_n_missing_sites:
-      f_n_missing_sites.write(f"{len(missing_sites)}")
-
-    max_error_up = 0
-    max_error_down = 0
-
-    with open("~{weight_set.linear_weights}") as f_weights:
-      weights_reader = csv.reader(f_weights, delimiter = "\t")
-      next(weights_reader)
-      for line in weights_reader:
-        id = line[0]
-        if id in missing_sites:
-          missing_site_weight = float(line[2])
-          if missing_site_weight > 0:
-            max_error_up += 2 * missing_site_weight
-          else:
-            max_error_down += 2 * missing_site_weight
-
-
-    if ~{if defined(weight_set.interaction_weights) then "True" else "False"}:
-      with open("~{weight_set.interaction_weights}") as f_interaction_weights:
-        for line in csv.DictReader(f_interaction_weights, delimiter='\t'):
-          id_1 = line['id_1']
-          id_2 = line['id_2']
-          if id_1 in missing_sites or id_2 in missing_sites:
-            weight_multiplier = 2 if id_1 != id_2 else 1
-            missing_site_weight = float(line['weight'])
-            if missing_site_weight > 0:
-              max_error_up += weight_multiplier * missing_site_weight
-            else:
-              max_error_down += weight_multiplier * missing_site_weight
-
-    with open("max_error_up.txt", "w") as f_max_error_up:
-      f_max_error_up.write(f"{max_error_up}")
-
-    with open("max_error_down.txt", "w") as f_max_error_down:
-      f_max_error_down.write(f"{max_error_down}")
-
-    EOF
-  >>>
-
-  runtime {
-    docker : "python:3.9.10"
-  }
-
-  output {
-    File missing_sites = "missing_sites.txt"
-    Int n_missing_sites = read_int("n_missing_sites.txt")
-    Float max_error_up = read_float("max_error_up.txt")
-    Float max_error_down = read_float("max_error_down.txt")
-  }
-}
-
-task CombineScoringSites {
-  input {
-    File sites_used_linear_score
-    File sites_used_interaction_score
-    String basename
-  }
-
-  Int disk_size = ceil(size(sites_used_linear_score, "GB") + 2*size(sites_used_interaction_score, "GB")) + 50
-  command <<<
-    cat ~{sites_used_linear_score} ~{sites_used_interaction_score} | sort | uniq > ~{basename}_sites_used_in_score.ids
-  >>>
-
-  runtime {
-    docker: "ubuntu:20.04"
-    disks: "local-disk " + disk_size + " SSD"
-  }
-
-  output {
-    File combined_scoring_sites = "~{basename}_sites_used_in_score.ids"
-  }
-}
-
-task AddShiftToRawScores {
-  input {
-    File raw_scores
-    Float shift
-    String basename
-  }
-
-  command <<<
-    Rscript -<< "EOF"
-      library(dplyr)
-      library(readr)
-
-      scores <- read_tsv("~{raw_scores}")
-      shifted_scores <- scores %>% mutate(SCORE1_SUM = SCORE1_SUM + ~{shift})
-
-      write_tsv(shifted_scores, "~{basename}.tsv")
-    EOF
-  >>>
-
-  runtime {
-    docker: "rocker/tidyverse:4.1.0"
-    disks: "local-disk 100 HDD"
-  }
-
-  output {
-    File shifted_scores = "~{basename}.tsv"
-  }
-}
-
-task CombineMissingSitesAdjustedScores {
-  input {
-    File adjusted_scores_shifted_up
-    File adjusted_scores_shifted_down
-    File adjusted_scores
-    Int n_missing_sites
-    String condition_name
-  }
-
-  command <<<
-    Rscript -<< "EOF"
-    library(dplyr)
-    library(readr)
-
-    adjusted_scores <- read_tsv("~{adjusted_scores}") %>% transmute(IID, condition = "~{condition_name}", n_missing_sites = ~{n_missing_sites}, adjusted_score, percentile)
-    adjusted_scores_shifted_up <- read_tsv("~{adjusted_scores_shifted_up}") %>% transmute(IID, potential_high_adjusted_score = adjusted_score, potential_high_percentile = percentile)
-    adjusted_scores_shifted_down <- read_tsv("~{adjusted_scores_shifted_down}") %>% transmute(IID, potential_low_adjusted_score = adjusted_score, potential_low_percentile = percentile)
-
-    adjusted_scores_shifts <- inner_join(inner_join(adjusted_scores, adjusted_scores_shifted_up), adjusted_scores_shifted_down)
-    write_tsv(adjusted_scores_shifts, "missing_sites_shifted_scores.tsv")
-    EOF
-  >>>
-
-  runtime {
-    docker: "rocker/tidyverse:4.1.0"
-    disks: "local-disk 100 HDD"
-  }
-
-  output {
-    File missing_sites_shifted_scores = "missing_sites_shifted_scores.tsv"
-  }
-}
-
 task TrainAncestryModel {
   input {
-    File population_pcs
-    File population_scores
+    File   population_pcs
+    File   population_scores
     String output_basename
-    Int mem = 2
+    Int    mem = 2
   }
 
   command <<<
@@ -486,7 +156,6 @@ task TrainAncestryModel {
       sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
       }
 
-
       # linear transformation to predict mean
       f_mu <- function(t, theta) {
       PC1 = t %>% pull(PC1)
@@ -497,7 +166,6 @@ task TrainAncestryModel {
       mu <- theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4
       }
 
-
       # negative log likelihood
       nLL_mu_and_var <- function(theta) {
       theta_mu = theta[1:5]
@@ -505,7 +173,6 @@ task TrainAncestryModel {
       x = population_data %>% pull(SCORE1_SUM)
       sum(log(sqrt(f_sigma2(population_data, theta_var))) + (1/2)*(x-f_mu(population_data, theta_mu))^2/f_sigma2(population_data, theta_var))
       }
-
 
       # gradient of negative log likelihood function
       grr <- function(theta) {
@@ -525,7 +192,6 @@ task TrainAncestryModel {
       x <- population_data %>% pull(SCORE1_SUM)
       mu_coeff <- -(x - f_mu(population_data, theta_mu))/f_sigma2(population_data, theta_var)
       sig_coeff <- 1/(2*f_sigma2(population_data, theta_var)) -(1/2)*(x - f_mu(population_data, theta_mu))^2/(f_sigma2(population_data, theta_var)^2)
-
 
       grad <- c(sum(mu_coeff*d_mu_1),
       sum(mu_coeff*d_mu_2),
@@ -560,9 +226,9 @@ task TrainAncestryModel {
   >>>
 
   output {
-    File fitted_params = "~{output_basename}_fitted_model_params.tsv"
-    File adjusted_population_scores = "population_adjusted_scores.tsv"
-    Boolean fit_converged = read_boolean("fit_converged.txt")
+    File    fitted_params              = "~{output_basename}_fitted_model_params.tsv"
+    File    adjusted_population_scores = "population_adjusted_scores.tsv"
+    Boolean fit_converged              = read_boolean("fit_converged.txt")
   }
 
   runtime {
@@ -574,11 +240,11 @@ task TrainAncestryModel {
 
 task AdjustScores {
   input {
-    File fitted_model_params
-    File pcs
-    File scores
+    File   fitted_model_params
+    File   pcs
+    File   scores
     String output_basename
-    Int mem = 2
+    Int    mem = 2
   }
 
   command <<<
@@ -599,7 +265,6 @@ task AdjustScores {
         PC5 = t %>% pull(PC5)
         sigma2 <- exp(theta[[1]] + theta[[2]] * PC1 + theta[[3]] * PC2 + theta[[4]] * PC3 + theta[[5]] * PC4)
       }
-
 
       # linear transformation to predict mean
       f_mu <- function(t, theta) {
@@ -676,8 +341,8 @@ task MakePCAPlot {
 task ExtractIDsPlink {
   input {
     File vcf
-    Int disk_size = 2 * ceil(size(vcf, "GB")) + 100
-    Int mem = 8
+    Int  disk_size = 2 * ceil(size(vcf, "GB")) + 100
+    Int  mem       = 8
   }
 
   Int base_memory = if mem < 8 then 8 else mem
@@ -703,38 +368,5 @@ task ExtractIDsPlink {
     docker: "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     disks: "local-disk " + disk_size + " HDD"
     memory: runtime_memory + " GB"
-  }
-}
-
-#plink chromosome encoding rules: https://www.cog-genomics.org/plink/2.0/data#irreg_output
-task DetermineChromosomeEncoding {
-  input {
-    File weights
-  }
-
-  command <<<
-    python3 << "EOF"
-    code = 'MT'
-    with open("~{weights}") as weights_file:
-      chroms = {s.split("\t")[0].split(":")[0] for i, s in enumerate(weights_file) if i > 0}
-      if any('chr' in c for c in chroms):
-          if 'chrM' in chroms:
-              code = 'chrM'
-          else:
-              code = 'chrMT'
-      elif 'M' in chroms:
-          code = 'M'
-
-    with open('chr_encode_out.txt', 'w') as write_code_file:
-        write_code_file.write(f'{code}\n')
-    EOF
-  >>>
-
-  runtime {
-    docker : "python:3.9.10"
-  }
-
-  output {
-    String chromosome_encoding = read_string("chr_encode_out.txt")
   }
 }
