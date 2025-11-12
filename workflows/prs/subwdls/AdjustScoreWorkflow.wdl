@@ -33,7 +33,7 @@ workflow AdjustScoreWorkflow {
             vcf = input_vcf_,
             pruning_sites = model_data.pca_variants,
             basename = output_basename,
-            mem = model_data.base_memory
+            mem_size = model_data.base_memory
     }
 
     call PCATasks.ProjectArray as ProjectPCA {
@@ -44,16 +44,16 @@ workflow AdjustScoreWorkflow {
             pc_loadings = model_data.loadings,
             pc_meansd = model_data.meansd,
             basename = output_basename + "_pca",
-            mem = model_data.base_memory
+            mem_size = model_data.base_memory
     }
 
-    call ScoringTasks.MakePCAPlot as PCAPlot {
+    call PCATasks.MakePCAPlot as PCAPlot {
         input:
             population_pcs = model_data.principal_components,
             target_pcs = ProjectPCA.projections
     }
 
-    call ScoringTasks.AdjustScores as GetAdjustedScores {
+    call ScoringTasks.AdjustScores as AdjustScores {
         input:
             fitted_model_params = model_data.parameters,
             pcs = ProjectPCA.projections,
@@ -64,6 +64,6 @@ workflow AdjustScoreWorkflow {
     output {
         File pc_projection   = ProjectPCA.projections
         File pc_plot         = PCAPlot.pca_plot
-        File adjusted_scores = GetAdjustedScores.adjusted_scores
+        File adjusted_scores = AdjustScores.adjusted_scores
     }
 }

@@ -1,56 +1,68 @@
 version 1.0
 
-import "../subwdls/MakeAdjustmentModelWorkflow.wdl"
-import "../subwdls/ScoreQueryVcfWorkflow.wdl"
-import "../tasks/Structs.wdl"
+import "MakeModelWorkflow.wdl"
+import "../subwdls/RawScoreWorkflow.wdl"
+import "../subwdls/MixScoreWorkflow.wdl"
+import "../subwdls/AdjustScoreWorkflow.wdl"
 
-workflow RunPRS {
+workflow RunPrsWorkflow {
+    input {
+        File        query_vcf
+        Array[File] variant_weights
+        File?       score_weights
+        File        pca_variants
+        File        reference_vcf
+        String      condition_code
+        Boolean     norename = false
+        String      ubuntu_docker_image = "ubuntu:latest"
+    }
 
-  input {
-    File    weights
-    File    pca_variants
-    File    reference_vcf
-    String  model_name
-    File    query_vcf
-    String? query_name
-    Boolean norename      = false
-  }
+    call MakeModelWorkflow.MakeModelWorkflow as MakeModel {
+        input:
+            condition_code = condition_code,
+            variant_weights = variant_weights,
+            pca_variants = pca_variants,
+            reference_vcf = reference_vcf,
+            query_file = query_vcf,
+            score_weights = select_first([score_weights]),
+            norename = norename,
+            ubuntu_docker_image = ubuntu_docker_image
+    }
 
-  call MakeAdjustmentModelWorkflow.MakeAdjustmentModel {
-    input:
-        weights       = [weights]
-      , pca_variants  = pca_variants
-      , reference_vcf = reference_vcf
-      , query_file    = query_vcf
-      , name          = model_name
-      , norename      = norename
-  }
+    AdjustmentModelData model_data = read_json(MakeModel.adjustment_model_manifest)
 
-  String resolved_query_name = select_first([query_name,
-                                             basename(query_vcf, ".vcf.gz")])
-  AdjustmentModelData model_data = read_json(MakeAdjustmentModel.adjustment_model_manifest)
+    call RawScoreWorkflow.RawScoreWorkflow as RawScores {
+        input:
+            input_vcf = model_data.query_file,
+            adjustment_model_manifest = MakeModel.adjustment_model_manifest,
+            norename = true
+    }
 
-  call ScoreQueryVcfWorkflow.ScoreQueryVcf {
-    input:
-        query_vcf                 = model_data.query_file
-      , adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
-      , name                      = resolved_query_name
-      , norename                  = true   # sic
-  }
+    if (defined(model_data.score_weights)) {
+        call MixScoreWorkflow.MixScoreWorkflow as MixScores {
+            input:
+                input_scores = RawScores.raw_scores,
+                score_weights = select_first([model_data.score_weights]),
+                output_basename = condition_code,
+                ubuntu_docker_image = ubuntu_docker_image
+        }
+    }
 
-  output {
-    File    adjustment_model_manifest = MakeAdjustmentModel.adjustment_model_manifest
-    Boolean converged                 = MakeAdjustmentModel.converged
-    File    raw_reference_scores      = MakeAdjustmentModel.raw_reference_scores[0]
-    File    adjusted_reference_scores = MakeAdjustmentModel.adjusted_reference_scores
+    call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScores {
+        input:
+            output_basename = condition_code,
+            input_vcf = RawScores.renamed_vcf,
+            adjustment_model_manifest = MakeModel.adjustment_model_manifest,
+            raw_scores = select_first([MixScores.mix_score, RawScores.raw_scores]),
+            norename = true
+    }
+    
 
-    # -------------------------------------------------------------------------
-
-    File    raw_query_scores          = ScoreQueryVcf.raw_scores
-    File    adjusted_query_scores     = ScoreQueryVcf.adjusted_scores
-    File    pc_projection             = ScoreQueryVcf.pc_projection
-    File    pc_plot                   = ScoreQueryVcf.pc_plot
-  }
+    output {
+        Array[File] raw_scores = RawScores.raw_scores
+        File? mix_score = MixScores.mix_score
+        File? adjusted_score = AdjustScores.adjusted_scores
+        File adjustment_model_manifest = MakeModel.adjustment_model_manifest
+    }
 }
 
-# -------------------------------------------------------------------------------

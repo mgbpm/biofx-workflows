@@ -18,7 +18,7 @@ workflow RawScoreWorkflow {
         call HelperTasks.RenameChromosomesInVcf as RenameVcf {
             input:
                 vcf = input_vcf,
-                rename = renaming_lookup
+                lookup = renaming_lookup
         }
     }
 
@@ -27,7 +27,7 @@ workflow RawScoreWorkflow {
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
             vcf = input_vcf_,
-            mem = model_data.base_memory
+            mem_size = model_data.base_memory
     }
 
     scatter (scoring_inputs in model_data.scoring_inputs) {
@@ -45,7 +45,7 @@ workflow RawScoreWorkflow {
                 vcf = input_vcf_,
                 basename = basename(variant_weights),
                 weights = variant_weights,
-                base_mem = model_data.base_memory,
+                mem_size = model_data.base_memory,
                 sites = training_variants,
                 chromosome_encoding = "MT"
         }

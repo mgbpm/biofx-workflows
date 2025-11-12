@@ -3,7 +3,6 @@ version 1.0
 import "../tasks/PCATasks.wdl" as PCATasks
 import "../tasks/ScoringTasks.wdl" as ScoringTasks
 import "../subwdls/MixScoreWorkflow.wdl"
-import "../subwdls/TrainModelWorkflow.wdl"
 import "../tasks/HelperTasks.wdl" as HelperTasks
 import "../../../steps/Utilities.wdl"
 
@@ -69,7 +68,7 @@ workflow MakeModelWorkflow {
     call ScoringTasks.ExtractIDsPlink as ExtractReferenceVariants {
       input:
         vcf = reference_vcf_,
-        mem = GetMemoryForReference.gigabytes
+        mem_size = GetMemoryForReference.gigabytes
     }
   
     Boolean isvcf = basename(query_file) != basename(query_file, ".vcf.gz")
@@ -92,7 +91,7 @@ workflow MakeModelWorkflow {
       call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
           vcf = select_first([RenameChromosomesInQueryVcf.renamed, query_file]),
-          mem = GetMemoryForQueryFromVcf.gigabytes
+          mem_size = GetMemoryForQueryFromVcf.gigabytes
       }
     }
     if (! isvcf) {
@@ -126,7 +125,7 @@ workflow MakeModelWorkflow {
         pruning_sites = kept_pca_variants,
         subset_to_sites = query_variants,
         basename = reference_basename,
-        mem = GetMemoryForReference.gigabytes
+        mem_size = GetMemoryForReference.gigabytes
     }
     call PCATasks.PerformPCA {
       input:
@@ -134,7 +133,7 @@ workflow MakeModelWorkflow {
         bim = ReferenceBed.bim,
         fam = ReferenceBed.fam,
         basename = reference_basename,
-        mem = GetMemoryForReference.gigabytes
+        mem_size = GetMemoryForReference.gigabytes
     }
   
     # Train the model
@@ -144,7 +143,7 @@ workflow MakeModelWorkflow {
           vcf = reference_vcf_,
           basename = basename(weights_file, ".tsv"),
           weights = weights_file,
-          base_mem = GetMemoryForReference.gigabytes,
+          mem_size = GetMemoryForReference.gigabytes,
           sites = query_variants,
           chromosome_encoding = "MT"
       }
@@ -159,12 +158,12 @@ workflow MakeModelWorkflow {
       call MixScoreWorkflow.MixScoreWorkflow as GetMixScore {
         input:
           output_basename = condition_code + "_" + basename(reference_vcf_),
-          raw_scores = ScorePopulationVcf.score,
+          input_scores = ScorePopulationVcf.score,
           score_weights = select_first([score_weights])
       }
     }
 
-    File population_scores = select_first([GetMixScore.prs_mix_raw_score, ScorePopulationVcf.score[0]])
+    File population_scores = select_first([GetMixScore.mix_score, ScorePopulationVcf.score[0]])
 
     call ScoringTasks.TrainAncestryModel {
       input:
@@ -218,7 +217,7 @@ workflow MakeModelWorkflow {
   output {
     File         adjustment_model_manifest = select_first([BundleMixModel.manifest, BundleModel.manifest])
     Array[File]? raw_reference_scores      = ScorePopulationVcf.score
-    File?        mixed_reference_scores    = GetMixScore.prs_mix_raw_score
+    File?        mixed_reference_scores    = GetMixScore.mix_score
     File?        adjusted_reference_scores = TrainAncestryModel.adjusted_population_scores
   }
 }
