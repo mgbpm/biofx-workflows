@@ -24,15 +24,10 @@ workflow RawScoreWorkflow {
 
     File input_vcf_ = select_first([RenameVcf.renamed, input_vcf])
 
-    call HelperTasks.GetBaseMemory as GetBaseMemoryFromVcf {
-        input:
-            vcf = input_vcf_
-    }
-
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
             vcf = input_vcf_,
-            mem = GetBaseMemoryFromVcf.gigabytes
+            mem = model_data.base_memory
     }
 
     scatter (scoring_inputs in model_data.scoring_inputs) {
@@ -50,7 +45,7 @@ workflow RawScoreWorkflow {
                 vcf = input_vcf_,
                 basename = basename(variant_weights),
                 weights = variant_weights,
-                base_mem = GetBaseMemoryFromVcf.gigabytes,
+                base_mem = model_data.base_memory,
                 sites = training_variants,
                 chromosome_encoding = "MT"
         }
