@@ -330,21 +330,13 @@ workflows:
         - Glimpse2SplitReference_*
   - name: PRSMakeAdjustmentModel
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/subwdls/MakeAdjustmentModelWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/main_wdls/MakeModelWorkflow.wdl
     filters:
       branches:
         - /.+/
       tags:
         - PRS_*
-  - name: PRSScoreQueryVcf
-    subclass: WDL
-    primaryDescriptorPath: /workflows/prs/subwdls/ScoreQueryVcfWorkflow.wdl
-    filters:
-      branches:
-        - /.+/
-      tags:
-        - PRS_*
-  - name: PRSRunPRS
+  - name: RunPRS
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/RunPRSWorkflow.wdl
     filters:
@@ -352,9 +344,9 @@ workflows:
         - /.+/
       tags:
         - PRS_*
-  - name: PRSPreparePrsMixInputs
+  - name: PreparePrsInputs
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/main_wdls/PreparePrsMixInputsWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/main_wdls/PrepareInputsWorkflow.wdl
     filters:
       branches:
         - /.+/
@@ -391,15 +383,6 @@ workflows:
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/subwdls/RawScoreWorkflow.wdl
     readMePath: /workflows/prs/subwdls/RawScoreWorkflow.md
-    filters:
-      branches:
-        - /.*[a-zA-Z0-9].*/
-      tags:
-        - PRSMix_*
-  - name: PRSMixModelWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/prs/main_wdls/MakeMixModelWorkflow.wdl
-    readMePath: /workflows/prs/main_wdls/MakeMixModelWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
