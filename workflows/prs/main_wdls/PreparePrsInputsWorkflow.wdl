@@ -3,7 +3,7 @@ version 1.0
 import "../tasks/HelperTasks.wdl"
 import "../tasks/ScoringTasks.wdl"
 
-workflow PreparePrsMixInputs {
+workflow PreparePrsInputs {
   input {
     Array[File] weights_files
     File        pca_variants

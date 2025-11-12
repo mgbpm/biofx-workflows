@@ -1,4 +1,4 @@
-# PreparePrsMixInputs Workflow
+# PreparePrsInputs Workflow
 
 This WDL harmonizes a set of inputs to meet the requirements of the
 PRS Mix workflow.  It also generates the smallest reference VCF that
