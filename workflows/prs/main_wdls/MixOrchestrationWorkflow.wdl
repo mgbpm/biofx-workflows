@@ -103,16 +103,16 @@ workflow MixOrchestrationWorkflow {
         call MixScoreWorkflow.MixScoreWorkflow as MixScores {
             input:
                 output_basename = condition_code,
-                raw_scores = RawScores.prs_raw_scores,
+                input_scores = RawScores.raw_scores,
                 score_weights = select_first([model_data.score_weights])
         }
 
-        call AdjustScoreWorkflow.AdjustScoreWorkflow as PerformPCA {
+        call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScores {
             input:
                 output_basename = condition_code,
                 input_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
-                prs_raw_scores = MixScores.prs_mix_raw_score,
+                raw_scores = MixScores.mix_score,
                 norename = norename,
                 renaming_lookup = renaming_lookup
         }
@@ -121,7 +121,7 @@ workflow MixOrchestrationWorkflow {
     call SummarizeScores {
         input:
             condition_codes = condition_code,
-            scores = select_first([select_all(PerformPCA.adjusted_scores)]),
+            scores = select_first([select_all(AdjustScores.adjusted_scores)]),
             conditions_config = conditions_config,
             percentiles = percentiles,
             basename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results",
@@ -135,9 +135,9 @@ workflow MixOrchestrationWorkflow {
         File? glimpse_qc_metrics = RunGlimpse.qc_metrics
 
         # PRS Outputs
-        Array[Array[File]] prs_raw_scores = RawScores.prs_raw_scores
-        Array[File] prs_mix_raw_score = MixScores.prs_mix_raw_score
-        Array[File?] prs_adjusted_score = PerformPCA.adjusted_scores
+        Array[Array[File]] prs_raw_scores = RawScores.raw_scores
+        Array[File] prs_mix_raw_score = MixScores.mix_score
+        Array[File?] prs_adjusted_score = AdjustScores.adjusted_scores
 
         # Individual Outputs
         File risk_summary = SummarizeScores.risk_summary
