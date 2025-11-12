@@ -22,7 +22,7 @@ workflow AdjustScoreWorkflow {
         call HelperTasks.RenameChromosomesInVcf as RenameVcf {
             input:
                 vcf = input_vcf,
-                rename = renaming_lookup
+                lookup = renaming_lookup
         }
     }
 
