@@ -8,18 +8,17 @@ import "../tasks/Structs.wdl"
 
 workflow AdjustScoreWorkflow {
     input {
-        String output_basename
-        File input_vcf
-        File adjustment_model_manifest
-        File? prs_raw_scores
+        String  output_basename
+        File    input_vcf
+        File    adjustment_model_manifest
+        File    raw_scores
         Boolean norename = false
-        File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+        File    renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)
 
-    if (! norename) {
-        # Clean up the query VCF
+    if (!norename) {
         call HelperTasks.RenameChromosomesInVcf as RenameVcf {
             input:
                 vcf = input_vcf,
@@ -37,7 +36,6 @@ workflow AdjustScoreWorkflow {
             mem = model_data.base_memory
     }
 
-    # Run PCA with query VCF
     call PCATasks.ProjectArray as ProjectPCA {
         input:
             bim = QueryBed.bim,
@@ -49,27 +47,23 @@ workflow AdjustScoreWorkflow {
             mem = model_data.base_memory
     }
 
-    # Plot PCA
     call ScoringTasks.MakePCAPlot as PCAPlot {
         input:
             population_pcs = model_data.principal_components,
             target_pcs = ProjectPCA.projections
     }
 
-    # Adjust PRS raw scores with model and PCA
-    if (defined(prs_raw_scores)) {
-        call ScoringTasks.AdjustScores as GetAdjustedScores {
-            input:
-                fitted_model_params = model_data.parameters,
-                pcs = ProjectPCA.projections,
-                scores = select_first([prs_raw_scores]),
-                output_basename = output_basename
-        }
+    call ScoringTasks.AdjustScores as GetAdjustedScores {
+        input:
+            fitted_model_params = model_data.parameters,
+            pcs = ProjectPCA.projections,
+            scores = select_first([raw_scores]),
+            output_basename = output_basename
     }
     
     output {
-        File pc_projection = ProjectPCA.projections
-        File pc_plot = PCAPlot.pca_plot
-        File? adjusted_scores = GetAdjustedScores.adjusted_scores
+        File pc_projection   = ProjectPCA.projections
+        File pc_plot         = PCAPlot.pca_plot
+        File adjusted_scores = GetAdjustedScores.adjusted_scores
     }
 }

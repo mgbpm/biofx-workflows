@@ -2,51 +2,51 @@ version 1.0
 
 workflow MixScoreWorkflow {
     input {
-        Array[File] raw_scores
-        File score_weights
-        String output_basename
-        # Docker images
-        String ubuntu_docker_image = "ubuntu:21.10"
+        Array[File] input_scores
+        File        score_weights
+        String      output_basename
+        String      ubuntu_docker_image = "ubuntu:21.10"
     }
 
-    # Calculate raw PRS mix score
     call CalculateMixScore {
         input:
-            raw_scores = raw_scores,
+            input_scores = input_scores,
             score_weights = score_weights,
             output_basename = output_basename,
             docker_image = ubuntu_docker_image
     }
 
     output {
-        File prs_mix_raw_score = CalculateMixScore.prs_mix_raw_score
+        File mix_score = CalculateMixScore.mix_score
     }
 }
 
 task CalculateMixScore {
     input {
-        Array[File] raw_scores
-        File score_weights
-        String output_basename
-        String docker_image
-        Int disk_size = ceil(size(raw_scores, "GB") + size(score_weights, "GB")) + 10
-        Int mem_size = 4
-        Int preemptible = 1
+        Array[File] input_scores
+        File        score_weights
+        String      output_basename
+        String      docker_image
+        Int         addldisk = 10
+        Int         mem_size = 4
+        Int         preemptible = 1
     }
+
+    Int file_size       = ceil(size(input_scores, "GB") + size(score_weights, "GB"))
+    Int final_disk_size = file_size + addldisk
 
     command <<<
         set -euxo pipefail
 
-        score_file_array=('~{sep="' '" raw_scores}')
+        score_file_array=('~{sep="' '" input_scores}')
         tail -n +2 ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
 
         printf -- "#IID\tNAMED_ALLELE_DOSAGE_SUM\tSCORE1_AVG\tSCORE1_SUM\n" > "~{output_basename}.mix.sscore"
 
         while read sample_id; do
-
             score_sum=0
 
-            for score_file in '~{sep="' '" raw_scores}'; do
+            for score_file in '~{sep="' '" input_scores}'; do
                 pgs_id=$(basename $score_file | grep --ignore-case --only-matching "pgs[0-9]*")
                 score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f 2)
                 raw_score=$(grep "${sample_id}" $score_file | cut -f 4)
@@ -55,18 +55,17 @@ task CalculateMixScore {
             done
 
             printf -- "${sample_id}\tNA\tNA\t${score_sum}\n" >> "~{output_basename}.mix.sscore"
-
         done < sample_ids.txt
     >>>
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " SSD"
-        memory: mem_size + "GB"
+        disks: "local-disk ~{final_disk_size} SSD"
+        memory: "~{mem_size}GB"
         preemptible: preemptible
     }
 
     output {
-        File prs_mix_raw_score = "~{output_basename}.mix.sscore"
+        File mix_score = "~{output_basename}.mix.sscore"
     }
 }
