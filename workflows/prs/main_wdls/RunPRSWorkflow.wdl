@@ -12,30 +12,33 @@ workflow RunPrsWorkflow {
         File?       score_weights
         File        pca_variants
         File        reference_vcf
+        File?       adjustment_model_manifest
         String      condition_code
         Boolean     norename = false
         String      ubuntu_docker_image = "ubuntu:latest"
     }
 
-    call MakeModelWorkflow.MakeModelWorkflow as MakeModel {
-        input:
-            condition_code = condition_code,
-            variant_weights = variant_weights,
-            pca_variants = pca_variants,
-            reference_vcf = reference_vcf,
-            query_file = query_vcf,
-            score_weights = select_first([score_weights]),
-            norename = norename,
-            ubuntu_docker_image = ubuntu_docker_image
+    if (!defined(adjustment_model_manifest)) {
+        call MakeModelWorkflow.MakeModelWorkflow as MakeModel {
+            input:
+                condition_code = condition_code,
+                variant_weights = variant_weights,
+                pca_variants = pca_variants,
+                reference_vcf = reference_vcf,
+                query_file = query_vcf,
+                score_weights = select_first([score_weights]),
+                norename = norename,
+                ubuntu_docker_image = ubuntu_docker_image
+        }
     }
 
-    AdjustmentModelData model_data = read_json(MakeModel.adjustment_model_manifest)
+    AdjustmentModelData model_data = read_json(select_first([MakeModel.adjustment_model_manifest, adjustment_model_manifest]))
 
     call RawScoreWorkflow.RawScoreWorkflow as RawScores {
         input:
             input_vcf = model_data.query_file,
             adjustment_model_manifest = MakeModel.adjustment_model_manifest,
-            norename = true
+            norename = false
     }
 
     if (defined(model_data.score_weights)) {
@@ -62,7 +65,7 @@ workflow RunPrsWorkflow {
         Array[File] raw_scores = RawScores.raw_scores
         File? mix_score = MixScores.mix_score
         File? adjusted_score = AdjustScores.adjusted_scores
-        File adjustment_model_manifest = MakeModel.adjustment_model_manifest
+        File? adjustment_model_manifest = MakeModel.adjustment_model_manifest
     }
 }
 
