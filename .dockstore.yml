@@ -335,15 +335,15 @@ workflows:
       branches:
         - /.+/
       tags:
-        - PRS_*
-  - name: RunPRS
+        - PRSMix_*
+  - name: PRSRunPRS
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/RunPRSWorkflow.wdl
     filters:
       branches:
         - /.+/
       tags:
-        - PRS_*
+        - PRSMix_*
   - name: PreparePrsInputs
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/PrepareInputsWorkflow.wdl
@@ -351,7 +351,7 @@ workflows:
       branches:
         - /.+/
       tags:
-        - PRS_*
+        - PRSMix_*
   - name: PRSMixScoreWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/subwdls/MixScoreWorkflow.wdl
