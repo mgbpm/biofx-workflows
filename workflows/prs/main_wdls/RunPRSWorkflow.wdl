@@ -7,18 +7,18 @@ import "../subwdls/AdjustScoreWorkflow.wdl"
 
 workflow RunPrsWorkflow {
     input {
-        File        query_vcf
-        Array[File] variant_weights
-        File?       score_weights
-        File        pca_variants
-        File        reference_vcf
-        File?       adjustment_model_manifest
-        String      condition_code
-        Boolean     norename = false
-        String      ubuntu_docker_image = "ubuntu:latest"
+        File         query_vcf
+        Array[File]  variant_weights
+        File?        score_weights
+        File         pca_variants
+        File         reference_vcf
+        Array[File]? adjustment_model_manifests
+        String       condition_code
+        Boolean      norename            = false
+        String       ubuntu_docker_image = "ubuntu:latest"
     }
 
-    if (!defined(adjustment_model_manifest)) {
+    if (!defined(adjustment_model_manifests)) {
         call MakeModelWorkflow.MakeModelWorkflow as MakeModel {
             input:
                 condition_code = condition_code,
@@ -37,7 +37,7 @@ workflow RunPrsWorkflow {
     call RawScoreWorkflow.RawScoreWorkflow as RawScores {
         input:
             input_vcf = model_data.query_file,
-            adjustment_model_manifest = MakeModel.adjustment_model_manifest,
+            adjustment_model_manifest = select_first([MakeModel.adjustment_model_manifest, adjustment_model_manifests[0]]),
             norename = false
     }
 
