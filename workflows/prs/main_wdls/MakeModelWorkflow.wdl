@@ -199,12 +199,18 @@ workflow MakeModelWorkflow {
   }
 
   output {
-    File?        mix_model_manifest      = BundleMixModel.manifest
-    Array[File?] raw_model_manifest      = BundleModel.manifest
-    Array[File]? raw_reference_scores    = ScoreReferenceVcf.score
-    File?        mixed_reference_scores  = GetMixScore.mix_score
-    File?        adjusted_mix_ref_scores = TrainMixModel.adjusted_population_scores
-    Array[File?] adjusted_ref_scores     = TrainModel.adjusted_population_scores
+    Array[File]? raw_reference_scores        = ScoreReferenceVcf.score
+    File?        mixed_reference_scores      = GetMixScore.mix_score
+
+    Array[File?] adjusted_reference_scores   = select_first([
+      TrainModel.adjusted_population_scores,
+      [TrainMixModel.adjusted_population_scores]
+    ])
+    
+    Array[File?] adjustment_model_manifest   = select_first([
+      BundleModel.manifest,
+      [BundleMixModel.manifest]
+    ])
   }
 }
 
