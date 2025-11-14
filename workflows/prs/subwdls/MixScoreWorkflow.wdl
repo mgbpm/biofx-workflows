@@ -1,5 +1,7 @@
 version 1.0
 
+import "../../../steps/Utilities.wdl"
+
 workflow MixScoreWorkflow {
     input {
         Array[File] input_scores
@@ -8,9 +10,17 @@ workflow MixScoreWorkflow {
         String      ubuntu_docker_image = "ubuntu:21.10"
     }
 
-    Boolean istsv = basename(input_scores[0]) != basename(input_scores[0], ".tsv")
+    Boolean is_tsv    = basename(input_scores[0]) != basename(input_scores[0], ".tsv")
+    Boolean is_sscore = basename(input_scores[0]) != basename(input_scores[0], ".sscore")
 
-    if (istsv) {
+    if (!is_tsv && !is_sscore) {
+        call Utilities.FailTask {
+            input:
+                error_message = "Check input score file type. Should be a .tsv or .sscore file."
+        }
+    }
+
+    if (is_tsv) {
         call MixAdjustedScores {
             input:
                 input_scores = input_scores,
@@ -19,7 +29,8 @@ workflow MixScoreWorkflow {
                 docker_image = ubuntu_docker_image
         }
     }
-    if (!istsv) {
+    
+    if (is_sscore) {
         call MixRawScores {
             input:
                 input_scores = input_scores,
