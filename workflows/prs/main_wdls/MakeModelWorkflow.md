@@ -17,7 +17,9 @@
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| File | adjustment_model_manifest | Always | JSON of model file paths for either a single weights model or PRSmix model |
+| File | mix_model_manifest | If an input `score_weights` file is supplied | JSON of model file paths for a PRSmix model |
+| Array[File] | raw_model_manifest | If no input `score_weights` file is supplied | Array of JSON files; each JSON contains model file paths a single weights PRS model |
 | Array[File] | raw_reference_scores | Always | Raw PRS scores from scoring reference VCF with each variant weights file |
-| File | mixed_reference_scores | If PRSmix model is created | Raw PRS mix scores from reference VCF |
-| File | adjusted_reference_scores | Always | Adjusted reference scores from the model |
+| File | mixed_reference_scores | If an input `score_weights` file is supplied | Raw PRS mix scores from reference VCF |
+| File | adjusted_mix_ref_scores | If an input `score_weights` file is supplied | Adjusted reference scores from a PRSmix model |
+| Array[File] | adjusted_ref_scores | If no input `score_weights` file is supplied | Adjusted reference scores from a single weights PRS model |
