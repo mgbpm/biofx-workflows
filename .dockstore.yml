@@ -388,3 +388,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - PRSMix_*
+  - name: PRSCreateWeightsWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/main_wdls/CreateWeightsFiles.wdl
+    readMePath: /workflows/prs/main_wdls/CreateWeightsFiles.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - PRSMix_*
