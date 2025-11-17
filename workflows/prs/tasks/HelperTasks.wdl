@@ -348,7 +348,6 @@ task Union {
 task Intersection {
   input {
     Array[File]+ lists
-    Int          storage
     String       docker_image = "ubuntu:21.10"
     Int          addldisk     = 20
     Int          mem_size     = 2
