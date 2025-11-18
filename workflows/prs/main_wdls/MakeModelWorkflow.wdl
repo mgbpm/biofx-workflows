@@ -143,6 +143,8 @@ workflow MakeModelWorkflow {
           output_basename = condition_code
       }
       # Bundle each weights files' model
+      Array[File] weights_file_ = [weights_file]
+
       call BundleAdjustmentModel as BundleModel {
         input:
           model_data = object {
@@ -152,7 +154,7 @@ workflow MakeModelWorkflow {
             principal_components : "" + ReferencePCA.pcs,
             loadings : "" + ReferencePCA.pc_loadings,
             meansd : "" + ReferencePCA.mean_sd,
-            variant_weights : "" + [weights_file],
+            variant_weights : "" + weights_file_,
             pca_variants : "" + TrimVariants.kept_pca_variants,
             original_pca_variants : "" + pca_variants,
             query_file : "" + query_vcf_,
