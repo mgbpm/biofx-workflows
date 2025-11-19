@@ -63,26 +63,26 @@ task CreateWeightsTask {
 
         # Make new weights file from PGS Catalog file
         if [ -f "WORK/~{pgs_id}_hmPOS_GRCh37.txt.gz" ]; then
-            create_weights/make_weights_file.py \
+            mgbpmbiofx/packages/biofx-prs/create_weights/make_weights_file.py \
                 "WORK/~{pgs_id}_hmPOS_GRCh37.txt.gz" \
                 "~{b37_lookup}" \
                 "WORK"
 
             # Liftover GRCh37 bed to GRCh38
-            create_weights/liftOver \
+            mgbpmbiofx/packages/biofx-prs/create_weights/liftOver \
                 "WORK/~{pgs_id}_hmPOS_GRCh37.original.bed" \
                 "~{chain_file}" \
                 "WORK/~{pgs_id}_hmPOS_GRCh38.lifted.bed" \
                 "WORK/~{pgs_id}_hmPOS_GRCh37.unmapped.bed"
 
             # Liftover weights using GRch38 bed
-            create_weights/liftover_weights.py \
+            mgbpmbiofx/packages/biofx-prs/create_weights/liftover_weights.py \
                 "WORK/~{pgs_id}_hmPOS_GRCh38.lifted.bed" \
                 "WORK/~{pgs_id}_hmPOS_GRCh37.unmapped.bed" \
                 "WORK/~{pgs_id}_hmPOS_GRCh37.weights.tsv" \
                 "OUTPUT"
         else
-            make_weights_file.py "WORK/~{pgs_id}_hmPOS_GRCh38.txt.gz" "~{b38_lookup}" "OUTPUT"
+            mgbpmbiofx/packages/biofx-prs/create_weights/make_weights_file.py "WORK/~{pgs_id}_hmPOS_GRCh38.txt.gz" "~{b38_lookup}" "OUTPUT"
         fi
     >>>
 
