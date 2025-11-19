@@ -2,11 +2,11 @@ version 1.0
 
 workflow CreatePrsWeightsWorkflow {
     input {
-        String pgs_id = "PGS004153"
-        File b38_lookup = "/Volumes/ak1128_archive/PROJECTS/prsmix/production_models/etc/var_weights_lookup/lookup_b38.tsv"
-        File b37_lookup = "/Volumes/ak1128_archive/PROJECTS/prsmix/production_models/etc/var_weights_lookup/lookup_b38.tsv"
-        File chain_file = "/Users/ak1128/Desktop/test/hg19ToHg38.over.chain.gz"
-        String prs_docker_image = "prs_local:dev"
+        String pgs_id
+        File b38_lookup
+        File b37_lookup
+        File chain_file
+        String prs_docker_image
   }
 
     call DownloadWeightsFileTask {
@@ -141,7 +141,7 @@ task LiftoverWeightsTask {
         File chain_file
         String docker_image
         Int addldisk = 10
-        Int mem_size = 2
+        Int mem_size = 4
         Int preemptible = 1
     }
 
