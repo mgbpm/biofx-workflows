@@ -3,51 +3,39 @@ version 1.0
 import "../../../steps/Utilities.wdl"
 import "../../../steps/FileUtils.wdl"
 import "../../lowpassimputation/Glimpse2Imputation.wdl"
-import "../subwdls/RawScoreWorkflow.wdl"
-import "../subwdls/MixScoreWorkflow.wdl"
-import "../subwdls/AdjustScoreWorkflow.wdl"
+import "../subwdls/RunPRSmixWorkflow.wdl"
 import "../tasks/Structs.wdl"
 import "../tasks/HelperTasks.wdl"
 
 workflow MixOrchestrationWorkflow {
     input {
         # FETCH FILE INPUTS
-        String data_location
-        String sample_id
-        String subject_id
-        String orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203"
-        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
-        String workspace_name
-        Int fetch_disk_size = 75
+        String  data_location
+        String  sample_id
+        String  subject_id
+        String  orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203"
+        String  gcp_project_id         = "mgb-lmm-gcp-infrast-1651079146"
+        String  workspace_name
+        Int     fetch_disk_size        = 75
 
         # GLIMPSE2 INPUTS
-        File glimpse_reference_chunks
-        File ref_fasta
-        File ref_fai
-        File ref_dict
-        String glimpse_af_cutoff = ">=0.0001"
-        File gnomadAF_ref_vcf
-        Boolean impute_reference_only_variants = false
-        Boolean call_indels = false
-        Boolean keep_monomorphic_ref_sites = false
-        Int? n_burnin
-        Int? n_main
-        Int? effective_population_size
-        Boolean collect_glimpse_qc = true
-        Int glimpse_preemptible = 1
-        File? glimpse_monitoring_script
-        String glimpse_docker_image = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
-        String glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
-
+        File    glimpse_reference_chunks
+        File    ref_fasta
+        File    ref_fai
+        File    ref_dict
+        File    gnomadAF_ref_vcf
+        
         # PRS INPUTS
-        String prs_test_code
-        Array[File] model_manifests
-        File conditions_config
-        File percentiles
-        Boolean norename = false
-        File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
-        String ubuntu_docker_image = "ubuntu:latest"
-        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
+        String             prs_test_code
+        Array[Array[File]] model_manifests
+        File               conditions_config
+        File               percentiles
+        File?              score_weights
+        Boolean            mix_before_adjustment = true
+        Boolean            norename              = false
+        File               renaming_lookup       = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+        String             ubuntu_docker_image   = "ubuntu:latest"
+        String             prs_docker_image      = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
     }
 
     call FileUtils.FetchFilesTask as FetchFiles {
@@ -72,56 +60,30 @@ workflow MixOrchestrationWorkflow {
             fasta_index = ref_fai,
             ref_dict = ref_dict,
             output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
-            af_cutoff = glimpse_af_cutoff,
+            af_cutoff = ">=0.0001",
             gnomadAF_ref_vcf = gnomadAF_ref_vcf,
-            impute_reference_only_variants = impute_reference_only_variants,
-            call_indels = call_indels,
-            keep_monomorphic_ref_sites = keep_monomorphic_ref_sites,
-            n_burnin = n_burnin,
-            n_main = n_main,
-            effective_population_size = effective_population_size,
-            collect_qc_metrics = collect_glimpse_qc,
-            preemptible = glimpse_preemptible,
-            docker = glimpse_docker_image,
-            docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image,
-            monitoring_script = glimpse_monitoring_script
     }
 
-    scatter (i in range(length(model_manifests))) {
-        AdjustmentModelData model_data = read_json(model_manifests[i])
-
+    scatter (condition_models in model_manifests) {
+        AdjustmentModelData model_data = read_json(condition_models[0])
         String condition_code = model_data.condition_code
 
-        call RawScoreWorkflow.RawScoreWorkflow as RawScores {
+        call RunPRSmixWorkflow.RunPrsMixWorkflow as GetMixScores {
             input:
-                input_vcf = RunGlimpse.imputed_afFiltered_vcf,
-                adjustment_model_manifest = model_manifests[i],
+                query_vcf = RunGlimpse.imputed_afFiltered_vcf,
+                score_weights = score_weights,
+                adjustment_model_manifests = condition_models,
+                condition_code = condition_code,
+                mix_before_adjustment = mix_before_adjustment,
                 norename = norename,
-                renaming_lookup = renaming_lookup
-        }
-
-        call MixScoreWorkflow.MixScoreWorkflow as MixScores {
-            input:
-                output_basename = condition_code,
-                input_scores = RawScores.raw_scores,
-                score_weights = select_first([model_data.score_weights])
-        }
-
-        call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScores {
-            input:
-                output_basename = condition_code,
-                input_vcf = RunGlimpse.imputed_afFiltered_vcf,
-                adjustment_model_manifest = model_manifests[i],
-                raw_scores = MixScores.mix_score,
-                norename = norename,
-                renaming_lookup = renaming_lookup
+                ubuntu_docker_image = ubuntu_docker_image
         }
     }
 
     call SummarizeScores {
         input:
             condition_codes = condition_code,
-            scores = select_first([select_all(AdjustScores.adjusted_scores)]),
+            scores = GetMixScores.final_score,
             conditions_config = conditions_config,
             percentiles = percentiles,
             basename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results",
@@ -129,18 +91,10 @@ workflow MixOrchestrationWorkflow {
     }
 
     output {
-        # Glimpse outputs
-        File glimpse_vcf = RunGlimpse.imputed_afFiltered_vcf
-        File glimpse_vcf_index = RunGlimpse.imputed_afFiltered_vcf_index
-        File? glimpse_qc_metrics = RunGlimpse.qc_metrics
-
-        # PRS Outputs
-        Array[Array[File]] prs_raw_scores = RawScores.raw_scores
-        Array[File] prs_mix_raw_score = MixScores.mix_score
-        Array[File?] prs_adjusted_score = AdjustScores.adjusted_scores
-
-        # Individual Outputs
-        File risk_summary = SummarizeScores.risk_summary
+        File        glimpse_vcf        = RunGlimpse.imputed_afFiltered_vcf
+        File?       glimpse_qc_metrics = RunGlimpse.qc_metrics
+        Array[File] prs_score          = GetMixScores.final_score
+        File        risk_summary       = SummarizeScores.risk_summary
     }
 }
 
