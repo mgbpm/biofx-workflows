@@ -335,15 +335,23 @@ workflows:
       branches:
         - /.+/
       tags:
-        - PRSMix_*
-  - name: PRSRunPRS
+        - PRS*
+  - name: RunPRSmix
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/main_wdls/RunPRSWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/subwdls/RunPRSmixWorkflow.wdl
     filters:
       branches:
         - /.+/
       tags:
-        - PRSMix_*
+        - PRS*
+  - name: RunSinglePRS
+    subclass: WDL
+    primaryDescriptorPath: /workflows/prs/subwdls/RunSinglePRSWorkflow.wdl
+    filters:
+      branches:
+        - /.+/
+      tags:
+        - PRS*
   - name: PreparePrsInputs
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/PrepareInputsWorkflow.wdl
@@ -351,7 +359,7 @@ workflows:
       branches:
         - /.+/
       tags:
-        - PRSMix_*
+        - PRS*
   - name: PRSMixScoreWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/subwdls/MixScoreWorkflow.wdl
@@ -360,7 +368,7 @@ workflows:
       branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - PRSMix_*
+        - PRS*
   - name: PRSOrchestrationWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/MixOrchestrationWorkflow.wdl
@@ -369,7 +377,7 @@ workflows:
       branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - PRSMix_*
+        - PRS*
   - name: PRSAdjustScoreWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/subwdls/AdjustScoreWorkflow.wdl
@@ -378,7 +386,7 @@ workflows:
       branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - PRSMix_*
+        - PRS*
   - name: PRSRawScoreWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/subwdls/RawScoreWorkflow.wdl
@@ -387,7 +395,7 @@ workflows:
       branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - PRSMix_*
+        - PRS*
   - name: PRSCreateWeightsWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/CreateWeightsFiles.wdl
@@ -396,4 +404,4 @@ workflows:
       branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - PRSMix_*
+        - PRS*
