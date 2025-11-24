@@ -18,7 +18,7 @@ workflow RunSinglePrsWorkflow {
         input:
             input_vcf = query_vcf,
             adjustment_model_manifest = adjustment_model_manifest,
-            norename = false
+            norename = norename
     }
 
     call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScore {

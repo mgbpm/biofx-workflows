@@ -148,7 +148,7 @@ workflow MakeModelWorkflow {
           model_data = object {
             condition_code : condition_code,
             parameters : "" + TrainModel.fitted_params,
-            scoring_inputs : scoring_inputs_,
+            scoring_inputs : [scoring_inputs_],
             principal_components : "" + ReferencePCA.pcs,
             loadings : "" + ReferencePCA.pc_loadings,
             meansd : "" + ReferencePCA.mean_sd,
