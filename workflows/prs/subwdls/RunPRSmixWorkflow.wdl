@@ -41,7 +41,7 @@ workflow RunPrsMixWorkflow {
 
             call MixScoreWorkflow.MixScoreWorkflow as MixAdjustedScores {
                 input:
-                    input_scores = ScoreSingleManifests.adjusted_scores,
+                    input_scores = ScoreSingleManifests.adjusted_score,
                     score_weights = select_first([score_weights]),
                     output_basename = condition_code,
                     ubuntu_docker_image = ubuntu_docker_image

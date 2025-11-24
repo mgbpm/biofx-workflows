@@ -31,8 +31,8 @@ workflow RunSinglePrsWorkflow {
     }
 
     output {
-        File raw_scores      = GetScore.raw_scores[0]
-        File adjusted_scores = AdjustScore.adjusted_scores
+        File raw_score      = GetScore.raw_scores[0]
+        File adjusted_score = AdjustScore.adjusted_scores
     }
 }
 
