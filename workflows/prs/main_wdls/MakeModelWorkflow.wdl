@@ -96,12 +96,13 @@ workflow MakeModelWorkflow {
       query = ExtractQueryVariants.ids,
       docker_image = ubuntu_docker_image
   }
+  File kept_pca_variants = select_first([TrimVariants.kept_pca_variants, pca_variants_])
   
   # Make PLINK bed from reference VCF and perform PCA
   call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
     input:
       vcf = reference_vcf_,
-      pruning_sites = select_first([TrimVariants.kept_pca_variants, pca_variants_]),
+      pruning_sites = kept_pca_variants,
       subset_to_sites = ExtractQueryVariants.ids,
       basename = basename(reference_vcf, ".vcf.gz"),
       mem_size = GetMemoryForReference.gigabytes
@@ -146,17 +147,17 @@ workflow MakeModelWorkflow {
       call BundleAdjustmentModel as BundleModel {
         input:
           model_data = object {
-            condition_code : condition_code,
-            parameters : "" + TrainModel.fitted_params,
-            scoring_inputs : [scoring_inputs_],
-            principal_components : "" + ReferencePCA.pcs,
-            loadings : "" + ReferencePCA.pc_loadings,
-            meansd : "" + ReferencePCA.mean_sd,
-            variant_weights : [weights_file],
-            pca_variants : "" + TrimVariants.kept_pca_variants,
+            condition_code        : condition_code,
+            parameters            : "" + TrainModel.fitted_params,
+            scoring_inputs        : [scoring_inputs_],
+            principal_components  : "" + ReferencePCA.pcs,
+            loadings              : "" + ReferencePCA.pc_loadings,
+            meansd                : "" + ReferencePCA.mean_sd,
+            variant_weights       : [weights_file],
+            pca_variants          : "" + kept_pca_variants,
             original_pca_variants : "" + pca_variants,
-            query_file : "" + query_vcf_,
-            base_memory : GetMemoryForReference.gigabytes
+            query_file            : "" + query_vcf_,
+            base_memory           : GetMemoryForReference.gigabytes
           },
           docker_image = ubuntu_docker_image
       }
@@ -181,18 +182,18 @@ workflow MakeModelWorkflow {
     call BundleAdjustmentModel as BundleMixModel {
       input:
         model_data = object {
-          condition_code : condition_code,
-          parameters : "" + TrainMixModel.fitted_params,
-          scoring_inputs : scoring_inputs_,
-          principal_components : "" + ReferencePCA.pcs,
-          loadings : "" + ReferencePCA.pc_loadings,
-          meansd : "" + ReferencePCA.mean_sd,
-          variant_weights : variant_weights_,
-          score_weights : "" + score_weights,
-          pca_variants : "" + TrimVariants.kept_pca_variants,
+          condition_code        : condition_code,
+          parameters            : "" + TrainMixModel.fitted_params,
+          scoring_inputs        : scoring_inputs_,
+          principal_components  : "" + ReferencePCA.pcs,
+          loadings              : "" + ReferencePCA.pc_loadings,
+          meansd                : "" + ReferencePCA.mean_sd,
+          variant_weights       : variant_weights_,
+          score_weights         : "" + score_weights,
+          pca_variants          : "" + kept_pca_variants,
           original_pca_variants : "" + pca_variants,
-          query_file : "" + query_vcf_,
-          base_memory : GetMemoryForReference.gigabytes
+          query_file            : "" + query_vcf_,
+          base_memory           : GetMemoryForReference.gigabytes
         },
         docker_image = ubuntu_docker_image
     }
