@@ -112,14 +112,8 @@ task CreateWeightsTask {
     Int final_disk_size = file_size + addldisk
 
     command <<<
-        set -euxo pipefail
-
-        mkdir -p OUTPUT
-
-        /mgbpmbiofx/packages/biofx-prs/create_weights/make_weights_file.py \
-                "~{input_weights}" \
-                "~{lookup_file}" \
-                "OUTPUT"
+        $PACKAGESDIR/biofx-prs/create_weights/make_weights_file.py \
+            "~{input_weights}" "~{lookup_file}" .
     >>>
 
     runtime {
@@ -154,14 +148,14 @@ task LiftoverWeightsTask {
 
     command <<<
         # Liftover GRCh37 bed to GRCh38
-        /mgbpmbiofx/packages/biofx-prs/create_weights/liftOver \
+        $PACKAGESDIR/biofx-prs/create_weights/liftOver \
             "~{bed_file}" \
             "~{chain_file}" \
             "lifted.bed" \
             "unmapped.bed"
 
         # Liftover weights using GRch38 bed
-        /mgbpmbiofx/packages/biofx-prs/create_weights/liftover_weights.py \
+        $PACKAGESDIR/biofx-prs/create_weights/liftover_weights.py \
             "lifted.bed" \
             "unmapped.bed" \
             "~{input_weights}" \
