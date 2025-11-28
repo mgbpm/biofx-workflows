@@ -38,3 +38,5 @@
 | File | original_pca_variants | Yes | All PCA variants used before subsetting to variants common among the input VCFs, weights files, and PCA file |
 | File | query_file | Yes | Query VCF used to train the model |
 | Int | base_memory | Yes | Estimated base memory required to process the reference |
+| Int | population_mean | Yes | Mean of adjusted scores from training the model |
+| Int | population_sd | Yes | Standard deviation of adjusted scores from training the model |

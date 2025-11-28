@@ -144,6 +144,12 @@ workflow MakeModelWorkflow {
           output_basename = condition_code
       }
 
+      call CalculatePopStats {
+        input:
+          score_file = TrainModel.adjusted_population_scores,
+          docker_image = ubuntu_docker_image
+      }
+
       call BundleAdjustmentModel as BundleModel {
         input:
           model_data = object {
@@ -157,7 +163,9 @@ workflow MakeModelWorkflow {
             pca_variants          : "" + kept_pca_variants,
             original_pca_variants : "" + pca_variants,
             query_file            : "" + query_vcf_,
-            base_memory           : GetMemoryForReference.gigabytes
+            base_memory           : GetMemoryForReference.gigabytes,
+            population_mean       : CalculatePopStats.mean,
+            population_sd         : CalculatePopStats.sd
           },
           docker_image = ubuntu_docker_image
       }
@@ -171,14 +179,20 @@ workflow MakeModelWorkflow {
         input_scores = ScoreReferenceVcf.score,
         score_weights = select_first([score_weights])
     }
-    # Train model on mix scores
+
     call ScoringTasks.TrainAncestryModel as TrainMixModel {
       input:
         population_pcs = ReferencePCA.pcs,
         population_scores = GetMixScore.mix_score,
         output_basename = condition_code
     }
-    # Bundle mix model
+
+    call CalculatePopStats {
+      input:
+        score_file = TrainMixModel.adjusted_population_scores,
+        docker_image = ubuntu_docker_image
+    }
+
     call BundleAdjustmentModel as BundleMixModel {
       input:
         model_data = object {
@@ -193,7 +207,9 @@ workflow MakeModelWorkflow {
           pca_variants          : "" + kept_pca_variants,
           original_pca_variants : "" + pca_variants,
           query_file            : "" + query_vcf_,
-          base_memory           : GetMemoryForReference.gigabytes
+          base_memory           : GetMemoryForReference.gigabytes,
+          population_mean       : CalculatePopStats.mean,
+          population_sd         : CalculatePopStats.sd
         },
         docker_image = ubuntu_docker_image
     }
@@ -229,5 +245,41 @@ task BundleAdjustmentModel {
 
   runtime {
     docker: "~{docker_image}"
+  }
+}
+
+task CalculatePopStats {
+  input {
+    File score_file
+    String docker_image
+    Int disk_size = ceil(size(score_file, "GB")) + 10
+    Int mem_size = 2
+    Int preemptible = 1
+  }
+  
+  command <<<
+    awk '{ total += $26; count++ } END { print total/count }' "~{score_file}" > mean.txt
+
+    awk '{ total += $26; count++; array[NR] = $26 }
+     END {
+         mean = total / count;
+         for(i=1; i<=count; i++){
+             sumsq += (array[i] - mean)^2;
+         }
+         variance = sumsq / count;
+         print sqrt(variance);
+     }' "~{score_file}" > sd.txt
+  >>>
+
+  runtime {
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
+  }
+
+  output {
+    Int mean = read_int("mean.txt")
+    Int sd = read_int("sd.txt")
   }
 }
