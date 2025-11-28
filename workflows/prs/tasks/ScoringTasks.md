@@ -93,7 +93,7 @@
 | String | chromosome_encoding | No | Chromosome encoding based on if mitochondrial variants are represented by 'chrM' or 'chrMT' | |
 | String | docker_image | Yes | Docker image used for running task | "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124" |
 | Int | disk_size | No | Disk size to allocate in GB | 2x the input VCF, plus 100 |
-| Int | mem_ | No | Allocated memory in GB | 8 |
+| Int | mem_size | No | Allocated memory in GB | 8 |
 | Int | preemptible | No | Preemptible runtime setting | 1 |
 
 ### Output Parameters
@@ -101,3 +101,24 @@
 | Type | Name | When | Description |
 | :--- | :--- | :--- |
 | File | ids | Always | Plink2 SNP list |
+
+## StandardizeScore
+
+### Input Parameters
+
+| Type | Name | Req'd | Description | Default Value |
+| :--- | :--- | :---: | :--- | :--- |
+| File | score_file | Yes | Mix scores or adjusted scores needing to be standardized | |
+| Int | population_mean | No | Mean of population to use in standardizing scores; if not provided, the mean of the scores in `score_file` will be used | |
+| Int | population_sd | No | Standard deviation of population to use in standardizing scores; if not provided, the mean of the scores in the `score_file` will be used | |
+| String | output_basename | Yes | Basename for output files | |
+| String | docker_image | No | PRS Docker image | |
+| Int | disk_size | No | Disk size to allocate in GB | 2x the input score file, plus 10 |
+| Int | mem_size | No | Allocated memory in GB | 8 |
+| Int | preemptible | No | Preemptible runtime setting | 1 |
+
+### Output Parameters
+
+| Type | Name | When | Description |
+| :--- | :--- | :--- |
+| File | standardized_scores | Always | Standardized scores in either a .sscore file or TSV |

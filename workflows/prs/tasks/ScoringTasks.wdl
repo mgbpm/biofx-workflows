@@ -355,3 +355,38 @@ task ExtractIDsPlink {
     preemptible: preemptible
   }
 }
+
+task StandardizeScore {
+  input {
+    File score_file
+    Int? population_mean
+    Int? population_sd
+    String output_basename
+    String docker_image
+    Int disk_size = ceil(size(score_file, "GB")) + 10
+    Int mem_size = 2
+    Int preemptible = 1
+  }
+
+  command <<<
+    $PACKAGESDIR/biofx-prs/bin/standardize_scores.py \
+      --score-file "~{score_file}"                   \
+      --output-basename "~{output_basename}"         \
+      --pop-mean "~{population_mean}"                \
+      --pop-sd "~{population_sd}"
+  >>>
+
+  runtime {
+    docker: "~{docker_image}"
+    disks: "local-disk ~{disk_size} HDD"
+    memory: "~{mem_size} GB"
+    preemptible: preemptible
+  }
+
+  output {
+    File standardized_scores = select_first([
+      "~{output_basename}.standardized.mix.sscore",
+      "~{output_basename}.standardized.adj_scores.tsv"
+    ])
+  }
+}
