@@ -8,10 +8,10 @@ import "../tasks/Structs.wdl"
 
 workflow AdjustScoreWorkflow {
     input {
-        String  output_basename
         File    input_vcf
         File    adjustment_model_manifest
         File    raw_scores
+        String  output_basename
         Boolean norename = false
         File    renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
     }
