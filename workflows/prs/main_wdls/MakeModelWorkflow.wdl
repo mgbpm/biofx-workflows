@@ -144,7 +144,7 @@ workflow MakeModelWorkflow {
           output_basename = condition_code
       }
 
-      call CalculatePopStats {
+      call CalculatePopStats as SinglePopStats {
         input:
           score_file = TrainModel.adjusted_population_scores,
           docker_image = ubuntu_docker_image
@@ -164,8 +164,8 @@ workflow MakeModelWorkflow {
             original_pca_variants : "" + pca_variants,
             query_file            : "" + query_vcf_,
             base_memory           : GetMemoryForReference.gigabytes,
-            population_mean       : CalculatePopStats.mean,
-            population_sd         : CalculatePopStats.sd
+            population_mean       : SinglePopStats.mean,
+            population_sd         : SinglePopStats.sd
           },
           docker_image = ubuntu_docker_image
       }
@@ -187,7 +187,7 @@ workflow MakeModelWorkflow {
         output_basename = condition_code
     }
 
-    call CalculatePopStats {
+    call CalculatePopStats as MixPopStats {
       input:
         score_file = TrainMixModel.adjusted_population_scores,
         docker_image = ubuntu_docker_image
@@ -208,8 +208,8 @@ workflow MakeModelWorkflow {
           original_pca_variants : "" + pca_variants,
           query_file            : "" + query_vcf_,
           base_memory           : GetMemoryForReference.gigabytes,
-          population_mean       : CalculatePopStats.mean,
-          population_sd         : CalculatePopStats.sd
+          population_mean       : MixPopStats.mean,
+          population_sd         : MixPopStats.sd
         },
         docker_image = ubuntu_docker_image
     }
