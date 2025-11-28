@@ -50,6 +50,7 @@ workflow AdjustScoreWorkflow {
     call PCATasks.MakePCAPlot as PCAPlot {
         input:
             population_pcs = model_data.principal_components,
+            basename = output_basename,
             target_pcs = ProjectPCA.projections
     }
 
