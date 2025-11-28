@@ -8,6 +8,7 @@
 | :--- | :--- | :---: | :--- | :--- |
 | File | population_pcs | Yes | Population PCA projections | |
 | File | target_pcs | Yes | PCA projections (from flash PCA) | |
+| String | basename | Yes | Basename for output files | |
 | String | docker_image | Yes | Docker image used for running task | "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1" |
 | Int | disk_size | No | Disk size to allocate in GB | 100  |
 | Int | mem_size | No | Allocated memory in GB | 2 |

@@ -6,6 +6,7 @@ task MakePCAPlot {
   input {
     File   population_pcs
     File   target_pcs
+    String basename
     String docker_image = "rocker/tidyverse@sha256:0adaf2b74b0aa79dada2e829481fa63207d15cd73fc1d8afc37e36b03778f7e1"
     Int    disk_size    = 100
     Int    mem_size     = 2
@@ -27,13 +28,13 @@ task MakePCAPlot {
         labs(x="PC1", y="PC2") +
         theme_bw()
 
-      ggsave(filename = "PCA_plot.png", dpi=300, width = 6, height = 6)
+      ggsave(filename = "~{basename}_PCA_plot.png", dpi=300, width = 6, height = 6)
 
     EOF
   >>>
 
   output {
-    File pca_plot = "PCA_plot.png"
+    File pca_plot = "~{basename}_PCA_plot.png"
   }
 
   runtime {
@@ -154,11 +155,11 @@ task ProjectArray {
       --bfile      '~{basename}'   \
       --inmeansd   meansd.txt      \
       --inload     loadings.txt    \
-      --outproj    projections.txt
+      --outproj    "~{basename}_projections.txt"
   >>>
 
   output {
-    File projections = "projections.txt"
+    File projections = "~{basename}_projections.txt"
   }
 
   runtime {
