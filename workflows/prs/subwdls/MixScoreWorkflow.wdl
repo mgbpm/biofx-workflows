@@ -63,7 +63,7 @@ task MixRawScores {
         set -euxo pipefail
 
         score_file_array=('~{sep="' '" input_scores}')
-        tail -n+2 ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
+        tail -n+2 ${score_file_array[0]} | awk '{ print $2 }' > sample_ids.txt
 
         head -n1 "${score_file_array[0]}" > "~{output_basename}.mix.sscore"
 
