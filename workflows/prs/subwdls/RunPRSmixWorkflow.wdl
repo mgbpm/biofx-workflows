@@ -36,7 +36,6 @@ workflow RunPrsMixWorkflow {
                     input:
                         query_vcf = query_vcf,
                         adjustment_model_manifest = manifest,
-                        output_basename = weight_filename,
                         norename = true,
                         ubuntu_docker_image = ubuntu_docker_image
                 }

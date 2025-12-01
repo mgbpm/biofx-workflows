@@ -9,7 +9,6 @@ workflow RunSinglePrsWorkflow {
     input {
         File         query_vcf
         File         adjustment_model_manifest
-        String       output_basename
         Boolean      norename              = false
         String       ubuntu_docker_image   = "ubuntu:latest"
     }
@@ -23,7 +22,7 @@ workflow RunSinglePrsWorkflow {
 
     call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScore {
         input:
-            output_basename = output_basename,
+            output_basename = basename(GetScore.raw_scores[0], ".sscore"),
             input_vcf = GetScore.renamed_vcf,
             adjustment_model_manifest = adjustment_model_manifest,
             raw_scores = GetScore.raw_scores[0],
