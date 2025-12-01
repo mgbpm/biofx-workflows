@@ -279,7 +279,7 @@ task CalculatePopStats {
   }
 
   output {
-    Int mean = read_int("mean.txt")
-    Int sd = read_int("sd.txt")
+    Int mean = read_float("mean.txt")
+    Int sd = read_float("sd.txt")
   }
 }
