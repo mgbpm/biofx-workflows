@@ -31,6 +31,6 @@ struct AdjustmentModelData {
   File                 original_pca_variants
   File                 query_file
   Int                  base_memory
-  Int                  population_mean
-  Int                  population_sd
+  Float                population_mean
+  Float                population_sd
 }
