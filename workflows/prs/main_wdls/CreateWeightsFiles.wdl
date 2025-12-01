@@ -102,9 +102,8 @@ task CreateWeightsTask {
         File input_weights
         File lookup_file
         String docker_image
-        Int addldisk = 15
-        Int bootdisk_size = 20
-        Int mem_size = 4
+        Int addldisk = 50
+        Int mem_size = 8
         Int preemptible = 1
     }
 
@@ -119,7 +118,6 @@ task CreateWeightsTask {
     runtime {
         docker: "~{docker_image}"
         disks: "local-disk " + final_disk_size + " SSD"
-        bootDiskSizeGb: bootdisk_size
         memory: mem_size + "GB"
         preemptible: preemptible
     }
