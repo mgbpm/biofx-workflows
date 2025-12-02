@@ -220,8 +220,8 @@ workflow MakeModelWorkflow {
         File?        mixed_reference_scores = GetMixScore.mix_score
 
         Array[File?] adjusted_reference_scores = select_first([
-            [TrainMixModel.adjusted_population_scores]
-            TrainModel.adjusted_population_scores,
+            [TrainMixModel.adjusted_population_scores],
+            TrainModel.adjusted_population_scores
         ])
         
         Array[File?] adjustment_model_manifest = select_first([
