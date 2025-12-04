@@ -20,4 +20,5 @@
 | Array[File] | raw_reference_scores | Always | Raw PRS scores from scoring reference VCF with each variant weights file |
 | File | mixed_reference_scores | If an input `score_weights` file is supplied | Raw PRS mix scores from reference VCF |
 | Array[File] | adjusted_reference_scores | Always | Adjusted reference scores from a single weights PRS model or PRSmix model |
-| File | adjustment_model_manifest | Always | JSON of model file paths for a single weights PRS model or PRSmix model |
+| File | mix_model_manifest | If a `score_weights` file is supplied | JSON of model file paths for a PRSmix model |
+| Array[File] | model_manifests | If a `score_weights` file is not supplied | Array of JSON files that contain model file paths for single weights PRS models |

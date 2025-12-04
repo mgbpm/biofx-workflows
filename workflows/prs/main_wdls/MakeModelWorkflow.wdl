@@ -224,10 +224,9 @@ workflow MakeModelWorkflow {
             TrainModel.adjusted_population_scores
         ])
         
-        Array[File?] adjustment_model_manifest = select_first([
-            [BundleMixModel.manifest],
-            BundleModel.manifest
-        ])
+        Array[File?] model_manifests = BundleModel.manifest
+
+        File? mix_model_manifest = BundleMixModel.manifest
     }
 }
 
