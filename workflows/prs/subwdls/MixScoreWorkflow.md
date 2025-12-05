@@ -7,7 +7,7 @@
 | Array[File] | input_scores | Yes | PRS scores; each score file's name must contain the PGS ID of the variants weights file used to compute the raw scores (ex: "PGS002236_hmPOS_GRCh38.weights.sscore" or "PGS002236_hmPOS_GRCh38.weights.tsv")  | |
 | File | score_weights | Yes | Score weights for each PGS ID | |
 | File | output_basename | Yes | Basename for output mix score file | |
-| String | ubuntu_docker_image | No | Ubuntu Docker image | "ubuntu:21.10" |
+| String | prs_docker_image | Yes | PRS Docker image | |
 
 ## Output Parameters
 
