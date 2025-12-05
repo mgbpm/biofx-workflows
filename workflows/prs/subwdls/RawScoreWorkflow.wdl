@@ -43,7 +43,7 @@ workflow RawScoreWorkflow {
         call ScoringTasks.ScoreVcf {
             input:
                 vcf = input_vcf_,
-                basename = basename(variant_weights, ".weights.tsv"),
+                basename = sub(basename(variant_weights), ".weights.tsv|.weights.cleaned.tsv|.tsv", ""),
                 weights = variant_weights,
                 mem_size = model_data.base_memory,
                 sites = training_variants,

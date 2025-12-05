@@ -11,8 +11,8 @@ workflow AdjustScoreWorkflow {
         File    input_vcf
         File    adjustment_model_manifest
         File    raw_scores
-        String  output_basename
-        Boolean norename = false
+        String  output_basename = sub(basename(raw_scores), ".sscore|.weights.tsv.sscore|.weights.cleaned.tsv.sscore", "")
+        Boolean norename        = false
         File    renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
     }
 

@@ -29,9 +29,6 @@ workflow RunPrsMixWorkflow {
 
         if (defined(score_weights)) {
             scatter (manifest in adjustment_model_manifests) {
-                AdjustmentModelData single_model_data = read_json(manifest)
-                String weight_filename = basename(single_model_data.variant_weights[0], ".weights.tsv||.cleaned.weights.tsv")
-
                 call RunSinglePRSWorkflow.RunSinglePrsWorkflow as ScoreSingleManifests {
                     input:
                         query_vcf = query_vcf,
