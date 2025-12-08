@@ -75,6 +75,6 @@ task MixScores {
     }
 
     output {
-        File mix_score = "~{output_basename}.mix.~{output_ext}"
+        File mix_score = "~{output_basename}.mixed.~{output_ext}"
     }
 }
