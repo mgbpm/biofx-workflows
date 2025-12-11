@@ -72,8 +72,10 @@ task DownloadWeightsFileTask {
                 "https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/~{pgs_id}/ScoringFiles/Harmonized/~{pgs_id}_hmPOS_GRCh37.txt.gz"
         
             printf -- "37" >> "build.txt"
+            mv "~{pgs_id}_hmPOS_GRCh37.txt.gz" "~{pgs_id}_weights.txt.gz"
         else
             printf -- "38" >> "build.txt"
+            mv "~{pgs_id}_hmPOS_GRCh38.txt.gz" "~{pgs_id}_weights.txt.gz"
         fi
     >>>
 
@@ -85,7 +87,7 @@ task DownloadWeightsFileTask {
     }
 
     output {
-        File   weights_file = select_first(["~{pgs_id}_hmPOS_GRCh37.txt.gz", "~{pgs_id}_hmPOS_GRCh38.txt.gz"])
+        File   weights_file = "~{pgs_id}_weights.txt.gz"
         String build        = read_string("build.txt")
     }
 }
