@@ -1,51 +1,30 @@
 version 1.0
 
-import "../../../steps/Utilities.wdl"
-
 workflow MixScoreWorkflow {
     input {
         Array[File] input_scores
         File        score_weights
         String      output_basename
-        String      prs_docker_image
+        String      ubuntu_docker_image = "ubuntu:21.10"
     }
 
-    Boolean is_tsv    = basename(input_scores[0]) != basename(input_scores[0], ".tsv")
-    Boolean is_sscore = basename(input_scores[0]) != basename(input_scores[0], ".sscore")
-
-    if (!is_tsv && !is_sscore) {
-        call Utilities.FailTask {
-            input:
-                error_message = "Check input score file type. Should be a .tsv or .sscore file."
-        }
-    }
-
-    if (is_tsv) {
-        String tsv_ext = "tsv"
-    }
-    if (is_sscore) {
-        String sscore_ext = "sscore"
-    }
-
-    call MixScores {
+    call CalculateMixScore {
         input:
             input_scores = input_scores,
             score_weights = score_weights,
-            output_ext = select_first([tsv_ext, sscore_ext]),
             output_basename = output_basename,
-            docker_image = prs_docker_image
+            docker_image = ubuntu_docker_image
     }
 
     output {
-        File mix_score = MixScores.mix_score
+        File mix_score = CalculateMixScore.mix_score
     }
 }
 
-task MixScores {
+task CalculateMixScore {
     input {
         Array[File] input_scores
         File        score_weights
-        String      output_ext
         String      output_basename
         String      docker_image
         Int         addldisk = 10
@@ -60,11 +39,23 @@ task MixScores {
         set -euxo pipefail
 
         score_file_array=('~{sep="' '" input_scores}')
+        tail -n+2 ${score_file_array[0]} | awk '{ print $1 }' > sample_ids.txt
 
-        $PACKAGESDIR/biofx-prs/bin/mix_scores.py \
-            --score-file-list ${score_file_array} \
-            --score-weights "~{score_weights}" \
-            --output-basename "~{output_basename}"
+        head -n1 "${score_file_array[0]}" > "~{output_basename}.mix.sscore"
+
+        while read sample_id; do
+            score_sum=0
+
+            for score_file in '~{sep="' '" input_scores}'; do
+                pgs_id=$(basename $score_file | grep --ignore-case --only-matching "pgs[0-9]*")
+                score_weight=$(grep "${pgs_id}" "~{score_weights}" | cut -f2)
+                raw_score=$(grep "${sample_id}" ${score_file} | cut -f4)
+                weighted_score=$(awk -v x=${score_weight} -v y=${raw_score} 'BEGIN {print x*y}')
+                score_sum=$(awk -v x=${weighted_score} -v y=${score_sum} 'BEGIN {print x+y}')
+            done
+
+            printf -- "${sample_id}\tNA\tNA\t${score_sum}\n" >> "~{output_basename}.mix.sscore"
+        done < sample_ids.txt
     >>>
 
     runtime {
@@ -75,6 +66,6 @@ task MixScores {
     }
 
     output {
-        File mix_score = "~{output_basename}.mixed.~{output_ext}"
+        File mix_score = "~{output_basename}.mix.sscore"
     }
 }
