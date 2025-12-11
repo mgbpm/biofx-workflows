@@ -127,48 +127,10 @@ workflow MakeModelWorkflow {
                 sites = ExtractQueryVariants.ids,
                 chromosome_encoding = "MT"
         }
+
         Object scoring_inputs_ = object{
             variant_weights : "" + weights_file,
             training_variants: "" + ScoreReferenceVcf.sites_scored
-        }
-
-        # If a score weights file is not supplied, either a single weights model is
-        # desired or future scores will be mixed after adjusting with each weights
-        # files' model
-        if (!defined(score_weights)) {
-            # Train a model per weights file
-            call ScoringTasks.TrainAncestryModel as TrainModel {
-                input:
-                    population_pcs = ReferencePCA.pcs,
-                    population_scores = ScoreReferenceVcf.score,
-                    output_basename = condition_code
-            }
-
-            call CalculatePopStats as SinglePopStats {
-                input:
-                    score_file = TrainModel.adjusted_population_scores,
-                    docker_image = ubuntu_docker_image
-            }
-
-            call BundleAdjustmentModel as BundleModel {
-                input:
-                    model_data = object {
-                        condition_code        : condition_code,
-                        parameters            : "" + TrainModel.fitted_params,
-                        scoring_inputs        : [scoring_inputs_],
-                        principal_components  : "" + ReferencePCA.pcs,
-                        loadings              : "" + ReferencePCA.pc_loadings,
-                        meansd                : "" + ReferencePCA.mean_sd,
-                        variant_weights       : [weights_file],
-                        pca_variants          : "" + kept_pca_variants,
-                        original_pca_variants : "" + pca_variants,
-                        query_file            : "" + query_vcf_,
-                        base_memory           : GetMemoryForReference.gigabytes,
-                        population_mean       : SinglePopStats.mean,
-                        population_sd         : SinglePopStats.sd
-                    },
-                    docker_image = ubuntu_docker_image
-            }
         }
     }
 
@@ -179,54 +141,47 @@ workflow MakeModelWorkflow {
                 input_scores = ScoreReferenceVcf.score,
                 score_weights = select_first([score_weights])
         }
+    }
 
-        call ScoringTasks.TrainAncestryModel as TrainMixModel {
-            input:
-                population_pcs = ReferencePCA.pcs,
-                population_scores = GetMixScore.mix_score,
-                output_basename = condition_code
-        }
+    call ScoringTasks.TrainAncestryModel as TrainModel {
+        input:
+            population_pcs = ReferencePCA.pcs,
+            population_scores = select_first([GetMixScore.mix_score, ScoreReferenceVcf.score[0]]),
+            output_basename = condition_code
+    }
 
-        call CalculatePopStats as MixPopStats {
-            input:
-                score_file = TrainMixModel.adjusted_population_scores,
-                docker_image = ubuntu_docker_image
-        }
+    call CalculatePopStats {
+        input:
+            score_file = TrainModel.adjusted_population_scores,
+            docker_image = ubuntu_docker_image
+    }
 
-        call BundleAdjustmentModel as BundleMixModel {
-            input:
-                model_data = object {
-                    condition_code        : condition_code,
-                    parameters            : "" + TrainMixModel.fitted_params,
-                    scoring_inputs        : scoring_inputs_,
-                    principal_components  : "" + ReferencePCA.pcs,
-                    loadings              : "" + ReferencePCA.pc_loadings,
-                    meansd                : "" + ReferencePCA.mean_sd,
-                    variant_weights       : variant_weights_,
-                    score_weights         : "" + score_weights,
-                    pca_variants          : "" + kept_pca_variants,
-                    original_pca_variants : "" + pca_variants,
-                    query_file            : "" + query_vcf_,
-                    base_memory           : GetMemoryForReference.gigabytes,
-                    population_mean       : MixPopStats.mean,
-                    population_sd         : MixPopStats.sd
-                },
-                docker_image = ubuntu_docker_image
-        }
+    call BundleAdjustmentModel {
+        input:
+            model_data = object {
+                condition_code        : condition_code,
+                parameters            : "" + TrainModel.fitted_params,
+                scoring_inputs        : scoring_inputs_,
+                principal_components  : "" + ReferencePCA.pcs,
+                loadings              : "" + ReferencePCA.pc_loadings,
+                meansd                : "" + ReferencePCA.mean_sd,
+                variant_weights       : variant_weights_,
+                score_weights         : "" + score_weights,
+                pca_variants          : "" + kept_pca_variants,
+                original_pca_variants : "" + pca_variants,
+                query_file            : "" + query_vcf_,
+                base_memory           : GetMemoryForReference.gigabytes,
+                population_mean       : CalculatePopStats.mean,
+                population_sd         : CalculatePopStats.sd
+            },
+            docker_image = ubuntu_docker_image
     }
 
     output {
-        Array[File]? raw_reference_scores   = ScoreReferenceVcf.score
-        File?        mixed_reference_scores = GetMixScore.mix_score
-
-        Array[File?] adjusted_reference_scores = select_first([
-            [TrainMixModel.adjusted_population_scores],
-            TrainModel.adjusted_population_scores
-        ])
-        
-        Array[File?] model_manifests = BundleModel.manifest
-
-        File? mix_model_manifest = BundleMixModel.manifest
+        Array[File] raw_reference_scores      = ScoreReferenceVcf.score
+        File?       mixed_reference_scores    = GetMixScore.mix_score
+        File        adjusted_reference_scores = TrainModel.adjusted_population_scores
+        File        model_manifest            = BundleAdjustmentModel.manifest
     }
 }
 
