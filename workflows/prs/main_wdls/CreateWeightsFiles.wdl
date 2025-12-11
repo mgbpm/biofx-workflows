@@ -3,9 +3,9 @@ version 1.0
 workflow CreatePrsWeightsWorkflow {
     input {
         String pgs_id
-        File b38_lookup
-        File b37_lookup
-        File chain_file
+        File   b38_lookup_file
+        File   b37_lookup_file
+        File   chain_file
         String prs_docker_image
   }
 
@@ -16,39 +16,35 @@ workflow CreatePrsWeightsWorkflow {
     }
 
     if (DownloadWeightsFileTask.build == "37") {
-        call CreateWeightsTask as CreateB37Weights {
-            input:
-                pgs_id = pgs_id,
-                build = "37",
-                input_weights = select_first([DownloadWeightsFileTask.b37_weights_file]),
-                lookup_file = b37_lookup,
-                docker_image = prs_docker_image
-        }
+        File b37_lookup = b37_lookup_file
+    }
+    if (DownloadWeightsFileTask.build == "38") {
+        File b38_lookup = b38_lookup_file
+    }
 
+    call CreateWeightsTask {
+        input:
+            pgs_id = pgs_id,
+            input_weights = DownloadWeightsFileTask.weights_file,
+            lookup_file = select_first([b37_lookup, b38_lookup]),
+            docker_image = prs_docker_image
+    }
+
+    if (DownloadWeightsFileTask.build == "37") {
         call LiftoverWeightsTask {
             input:
                 pgs_id = pgs_id,
-                input_weights = CreateB37Weights.output_weights,
-                bed_file = select_first([CreateB37Weights.b37_bed_file]),
+                input_weights = CreateWeightsTask.output_weights,
+                bed_file = select_first([CreateWeightsTask.bed_file]),
                 chain_file = chain_file,
                 docker_image = prs_docker_image
         }
     }
 
-    if (DownloadWeightsFileTask.build == "38") {
-        call CreateWeightsTask as CreateB38Weights {
-            input:
-                pgs_id = pgs_id,
-                build = "38",
-                input_weights = select_first([DownloadWeightsFileTask.b38_weights_file]),
-                lookup_file = b38_lookup,
-                docker_image = prs_docker_image
-        }
-    }
-
     output {
-        File downloaded_weights = select_first([DownloadWeightsFileTask.b37_weights_file, DownloadWeightsFileTask.b38_weights_file])
-        File output_weights = select_first([LiftoverWeightsTask.output_weights, CreateB38Weights.output_weights])
+        File output_weights = select_first([
+            LiftoverWeightsTask.output_weights, CreateWeightsTask.output_weights
+        ])
     }
 }
 
@@ -56,9 +52,9 @@ task DownloadWeightsFileTask {
     input {
         String pgs_id
         String docker_image
-        Int disk_size = 10
-        Int mem_size = 2
-        Int preemptible = 1
+        Int    disk_size   = 10
+        Int    mem_size    = 2
+        Int    preemptible = 1
     }
 
     command <<<
@@ -89,30 +85,31 @@ task DownloadWeightsFileTask {
     }
 
     output {
-        File? b38_weights_file = "~{pgs_id}_hmPOS_GRCh38.txt.gz"
-        File? b37_weights_file = "~{pgs_id}_hmPOS_GRCh37.txt.gz"
-        String build = read_string("build.txt")
+        File   weights_file = select_first(["~{pgs_id}_hmPOS_GRCh37.txt.gz", "~{pgs_id}_hmPOS_GRCh38.txt.gz"])
+        String build        = read_string("build.txt")
     }
 }
 
 task CreateWeightsTask {
     input {
         String pgs_id
-        String build
-        File input_weights
-        File lookup_file
+        File   input_weights
+        File   lookup_file
         String docker_image
-        Int addldisk = 50
-        Int mem_size = 8
-        Int preemptible = 1
+        Int    addldisk    = 50
+        Int    mem_size    = 16
+        Int    preemptible = 1
     }
 
-    Int file_size = ceil(size(lookup_file, "GB") + size(input_weights, "GB"))
+    Int file_size       = ceil(size(lookup_file, "GB") + size(input_weights, "GB"))
     Int final_disk_size = file_size + addldisk
 
     command <<<
         $PACKAGESDIR/biofx-prs/create_weights/make_weights_file.py \
-            "~{input_weights}" "~{lookup_file}" .
+            --scoring "~{input_weights}"                           \
+            --lookup "~{lookup_file}"                              \
+            --output-basename "~{pgs_id}"                          \
+            --outputdir .
     >>>
 
     runtime {
@@ -123,41 +120,39 @@ task CreateWeightsTask {
     }
 
     output {
-        File output_weights = "~{pgs_id}_hmPOS_GRCh~{build}.weights.tsv"
-        File? b37_bed_file = "~{pgs_id}_hmPOS_GRCh~{build}.original.bed"
-        File errors = "~{pgs_id}_hmPOS_GRCh~{build}.errors.tsv"
+        File  output_weights = "~{pgs_id}.weights.tsv"
+        File? bed_file       = "~{pgs_id}.original.bed"
+        File  errors         = "~{pgs_id}.errors.tsv"
     }
 }
 
 task LiftoverWeightsTask {
     input {
         String pgs_id
-        File input_weights
-        File bed_file
-        File chain_file
+        File   input_weights
+        File   bed_file
+        File   chain_file
         String docker_image
-        Int addldisk = 10
-        Int mem_size = 4
-        Int preemptible = 1
+        Int    addldisk = 10
+        Int    mem_size = 4
+        Int    preemptible = 1
     }
 
-    Int file_size = ceil(size(chain_file, "GB") + size(input_weights, "GB") + size(bed_file, "GB"))
+    Int file_size       = ceil(size(chain_file, "GB") + size(input_weights, "GB") + size(bed_file, "GB"))
     Int final_disk_size = file_size + addldisk
 
     command <<<
-        # Liftover GRCh37 bed to GRCh38
         $PACKAGESDIR/biofx-prs/create_weights/liftOver \
-            "~{bed_file}" \
-            "~{chain_file}" \
-            "lifted.bed" \
+            "~{bed_file}"                              \
+            "~{chain_file}"                            \
+            "lifted.bed"                               \
             "unmapped.bed"
 
-        # Liftover weights using GRch38 bed
         $PACKAGESDIR/biofx-prs/create_weights/liftover_weights.py \
-            "lifted.bed" \
-            "unmapped.bed" \
-            "~{input_weights}" \
-            "."
+            --lifted-bed "lifted.bed"                             \
+            --liftover-errors "unmapped.bed"                      \
+            --b37-weights "~{input_weights}"                      \
+            --outputdir .
     >>>
 
     runtime {
@@ -168,6 +163,6 @@ task LiftoverWeightsTask {
     }
 
     output {
-        File output_weights = "~{pgs_id}_hmPOS_GRCh38.weights.tsv"
+        File output_weights = "~{pgs_id}.weights.tsv"
     }
 }
