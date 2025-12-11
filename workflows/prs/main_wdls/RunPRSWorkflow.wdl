@@ -1,6 +1,7 @@
 version 1.0
 
 import "MakeModelWorkflow.wdl"
+import "../../../steps/Utilities.wdl"
 import "../subwdls/RawScoreWorkflow.wdl"
 import "../subwdls/MixScoreWorkflow.wdl"
 import "../subwdls/AdjustScoreWorkflow.wdl"
@@ -18,7 +19,7 @@ workflow RunPrsWorkflow {
         String       ubuntu_docker_image = "ubuntu:latest"
     }
 
-    if (!defined(adjustment_model_manifests)) {
+    if (!defined(adjustment_model_manifest)) {
         if (!defined(variant_weights) || !defined(pca_variants) || !defined(reference_vcf)) {
             call Utilities.FailTask as NoInputsFail {
                 input:
@@ -29,16 +30,16 @@ workflow RunPrsWorkflow {
         call MakeModelWorkflow.MakeModelWorkflow as MakeModel {
             input:
                 condition_code = condition_code,
-                variant_weights = variant_weights,
-                pca_variants = pca_variants,
-                reference_vcf = reference_vcf,
-                query_file = query_vcf,
+                variant_weights = select_first([variant_weights]),
+                pca_variants = select_first([pca_variants]),
+                reference_vcf = select_first([reference_vcf]),
+                query_vcf = query_vcf,
                 score_weights = select_first([score_weights]),
                 norename = norename,
                 ubuntu_docker_image = ubuntu_docker_image
         }
     }
-    File model = select_first([adjustment_model_manifest, MakeModel.adjustment_model_manifest])
+    File model = select_first([adjustment_model_manifest, MakeModel.model_manifest])
     AdjustmentModelData model_data = read_json(model)
 
     call RawScoreWorkflow.RawScoreWorkflow as RawScores {
