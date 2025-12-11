@@ -4,7 +4,7 @@ import "../../../steps/Utilities.wdl"
 import "../../../steps/FileUtils.wdl"
 import "../../lowpassimputation/Glimpse2Imputation.wdl"
 import "RunPRSWorkflow.wdl"
-import "../tasks/PRSStructs.wdl"
+import "../tasks/Structs.wdl"
 import "../tasks/HelperTasks.wdl"
 
 workflow MixOrchestrationWorkflow {
@@ -69,7 +69,7 @@ workflow MixOrchestrationWorkflow {
 
         String condition_code = model_data.condition_code
 
-        call RunPRSWorkflow as GetScores {
+        call RunPRSWorkflow.RunPrsWorkflow as GetScores {
             input:
                 query_vcf = RunGlimpse.imputed_afFiltered_vcf,
                 adjustment_model_manifest = model_manifests[i],
@@ -94,8 +94,8 @@ workflow MixOrchestrationWorkflow {
         File               glimpse_vcf_index  = RunGlimpse.imputed_afFiltered_vcf_index
         File?              glimpse_qc_metrics = RunGlimpse.qc_metrics
         Array[Array[File]] raw_scores         = GetScores.raw_scores
-        Array[File]        mix_scores         = GetScores.mix_score
-        Array[File]        adjusted_scores    = GetScores.adjusted_scores
+        Array[File?]       mix_scores         = GetScores.mix_score
+        Array[File]        adjusted_scores    = GetScores.adjusted_score
         File               risk_summary       = SummarizeScores.risk_summary
     }
 }
@@ -139,7 +139,7 @@ task SummarizeScores {
 
     runtime {
         docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " SSD"
+        disks: "local-disk " + final_disk_size + " SSD"
         memory: mem_size + "GB"
         preemptible: preemptible
     }
