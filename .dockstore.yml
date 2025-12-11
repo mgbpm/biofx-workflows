@@ -336,17 +336,9 @@ workflows:
         - /.+/
       tags:
         - PRS*
-  - name: RunPRSmix
+  - name: RunPRS
     subclass: WDL
-    primaryDescriptorPath: /workflows/prs/subwdls/RunPRSmixWorkflow.wdl
-    filters:
-      branches:
-        - /.+/
-      tags:
-        - PRS*
-  - name: RunSinglePRS
-    subclass: WDL
-    primaryDescriptorPath: /workflows/prs/subwdls/RunSinglePRSWorkflow.wdl
+    primaryDescriptorPath: /workflows/prs/main_wdls/RunPRSWorkflow.wdl
     filters:
       branches:
         - /.+/
