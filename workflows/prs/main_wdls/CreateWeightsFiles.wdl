@@ -98,8 +98,8 @@ task CreateWeightsTask {
         File   input_weights
         File   lookup_file
         String docker_image
-        Int    addldisk    = 50
-        Int    mem_size    = 16
+        Int    addldisk    = 400
+        Int    mem_size    = 64
         Int    preemptible = 1
     }
 
