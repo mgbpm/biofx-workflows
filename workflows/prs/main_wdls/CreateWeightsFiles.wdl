@@ -170,5 +170,7 @@ task LiftoverWeightsTask {
 
     output {
         File output_weights = "~{pgs_id}.weights.tsv"
+        File lifted_bed     = "lifted.bed"
+        File unmapped_bed   = "unmapped.bed"
     }
 }
