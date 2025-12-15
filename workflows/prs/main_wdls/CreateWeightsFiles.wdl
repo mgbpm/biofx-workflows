@@ -155,8 +155,8 @@ task LiftoverWeightsTask {
             "unmapped.bed"
 
         $PACKAGESDIR/biofx-prs/create_weights/liftover_weights.py \
-            --mapped "lifted.bed"                             \
-            --unmapped "unmapped.bed"                      \
+            --mapped "lifted.bed"                                 \
+            --unmapped "unmapped.bed"                             \
             --b37-weights "~{input_weights}"                      \
             --outputdir .
     >>>
