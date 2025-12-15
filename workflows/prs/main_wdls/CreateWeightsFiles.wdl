@@ -107,6 +107,8 @@ task CreateWeightsTask {
     Int final_disk_size = file_size + addldisk
 
     command <<<
+        set -euxo pipefail
+
         $PACKAGESDIR/biofx-prs/create_weights/make_weights_file.py \
             --scoring "~{input_weights}"                           \
             --lookup "~{lookup_file}"                              \
@@ -144,6 +146,8 @@ task LiftoverWeightsTask {
     Int final_disk_size = file_size + addldisk
 
     command <<<
+        set -euxo pipefail
+        
         $PACKAGESDIR/biofx-prs/create_weights/liftOver \
             "~{bed_file}"                              \
             "~{chain_file}"                            \
