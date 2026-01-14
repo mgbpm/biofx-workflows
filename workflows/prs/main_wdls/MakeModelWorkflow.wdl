@@ -18,7 +18,6 @@ workflow MakeModelWorkflow {
         String      ubuntu_docker_image = "ubuntu:21.10"
     }
 
-    # If score weights are supplied, check that they match the variant weights
     if (defined(score_weights)) {
         if (length(variant_weights) == 1) {
             call Utilities.FailTask as VarWeightsFail {
@@ -36,7 +35,6 @@ workflow MakeModelWorkflow {
         }
     }
     
-    # Rename chromosomes in all inputs if necessary
     if (!norename) {
         scatter (i in range(length(variant_weights))) {
             call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
@@ -60,13 +58,11 @@ workflow MakeModelWorkflow {
         }
     }
 
-    # Resolve input files for easy reference
     File query_vcf_ = select_first([RenameChromosomesInQueryVcf.renamed, query_vcf])
     Array[File] variant_weights_ = select_first([RenameChromosomesInWeights.renamed, variant_weights])
     File pca_variants_ = select_first([RenameChromosomesInPcaVariants.renamed, pca_variants])
     File reference_vcf_ = select_first([RenameChromosomesInReferenceVcf.renamed, reference_vcf])
     
-    # Get allocated memory from reference and query
     call HelperTasks.GetBaseMemory as GetMemoryForQueryFromVcf {
         input:
             vcf = query_vcf_
@@ -76,7 +72,6 @@ workflow MakeModelWorkflow {
             vcf = reference_vcf_
     }
     
-    # Extract variants from reference and query
     call ScoringTasks.ExtractIDsPlink as ExtractQueryVariants {
         input:
             vcf = query_vcf_,
@@ -88,7 +83,6 @@ workflow MakeModelWorkflow {
             mem_size = GetMemoryForReference.gigabytes
     }
     
-    # Trim PCA variants file to variants found in query and reference
     call HelperTasks.TrimPcaVariants as TrimVariants {
         input:
             pca_variants = pca_variants_,
@@ -98,7 +92,6 @@ workflow MakeModelWorkflow {
     }
     File kept_pca_variants = select_first([TrimVariants.kept_pca_variants, pca_variants_])
     
-    # Make PLINK bed from reference VCF and perform PCA
     call PCATasks.ArrayVcfToPlinkDataset as ReferenceBed {
         input:
             vcf = reference_vcf_,
@@ -117,7 +110,6 @@ workflow MakeModelWorkflow {
     }
     
     scatter (weights_file in variant_weights_) {
-        # Score the reference VCF per weights file
         call ScoringTasks.ScoreVcf as ScoreReferenceVcf {
             input:
                 vcf = reference_vcf_,

@@ -10,8 +10,8 @@ workflow AdjustScoreWorkflow {
     input {
         File    input_vcf
         File    adjustment_model_manifest
-        File    raw_scores
-        String  output_basename = sub(basename(raw_scores), ".sscore|.weights.tsv.sscore|.weights.cleaned.tsv.sscore", "")
+        File    input_scores
+        String  output_basename = sub(basename(input_scores), ".sscore|.weights.tsv.sscore|.weights.cleaned.tsv.sscore", "")
         Boolean norename        = false
         File    renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
     }
@@ -58,7 +58,7 @@ workflow AdjustScoreWorkflow {
         input:
             fitted_model_params = model_data.parameters,
             pcs = ProjectPCA.projections,
-            scores = select_first([raw_scores]),
+            scores = select_first([input_scores]),
             output_basename = output_basename
     }
     

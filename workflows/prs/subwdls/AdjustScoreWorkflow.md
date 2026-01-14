@@ -6,7 +6,7 @@
 | :--- | :--- | :---: | :--- | :--- |
 | File | input_vcf | Yes | Imputed VCF or VCF with genome data | |
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
-| File | raw_scores | Yes | Raw PRS scores to adjust | |
+| File | input_scores | Yes | Raw PRS scores to adjust | |
 | File | output_basename | Yes | Basename to use for output file | |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 | File | renaming_lookup | No | Mapping file for renaming chromosomes | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
