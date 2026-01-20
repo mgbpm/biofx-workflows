@@ -1,0 +1,11 @@
+{
+    "PrsScoring.input_vcf": "gs://prs_test/prep_outputs/query1.renamed.vcf.gz",
+    "PrsScoring.model_manifests": [
+        "gs://prs_test/model_manifests/manifest1.tsv",
+        "gs://prs_test/model_manifests/manifest2.tsv",
+        "gs://prs_test/model_manifests/manifest3.tsv",
+        "gs://prs_test/model_manifests/manifest4.tsv"
+    ],
+    "PrsScoring.norename": true,
+    "PrsScoring.perform_adjustment": true
+}

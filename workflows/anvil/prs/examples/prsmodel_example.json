@@ -1,0 +1,13 @@
+{
+    "PrsModel.condition_name": "test_condition",
+    "PrsModel.weights_files": [
+        "gs://prs_test/prep_outputs/weights/PGS00001.renamed.tsv",
+        "gs://prs_test/prep_outputs/weights/PGS00002.renamed.tsv",
+        "gs://prs_test/prep_outputs/weights/PGS00003.renamed.tsv"
+    ],
+    "PrsModel.pca_variants": "gs://prs_test/prep_outputs/pca/kept_pca_variants.txt",
+    "PrsModel.reference_vcf": "gs://prs_test/prep_outputs/reference/reference.vcf.gz",
+    "PrsModel.query_file": "gs://prs_test/prep_outputs/query1.renamed.vcf.gz",
+    "PrsModel.score_weights": "gs://prs_test/score_weights.txt",
+    "PrsModel.norename": true
+}

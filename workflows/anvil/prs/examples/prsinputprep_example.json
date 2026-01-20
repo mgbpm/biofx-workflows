@@ -1,0 +1,18 @@
+{
+    "PrsInputPrep.weights_files": [
+        "gs://prs_test/weights/PGS00001.tsv",
+        "gs://prs_test/weights/PGS00002.tsv",
+        "gs://prs_test/weights/PGS00003.tsv"
+    ],
+    "PrsInputPrep.pca_variants": "gs://prs_test/pca/pca_variants.txt",
+    "PrsInputPrep.workspace": "prs-test-workspace",
+    "PrsInputPrep.source": "gs://prs_test/reference_vcf_shards/",
+    "PrsInputPrep.target": "gs://prs_test/prep_outputs/reference",
+    "PrsInputPrep.query_vcfs": [
+        "gs://prs_test/test_vcfs/query1.vcf.gz",
+        "gs://prs_test/test_vcfs/query2.vcf.gz",
+        "gs://prs_test/test_vcfs/query3.vcf.gz",
+        "gs://prs_test/test_vcfs/query4.vcf.gz",
+        "gs://prs_test/test_vcfs/query5.vcf.gz"
+    ]
+}

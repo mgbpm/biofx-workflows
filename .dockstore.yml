@@ -405,3 +405,39 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - PRSMix_*
+  - name: KingAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/king/King.wdl
+    readMePath: /workflows/anvil/king/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: PrsInputAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/prs/PrsInputPrep.wdl
+    readMePath: /workflows/anvil/prs/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: PrsModelAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/prs/PrsModel.wdl
+    readMePath: /workflows/anvil/prs/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: PrsScoringAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/prs/PrsScoring.wdl
+    readMePath: /workflows/anvil/prs/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*

@@ -163,7 +163,7 @@ workflow MakeMixModelWorkflow {
               , pca_variants          : "" + kept_pca_variants
               , original_pca_variants : "" + pca_variants
               , query_file            : "" + select_first([query_vcf, query_file_])
-              , base_memory           :      GetMemoryForReference.gigabytes
+              , base_memory           :      GetMemoryForReference.gigabytes + 4
             },
             docker_image = ubuntu_docker_image
     }
