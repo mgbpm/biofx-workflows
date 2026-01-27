@@ -441,3 +441,11 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - AnVIL_*
+  - name: GCSToBaseSpaceUpload
+    subclass: WDL 
+    primaryDescriptorPath: /workflows/gcs_basespace_upload/GCSToBaseSpaceUpload.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - GCSToBaseSpaceUpload_*
