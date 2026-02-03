@@ -64,7 +64,7 @@ workflow RunPrsWorkflow {
             output_basename = condition_code,
             input_vcf = RawScores.renamed_vcf,
             adjustment_model_manifest = model,
-            raw_scores = select_first([MixScores.mix_score, RawScores.raw_scores]),
+            input_scores = select_first([MixScores.mix_score, RawScores.raw_scores]),
             norename = true
     }
     
