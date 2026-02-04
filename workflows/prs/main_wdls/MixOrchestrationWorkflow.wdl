@@ -54,15 +54,31 @@ workflow MixOrchestrationWorkflow {
                 input_crai = select_first([FetchFiles.crai]),
                 docker_image = samtools_docker_image
         }
-        call CompareSexTask {
-            input:
-                xy_cov_ratio = FindXYRatioTask.xy_cov_ratio,
-                input_sex = select_first([reported_sex]),
-                docker_image = python_docker_image
+
+        if (FindXYRatioTask.xy_cov_ratio < 1) {
+            String undetermined1 = "U"
+        }
+        if ((FindXYRatioTask.xy_cov_ratio >= 1) && (FindXYRatioTask.xy_cov_ratio <= 4)) {
+            String male = "M"
+        }
+        if ((FindXYRatioTask.xy_cov_ratio > 4) && (FindXYRatioTask.xy_cov_ratio < 10)) {
+            String undetermined2 = "U"
+        }
+        if ((FindXYRatioTask.xy_cov_ratio >= 10)) {
+            String female = "F"
+        }
+
+        String determined_sex = select_first([undetermined1, male, undetermined2, female])
+
+        if (determined_sex != reported_sex) {
+            call Utilities.FailTask as SexCheck {
+                input:
+                    error_message = "Input sex does not match determined sex."
+            }
         }
     }
 
-    if (!defined(reported_sex) || skip_sex_check || defined(CompareSexTask.sex_guess)) {
+    if (!defined(reported_sex) || skip_sex_check || (defined(FindXYRatioTask.xy_cov_ratio) && determined_sex == reported_sex)) {
         call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
             input:
                 reference_chunks = glimpse_reference_chunks,
@@ -112,7 +128,7 @@ workflow MixOrchestrationWorkflow {
 
     output {
         Float?             xy_cov_ratio       = FindXYRatioTask.xy_cov_ratio
-        File?              sex_guess          = CompareSexTask.sex_guess
+        String?            sex_guess          = determined_sex
         File?              glimpse_vcf        = RunGlimpse.imputed_afFiltered_vcf
         File?              glimpse_vcf_index  = RunGlimpse.imputed_afFiltered_vcf_index
         File?              glimpse_qc_metrics = RunGlimpse.qc_metrics
@@ -162,45 +178,6 @@ task FindXYRatioTask {
     }
 }
 
-task CompareSexTask {
-    input {
-        Float  xy_cov_ratio
-        String input_sex
-        String docker_image
-        Int    disk_size   = 10
-        Int    mem_size    = 2
-        Int    preemptible = 1
-    }
-
-    command <<<
-
-        python -c 'with open("sex_guess.txt", "w") as f:
-            if (~{xy_cov_ratio} >= 1) and (~{xy_cov_ratio} <= 4):
-                sex_guess = "M"
-            elif (~{xy_cov_ratio} >= 10):
-                sex_guess = "F"
-            else:
-                sex_guess = "Undetermined"
-
-            f.write(sex_guess)
-            
-            if sex_guess != "~{input_sex}":
-                raise ValueError("The input sex ({1}) does not match the determined sex ({2})".format("~{input_sex}", sex_guess))
-        '
-
-    >>>
-
-    runtime {
-        docker: "~{docker_image}"
-        disks: "local-disk " + disk_size + " SSD"
-        memory: mem_size + "GB"
-        preemptible: preemptible
-    }
-
-    output {
-        String sex_guess = read_string("sex_guess.txt")
-    }
-}
 
 task SummarizeScores {
     input {
