@@ -54,15 +54,6 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - ignore-all-tags
-  - name: SubsetShards
-    subclass: WDL
-    primaryDescriptorPath: /workflows/orchestration/SubsetShardsWorkflow.wdl
-    readMePath: /workflows/orchestration/SubsetShardsWorkflow.md
-    filters:
-      branches:
-        - /.+/
-      tags:
-        - ignore-all-tags
   - name: UnitTestWorkflowSingleParticipant
     subclass: WDL
     primaryDescriptorPath: /workflows/qatesting/UnitTestWorkflowOne.wdl
