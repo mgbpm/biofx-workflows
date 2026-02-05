@@ -296,8 +296,8 @@ workflows:
         - BiobankScrub_*
   - name: insiMWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/mutagenesis/insiM.wdl
-    readMePath: /workflows/mutagenesis/insiM.md
+    primaryDescriptorPath: /workflows/insilico/insiM.wdl
+    readMePath: /workflows/insilico/insiM.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
@@ -305,8 +305,8 @@ workflows:
         - insiM_*
   - name: BamsurgeonWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/mutagenesis/bamsurgeon.wdl
-    readMePath: /workflows/mutagenesis/bamsurgeon.md
+    primaryDescriptorPath: /workflows/insilico/bamsurgeon.wdl
+    readMePath: /workflows/insilico/bamsurgeon.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
