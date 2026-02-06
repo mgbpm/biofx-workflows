@@ -294,15 +294,6 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - BiobankScrub_*
-  - name: insiMWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/insilico/insiM.wdl
-    readMePath: /workflows/insilico/insiM.md
-    filters:
-      branches:
-        - /.*[a-zA-Z0-9].*/
-      tags:
-        - insiM_*
   - name: BamsurgeonWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/insilico/bamsurgeon.wdl
