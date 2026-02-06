@@ -17,7 +17,8 @@ workflow cram_bam_to_fastq_workflow {
     
     # Convert CRAM to BAM if input is CRAM
     if (is_cram) {
-        call cram_to_bam {
+        # Call project specific cram_to_bam task
+        call CBTFQ_cram_to_bam {
             input:
                 cram = input_file,
                 refFasta = select_first([refFasta]),
@@ -54,7 +55,7 @@ workflow cram_bam_to_fastq_workflow {
     }
 }
 
-task cram_to_bam {
+task CBTFQ_cram_to_bam {
     input {
         File cram
         File refFasta
