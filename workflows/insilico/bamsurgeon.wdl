@@ -41,8 +41,8 @@ workflow BamsurgeonWorkflow {
         String  workspace_name
     }
 
-    Boolean is_bam = if basename(basefile, ".bam") == basename(basefile, ".bam") + ".bam" then true else false
-    Boolean is_cram = if basename(basefile, ".cram") == basename(basefile, ".cram") + ".cram" then true else false
+    Boolean is_bam = if basename(basefile) == basename(basefile, ".bam") + ".bam" then true else false
+    Boolean is_cram = if basename(basefile) == basename(basefile, ".cram") + ".cram" then true else false
 
     if (is_bam) {
         if (basename(basefile_idx) != (basename(basefile_idx)) + ".bai") {
