@@ -111,7 +111,6 @@ task MergeVcfsTask {
     }
 }
 
-
 task Vcf2BedTask {
     input {
         File   input_vcf

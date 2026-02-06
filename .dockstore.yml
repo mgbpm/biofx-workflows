@@ -405,6 +405,15 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - PRSMix_*
+  - name: KingOrchestrationWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/ibd/KingOrchestration.wdl
+    readMePath: /workflows/ibd/KingOrchestration.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - IBD_*
   - name: KingAnvilWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/anvil/king/King.wdl

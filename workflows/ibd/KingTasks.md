@@ -1,45 +1,10 @@
-# KING
+# KING Tasks
 
-KING (Kinship-based Inference for GWAS) is a relationship inference tool that estimates kinship coefficients for all pairwise relationships. Unrelated pairs can be precisely separated from close relatives with no false positives, with accuracy up to 3rd- or 4th-degree (depending on array or WGS) for --related and --ibdseg analyses, and up to 2nd-degree for --kinship analysis.
-
-The KING orchestration workflow estimates kinship coefficients from VCF files. At least two samples must be used as input to the workflow. Samples for analysis can either be in multiple single-sample VCFs, a single joint VCF, or multiple joint VCFs that do not have overlapping samples. There are four options for running KING: "ibdseg", "kinship", "related", and "duplicate". This workflow will run with the "related" option by default. Each option uses a different algorithm or specifications to estimate kinship. The output file types vary for each flag that can be run with KING. Refer to the original [KING manual](https://www.kingrelatedness.com/manual.shtml) for more information on the differences between the options for running KING.
-
-Note: The "ibdseg" option will fail to produce an output if no IBD segments are found. It can also fail if there are less than 10 samples in the analysis, in which case the "kinship" option is better suited.
-
-## KING Orchestration Input Parameters
-
-An few example JSON input files for running KING are provided in the `example` folder of this repo. The inputs within the JSON files are dummy paths and are not meant to be used as is. Descriptions of each input are outlined below:
-
-| Type | Name | Req'd | Description | Default Value |
-| :--- | :--- | :---: | :--- | :--- |
-| Array[File] | input_vcfs | Yes | VCFs for identifying related individuals; VCFs within the array must not have overlapping samples and should be gzipped | |
-| Array[File] | input_vcfs_idx | Yes | Index files for input_vcfs | |
-| File | input_bed | No | BED file for filtering joint VCFs; Use a BED file to increase efficiency of merging dataset VCFs | |
-| String | output_basename | Yes | Basename for file outputs | |
-| String | run_type | No | Type of flag to be used for running KING; Either "ibdseg", "kinship", "related", or "duplicate" | "related" |
-| Int | degree | No | The maximum degree of relatedness to include in KING output | 3 |
-| Boolean | missing_to_ref | No | If `true`, all missing variant calls will be converted to reference genotypes (0/0) when merging VCFs | false |
-| String | bcftools_docker_image | No | Docker image for bcftools | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
-| String | king_docker_iamge | No | Docker image with KING tools | "uwgac/topmed-master@sha256:0bb7f98d6b9182d4e4a6b82c98c04a244d766707875ddfd8a48005a9f5c5481e" |
-
-## KING Orchestration Output Parameters
-
-| Type | Name | When | Description |
-| :--- | :--- | :--- | :--- |
-| File | kin_output | When either the --kinship or --related flag is used | .kin file that contains kinship coefficients of individuals |
-| File | kin0_output | When either the --kinship or --related flag is used | Second .kin file that contains kinship coefficients of between-family relationship checking |
-| File | seg_output | When the --ibdseg flag is used | .seg file that contains kinship coefficients and inferred relationships of samples |
-| File | con_output | When the --duplicate flag is used | .con file that contains only duplicate individuals |
-
-## KING WDL Tasks
-
-The WDL tasks used by the KING Orchestration workflow are contained within the KingTasks.wdl document within this repo. This includes tasks that manipulate VCFs and tasks that will run KING. Below are the inputs and outputs for each task:
-
-### FilterVcfTask
+## FilterVcfTask
 
 This task will filter the input VCF file to contain only regions within the input BED file. It will then count the number of SNPs and samples in the resulting VCF. If no input BED is given, the task will simply count the number of SNPs and samples in the input VCF.
 
-#### Input Parameters
+### Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
@@ -50,7 +15,7 @@ This task will filter the input VCF file to contain only regions within the inpu
 | Int | addldisk | No | Addition disk space to add to the final runtime disk space in GB | 10 |
 | Int | preemptible | No | Number of retries for VM | 1 |
 
-#### Output Parameters
+### Output Parameters
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
@@ -58,11 +23,11 @@ This task will filter the input VCF file to contain only regions within the inpu
 | Int | num_snps | Always | Number of SNPs in the input bed file |
 | Int | num_samples | Always | Number of samples in the output VCF |
 
-### MergeVcfsTask
+## MergeVcfsTask
 
 This task will merge all the input VCF files into a single VCF. The input VCF files must not have any overlapping samples. If an BED file is supplied, it will simultaneously filter the VCFs to the regions within the BED file. When merging the VCFs, there is an option to convert missing variant calls for any samples to reference calls. Finally, the task will count the number of SNPs and the number of samples in the resulting merged VCF.
 
-#### Input Parameters
+### Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
@@ -76,7 +41,7 @@ This task will merge all the input VCF files into a single VCF. The input VCF fi
 | Int | mem_size | No | Memory for runtime | Defaults to 4; If the size of input VCFs is greater than 10, defaults to 8 |
 | Int | preemptible | No | Number of retries for VM | 2 |
 
-#### Output Parameters
+### Output Parameters
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
@@ -84,11 +49,11 @@ This task will merge all the input VCF files into a single VCF. The input VCF fi
 | Int | num_snps | Always | Number of SNPs in the input bed file |
 | Int | num_samples | Always | Number of samples in the output VCF |
 
-### Vcf2BedTask
+## Vcf2BedTask
 
 This task will convert a VCF to PLINK bed, bim, and fam files for use with KING.
 
-#### Input Parameters
+### Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
@@ -99,7 +64,7 @@ This task will convert a VCF to PLINK bed, bim, and fam files for use with KING.
 | Int | plink_mem | No | Memory to use for PLINK in GB; Actual runtime memory will be twice the size of the input PLINK memory | 4 |
 | Int | preemptible | No | Number of retries for VM | 1 |
 
-#### Output Parameters
+### Output Parameters
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
@@ -107,11 +72,11 @@ This task will convert a VCF to PLINK bed, bim, and fam files for use with KING.
 | File | bim_file | Always | BIM file corresponding to output PLINK BED |
 | File | fam_file | Always | FAM file corresponding to output PLINK BED |
 
-### RunKingTask
+## RunKingTask
 
 This task will run KING, a kinship estimation tool. This tool has several flags to run different relationship inferences, each using a different algorithm or specifications to estimate kinship. The output file types vary for each flag that can be run with KING. Refer to the [KING manual](https://www.kingrelatedness.com/manual.shtml) for further descriptions on each flag.
 
-#### Input Parameters
+### Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
@@ -127,7 +92,7 @@ This task will run KING, a kinship estimation tool. This tool has several flags 
 | Int | mem_size | No | Memory for runtime | 4 |
 | Int | preemptible | No | Number of retries for VM | 2 |
 
-#### Output Parameters
+### Output Parameters
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
@@ -135,10 +100,3 @@ This task will run KING, a kinship estimation tool. This tool has several flags 
 | File | kin0_output | When either the --kinship or --related flag is used | Second .kin file that contains kinship coefficients of between-family relationship checking |
 | File | seg_output | When the --ibdseg flag is used | .seg file that contains kinship coefficients and inferred relationships of samples |
 | File | con_output | When the --duplicate flag is used | .con file that contains only duplicate individuals |
-
-## References
-
-Original KING paper:
-Manichaikul A, Mychaleckyj JC, Rich SS, Daly K, Sale M, Chen WM (2010) Robust relationship inference in genome-wide association studies. Bioinformatics 26(22):2867-2873
-
-KING tutorial and manual: https://www.kingrelatedness.com/manual.shtml

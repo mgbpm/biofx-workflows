@@ -1,6 +1,6 @@
 version 1.0
 
-import "../../../../steps/Utilities.wdl"
+import "../../steps/Utilities.wdl"
 import "KingTasks.wdl"
 
 workflow KingWorkflow {
