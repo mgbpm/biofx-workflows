@@ -1,10 +1,13 @@
 # Running a bamsurgeon workflow
 
 ## Background
-<u>Usage</u>
+
+### Usage
+
 bamsurgeon is a tool that will introduce genomic variants (such as SNV, SV, and indel mutations) into BAM, CRAM, and SAM files. The resulting mutated BAM files can be used to test variant callers.
 
-<u>About the Workflow</u>
+### About the Workflow
+
 Bamsurgeon was originally developed by Adam Ewing. This workflow adapts the original Dockerfile and python scripts to work with a WDL on Terra. All scripts that are used in the tasks of this workflow can be found on the MGBPM-IT Azure DevOps Repo for bamsurgeon.
 
 bamsurgeon has three main scripts, each corresponding to three categories of mutations that can be introduced to BAM files: addsnv.py, addindel.py, and addsv.py. Each of the different mutations has various optional inputs to run the workflow, most of which have defaults listed in the tables under the “Input Variables” section below.
@@ -16,9 +19,9 @@ Note that BWA makes assumptions that all genome reference files are conventional
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | Array[MutationBED] | mutation_bed | Yes | Array of target mutation information in JSON format | |
-| File | basefile | Yes | BAM file to mutate | |
-| File | basefile_idx | Yes | BAM index for BAM to mutate | |
-| String | mutation_type | Yes | Type of mutation to introduce to input BAM file; either "snv", "sv", or "indel" | |
+| File | basefile | Yes | BAM or CRAM file to mutate | |
+| File | basefile_idx | Yes | Index file for BAM or CRAM to mutate | |
+| String | mutation_type | Yes | Type of mutation to introduce; either "snv", "sv", or "indel" | |
 | String | output_basename | Yes | Base name for output files (should include sample name and mutation information) | |
 | File | ref_fasta | Yes | Genome reference file | |
 | File | ref_amb | Yes | Genome reference file | |

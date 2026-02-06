@@ -67,6 +67,29 @@ Additional information for SV duplications:
 - “vaf”: variant allele frequency
 - “num_dupes”: number of times the sequence should be duplicated
 
+## CramToBamTask
+
+### Input Parameters
+
+| Type | Name | Req'd | Description | Default Value |
+| :--- | :--- | :---: | :--- | :--- |
+| File | input_cram | Yes | CRAM to convert to BAM | |
+| File | input_crai | Yes | Index file for index CRAM | |
+| File | ref_fasta | Yes | Reference FASTA file | |
+| File | ref_fai | Yes | Index file for reference FASTA | |
+| String | output_basename | No | Basename for output BAM files | Defaults to basename of input CRAM |
+| String | docker_image | Yes | Docker image with samtools | |
+| Int | addldisk | No | Additional disk space to allocate to VM; is added to the disk space needed for the input files | 100 |
+| Int | mem_size | No | Amount of memory to allocate to VM | 16 |
+| Int | preemptible | No | Number of re-runs allowed for VM | 1 |
+
+### Output Parameters
+
+| Type | Name | When | Description |
+| :--- | :--- | :--- | :--- |
+| File | output_bam | Always | Converted BAM file |
+| File | output_bai | Always | Index for converted BAM file |
+
 ## RunBamsurgeonTask
 
 ### Input Parameters

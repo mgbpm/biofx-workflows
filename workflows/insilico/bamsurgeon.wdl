@@ -41,14 +41,29 @@ workflow BamsurgeonWorkflow {
         String  workspace_name
     }
 
+    Boolean is_bam = if basename(basefile, ".bam") == basename(basefile, ".bam") + ".bam" then true else false
+    Boolean is_cram = if basename(basefile, ".cram") == basename(basefile, ".cram") + ".cram" then true else false
+
+    if (is_bam) {
+        if (basename(basefile_idx) != (basename(basefile_idx)) + ".bai") {
+            String BamIndexError = "BAM index should have BAM file name + '.bai'"
+        }
+
+        Array[String] bam_filetypes = ["bam", "bai"]
+    }
+    if (is_cram) {
+        if (basename(basefile_idx) != (basename(basefile_idx)) + ".crai") {
+            String CramIndexError = "CRAM index should have CRAM file name + '.crai'"
+        }
+
+        Array[String] cram_filetypes = ["cram", "crai"]
+    }
+
     if ((mutation_type != "snv") && (mutation_type != "indel") && (mutation_type != "sv")) {
         String InputParameterError = "Acceptable mutation types to introduce are 'snv', 'indel' or 'sv.'"
     }
-    if (basename(basefile_idx) != (basename(basefile_idx)) + ".bai") {
-        String BamIndexNameError = "BAM index should have BAM name + '.bai'"
-    }
-
-    String error_message = select_first([InputParameterError, BamIndexNameError, ""])
+    
+    String error_message = select_first([BamIndexError, CramIndexError, InputParameterError, ""])
     if (error_message != "") {
         call Utilities.FailTask as InputFailure {
             input:
@@ -58,25 +73,37 @@ workflow BamsurgeonWorkflow {
 
     if (error_message == "") {
         String file_location = sub("" + basefile, "/" + basename(basefile), "")
+        Array[String] file_types = select_first([bam_filetypes, cram_filetypes])
 
         if (("s3" + sub(file_location, "s3", "")) == file_location) {
             call FileUtils.FetchFilesTask as FetchFiles {
                 input:
                     data_location = file_location,
                     recursive = true,
-                    file_types = [ "bam", "bai" ],
-                    file_match_keys = [ basename(basefile, ".bam") ],
+                    file_types = file_types,
+                    file_match_keys = [ basename(basefile, "."  + file_types[0]) ],
                     docker_image = orchutils_docker_image,
                     gcp_project_id = gcp_project_id,
                     workspace_name = workspace_name
             }
         }
 
+        if (is_cram) {
+            call InsilicoTasks.CramToBamTask as ConvertCram {
+                input:
+                    input_cram = select_first([FetchFiles.cram]),
+                    input_crai = select_first([FetchFiles.crai]),
+                    ref_fasta = ref_fasta,
+                    ref_fai = ref_fai,
+                    docker_image = samtools_docker_image
+            }
+        }
+
         call InsilicoTasks.RunBamsurgeonTask as RunBamsurgeon {
             input:
                 mutation_bed = mutation_bed,
-                input_bam = select_first([FetchFiles.bam, basefile]),
-                input_bai = select_first([FetchFiles.bai, basefile_idx]),
+                input_bam = select_first([ConvertCram.output_bam, FetchFiles.bam, basefile]),
+                input_bai = select_first([ConvertCram.output_bai, FetchFiles.bai, basefile_idx]),
                 ref_fasta = ref_fasta,
                 ref_amb = ref_amb,
                 ref_ann = ref_ann,

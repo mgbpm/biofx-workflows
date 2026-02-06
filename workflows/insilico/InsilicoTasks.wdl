@@ -18,6 +18,43 @@ struct MutationBED {
     String? trans_from_chr
 }
 
+task CramToBamTask {
+    input {
+        File   input_cram
+        File   input_crai
+        File   ref_fasta
+        File   ref_fai
+        String output_basename = sub(basename(input_cram), ".cram", "")
+        String docker_image
+        Int    addldisk        = 100 
+        Int    mem_size        = 16
+        Int    preemptible     = 1
+    }
+
+    Int cram_size       = ceil(size(input_cram, "GB") * 3) + ceil(size(input_crai, "GB"))
+    Int ref_size        = ceil(size(ref_fasta, "GB") + size(ref_fai, "GB"))
+    Int final_disk_size = cram_size + ref_size + addldisk
+
+    command <<<
+        set -euxo
+
+        samtools view -b -T "~{ref_fasta}" "~{input_cram}" > "~{output_basename}.bam"
+        samtools index -b "~{output_basename}.bam" "~{output_basename}.bam.bai"
+    >>>
+
+    runtime {
+        docker: docker_image
+        disks: "local-disk ~{final_disk_size} SSD"
+        memory: "~{mem_size}GB"
+        preemptible: preemptible
+    }
+
+    output {
+        File output_bam = "~{output_basename}.bam"
+        File output_bai = "~{output_basename}.bam.bai"
+    }
+}
+
 task RunBamsurgeonTask {
     input {
         Array[MutationBED] mutation_bed
