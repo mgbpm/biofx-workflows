@@ -331,6 +331,7 @@ workflows:
   - name: PRSMakeAdjustmentModel
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/MakeModelWorkflow.wdl
+    readMePath: /workflows/prs/main_wdls/MakeModelWorkflow.md
     filters:
       branches:
         - /.+/
@@ -339,6 +340,7 @@ workflows:
   - name: RunPRS
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/RunPRSWorkflow.wdl
+    readMePath: /workflows/prs/main_wdls/RunPRSWorkflow.md
     filters:
       branches:
         - /.+/
@@ -347,6 +349,7 @@ workflows:
   - name: PreparePrsInputs
     subclass: WDL
     primaryDescriptorPath: /workflows/prs/main_wdls/PrepareInputsWorkflow.wdl
+    readMePath: /workflows/prs/main_wdls/PrepareInputsWorkflow.md
     filters:
       branches:
         - /.+/
