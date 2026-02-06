@@ -45,14 +45,14 @@ workflow BamsurgeonWorkflow {
     Boolean is_cram = if basename(basefile) == basename(basefile, ".cram") + ".cram" then true else false
 
     if (is_bam) {
-        if (basename(basefile_idx) != (basename(basefile_idx)) + ".bai") {
+        if (basename(basefile_idx) != (basename(basefile) + ".bai")) {
             String BamIndexError = "BAM index should have BAM file name + '.bai'"
         }
 
         Array[String] bam_filetypes = ["bam", "bai"]
     }
     if (is_cram) {
-        if (basename(basefile_idx) != (basename(basefile_idx)) + ".crai") {
+        if (basename(basefile_idx) != (basename(basefile) + ".crai")) {
             String CramIndexError = "CRAM index should have CRAM file name + '.crai'"
         }
 
