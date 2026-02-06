@@ -17,7 +17,7 @@ is compatible with the remaining input parameters.
 | Boolean | resuming | No | whether this run is the resumption of an earlier run | false |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 | Array[File] | query_vcfs | Yes | array of gz-compressed VCF files of the samples to be scored | |
-| String | prs_docker_image | No | docker image equipped with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515" |
+| String | prs_docker_image | No | Docker image equipped with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515" |
 
 ## Output Parameters
 
@@ -25,7 +25,7 @@ is compatible with the remaining input parameters.
 | :--- | :--- | :--- | :--- |
 | File | regions | Always | Regions file used to generate reference VCF |
 | File | kept_pca_variants | Always | File listing the retained and renamed PCA variants |
-| Array[File] | renamed_weights_files | Always | Weights files with renamed variant IDs |
+| Array[File] | renamed_variant_weights | Always | Weights files with renamed variant IDs |
 | Array[File] | renamed_query_vcfs | Always | Query VCFs with renamed variant IDs |
 | File | reference_vcf | Always | Generated refernce VCF |
 | File | reference_tbi | Always | Index for generated reference VCF |
