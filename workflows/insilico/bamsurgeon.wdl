@@ -91,8 +91,8 @@ workflow BamsurgeonWorkflow {
         if (is_cram) {
             call InsilicoTasks.CramToBamTask as ConvertCram {
                 input:
-                    input_cram = select_first([FetchFiles.cram]),
-                    input_crai = select_first([FetchFiles.crai]),
+                    input_cram = select_first([FetchFiles.cram, basefile]),
+                    input_crai = select_first([FetchFiles.crai, basefile_idx]),
                     ref_fasta = ref_fasta,
                     ref_fai = ref_fai,
                     docker_image = samtools_docker_image
