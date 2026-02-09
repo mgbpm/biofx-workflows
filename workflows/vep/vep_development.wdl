@@ -34,8 +34,6 @@ workflow VEPWorkflow {
 
     # If a local cache is available, run with the cache
     if (run_cache) {
-
-
         call VEPCacheTask {
             input:
                 input_vcf = input_vcf,
@@ -50,7 +48,6 @@ workflow VEPWorkflow {
 
     output {
         File? database_output = VEPDatabaseTask.output_vcf_file
-        File? cache_output_vcf = VEPCacheTask.output_vcf_file
         File? cache_output_vcf = VEPCacheTask.output_vcf_file
     }
     meta {
