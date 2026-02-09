@@ -201,12 +201,12 @@ task IndexBAMTask {
         File   input_bam
         String output_basename = sub(basename(input_bam), ".bam", "")
         String docker_image
-        Int    addldisk        = 10
-        Int    mem_size        = 4
+        Int    addldisk        = 25
+        Int    mem_size        = 8
         Int    preemptible     = 1
     }
 
-    Int bam_size        = ceil(size(input_bam, "GB") * 3)
+    Int bam_size        = ceil(size(input_bam, "GB") * 4)
     Int final_disk_size = bam_size + addldisk
 
     command <<<

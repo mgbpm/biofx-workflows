@@ -161,8 +161,8 @@ Additional information for SV duplications:
 | File | input_bam | Yes | BAM file for sorting and indexing | |
 | String | output_basename | No | Basename for output index and sorted BAM | Defaults to the basename of in the input BAM file |
 | String | docker_image | Yes | Docker image containing samtools | |
-| Int | addldisk | No | Additional disk space to allocate to VM; is added to the disk space needed for the input files | 10 |
-| Int | mem_size | No | Amount of memory to allocate to VM | 4 |
+| Int | addldisk | No | Additional disk space to allocate to VM; is added to the disk space needed for the input files | 25 |
+| Int | mem_size | No | Amount of memory to allocate to VM | 8 |
 | Int | preemptible | No | Number of re-runs allowed for VM | 1 |
 
 ### Output Parameters
