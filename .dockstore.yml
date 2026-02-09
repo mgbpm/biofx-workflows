@@ -330,7 +330,7 @@ workflows:
         - Glimpse2SplitReference_*
   - name: VEPAnnotateVCF.wdl
     subclass: WDL
-    primaryDescriptorPath: /workflows/etc/VEPAnnotateVCF.wdl
+    primaryDescriptorPath: /workflows/vep/VEPAnnotateVCF.wdl
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
