@@ -467,3 +467,11 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - CRAMOrBAMToFASTQ_*
+  - name: VEPAnnotateVCF.wdl
+    subclass: WDL
+    primaryDescriptorPath: /workflows/vep/VEPAnnotateVCF.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - VEPAnnotateVCF.wdl*
