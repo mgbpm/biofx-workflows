@@ -475,3 +475,39 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - VEPAnnotateVCF.wdl*
+  - name: CTBHaplotypeCallerGvcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/CTBHaplotypeCallerGvcf.wdl
+    readMePath: /workflows/joint_calling/CTBHaplotypeCallerGvcf.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - CTBHaplotypeCallerGvcf_*
+  - name: JointCalling
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/JointCalling.wdl
+    readMePath: /workflows/joint_calling/JointCalling.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - JointCalling_*
+  - name: MergeCrams
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/MergeCrams.wdl
+    readMePath: /workflows/joint_calling/MergeCrams.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - MergeCrams_*
+  - name: ReblockGVCFandPush
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/ReblockGVCFandPush.wdl
+    readMePath: /workflows/joint_calling/ReblockGVCFandPush.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ReblockGVCFandPush_*
