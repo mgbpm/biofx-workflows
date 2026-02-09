@@ -328,11 +328,11 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - Glimpse2SplitReference_*
-  - name: VEP_development
+  - name: VEPAnnotateVCF.wdl
     subclass: WDL
-    primaryDescriptorPath: /workflows/vep/vep_development.wdl
+    primaryDescriptorPath: /workflows/etc/VEPAnnotateVCF.wdl
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - VEP_development*
+        - VEPAnnotateVCF.wdl*
