@@ -460,8 +460,8 @@ workflows:
         - GCSToBaseSpaceUpload_*
   - name: CRAMOrBAMToFASTQWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/etc/CRAMOrBAMToFASTQWorkflow.wdl
-    readMePath: /workflows/etc/CRAMOrBAMToFASTQWorkflow.md
+    primaryDescriptorPath: /steps/CRAMOrBAMToFASTQWorkflow.wdl
+    readMePath: /steps/CRAMOrBAMToFASTQWorkflow.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
