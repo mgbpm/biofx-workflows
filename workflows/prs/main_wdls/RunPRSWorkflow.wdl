@@ -17,7 +17,7 @@ workflow RunPrsWorkflow {
         String?      ref_source
         String?      ref_target
         String       condition_code
-        Boolean      norename = false
+        Boolean      norename            = false
         String       prs_docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
         String       ubuntu_docker_image = "ubuntu:latest"
         String       workspace
@@ -44,7 +44,7 @@ workflow RunPrsWorkflow {
                     reference_vcf = PrepareInputs.reference_vcf,
                     query_vcf = PrepareInputs.renamed_query_vcfs[0],
                     score_weights = select_first([score_weights]),
-                    norename = norename,
+                    norename = true,
                     ubuntu_docker_image = ubuntu_docker_image
             }
         }
@@ -56,7 +56,7 @@ workflow RunPrsWorkflow {
                     pca_variants = select_first([PrepareInputs.kept_pca_variants]),
                     reference_vcf = PrepareInputs.reference_vcf,
                     query_vcf = PrepareInputs.renamed_query_vcfs[0],
-                    norename = norename,
+                    norename = true,
                     ubuntu_docker_image = ubuntu_docker_image
             }
         }
