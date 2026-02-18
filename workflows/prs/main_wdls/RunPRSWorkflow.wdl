@@ -35,6 +35,9 @@ workflow RunPrsWorkflow {
                 query_vcfs = [query_vcf],
                 prs_docker_image = prs_docker_image
         }
+
+        Boolean rename_done = true
+
         if (defined(score_weights)) {
             call MakeModelWorkflow.MakeModelWorkflow as MakeMixModel {
                 input:
@@ -44,7 +47,7 @@ workflow RunPrsWorkflow {
                     reference_vcf = PrepareInputs.reference_vcf,
                     query_vcf = PrepareInputs.renamed_query_vcfs[0],
                     score_weights = select_first([score_weights]),
-                    norename = true,
+                    norename = rename_done,
                     ubuntu_docker_image = ubuntu_docker_image
             }
         }
@@ -56,19 +59,20 @@ workflow RunPrsWorkflow {
                     pca_variants = select_first([PrepareInputs.kept_pca_variants]),
                     reference_vcf = PrepareInputs.reference_vcf,
                     query_vcf = PrepareInputs.renamed_query_vcfs[0],
-                    norename = true,
+                    norename = rename_done,
                     ubuntu_docker_image = ubuntu_docker_image
             }
         }
     }
     File model = select_first([adjustment_model_manifest, MakeMixModel.model_manifest, MakeModel.model_manifest])
     AdjustmentModelData model_data = read_json(model)
+    Boolean norename_ = select_first([rename_done, norename])
 
     call RawScoreWorkflow.RawScoreWorkflow as RawScores {
         input:
             input_vcf = select_first([model_data.query_file, query_vcf]),
             adjustment_model_manifest = model,
-            norename = norename
+            norename = norename_
     }
 
     if (defined(model_data.score_weights)) {
