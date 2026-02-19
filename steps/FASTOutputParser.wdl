@@ -1,6 +1,6 @@
 version 1.0
 
-worflow FASTOutputParserWorkflow {
+workflow FASTOutputParser {
     input {
         File fast_output_file
         String sample_type = "S"
