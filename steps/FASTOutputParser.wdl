@@ -29,8 +29,8 @@ workflow FASTOutputParser {
     }
 
     output {
-        File parsed_report = FASTOutputParserTask.parsed_report
-        File? nva_report = FASTOutputParserTask.nva_report
+        File? parsed_report = FASTOutputParserTask.parsed_report
+        File nva_report = FASTOutputParserTask.nva_report
     }
 }
 
