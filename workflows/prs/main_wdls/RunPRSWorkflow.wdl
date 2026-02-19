@@ -99,11 +99,11 @@ workflow RunPrsWorkflow {
         Array[File]  raw_scores                = RawScores.raw_scores
         File?        mix_score                 = MixScores.mix_score
         File         adjusted_score            = AdjustScores.adjusted_scores
-        File?        output_model_manifest     = select_first([MakeMixModel.model_manifest, MakeModel.model_manifest])
+        File?        model_manifest            = select_first([MakeMixModel.model_manifest, MakeModel.model_manifest, adjustment_model_manifest])
         File?        kept_pca_variants         = PrepareInputs.kept_pca_variants
         Array[File]? renamed_variant_weights   = PrepareInputs.renamed_variant_weights
         File?        reference_vcf             = PrepareInputs.reference_vcf
-        File?        renamed_query_vcf         = select_first([PrepareInputs.renamed_query_vcfs])[0]
+        Array[File]? renamed_query_vcf         = PrepareInputs.renamed_query_vcfs
     }
 }
 

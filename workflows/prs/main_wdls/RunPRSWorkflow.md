@@ -24,8 +24,8 @@
 | File | raw_scores | Always | Unadjusted PRS for the samples in the query VCF |
 | File | mix_score | If PRSmix score is desired | Weighted average of PRS scores |
 | File | adjusted_scores | Always | Adjusted PRS single weights score or mix score for the samples in the query VCF |
-| File | output_model_manifest | If an input model manifest is not given | Description of the computed model's parameters in JSON format; (this file can be used as one of the inputs for the ScoreQueryVcf workflow) |
+| File | model_manifest | If an input model manifest is not given | Description of the computed model's parameters in JSON format; (this file can be used as one of the inputs for the ScoreQueryVcf workflow) |
 | File | kept_pca_variants | If a model manifest is created | File listing the retained and renamed PCA variants |
 | Array[File] | renamed_variant_weights | If a model manifest is created | Weights files with renamed variant IDs |
 | File | reference_vcf | If a model manifest is created | Generated refernce VCF |
-| Array[File] | renamed_query_vcf | If a model manifest is created| Query VCF with renamed variant IDs |
+| Array[File] | renamed_query_vcf | If a model manifest is created | Query VCF with renamed variant IDs |
