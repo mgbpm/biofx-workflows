@@ -511,3 +511,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - ReblockGVCFandPush_*
+  - name: FASTOutputParser
+    subclass: WDL
+    primaryDescriptorPath: /steps/FASTOutputParser.wdl
+    readMePath: /steps/FASTOutputParser.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - FASTOutputParser_*
