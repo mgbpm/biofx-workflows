@@ -122,9 +122,9 @@ task CheckWeightsCoverSitesUsedInTraining {
   >>>
 
   runtime {
-    docker : "~{docker_image}"
+    docker: "~{docker_image}"
     disks: "local-disk ~{final_disk_size} SSD"
-    memory : "~{mem_size} GB"
+    memory: "~{mem_size} GB"
     preemptible: preemptible
   }
 }
