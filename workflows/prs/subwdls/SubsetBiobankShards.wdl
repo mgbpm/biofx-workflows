@@ -13,13 +13,13 @@ workflow SubsetShardsWorkflow {
         File?    samples
         File?    script
         Int      nbatches     = 500
-        String   orchutils_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
+        String   sharding_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/sharding:0.1.0"
     }
 
     if (defined(shardsbase)) {
         call FetchSentinels {
             input:
-                docker_image = orchutils_docker_image,
+                docker_image = sharding_docker_image,
                 shardsbase   = select_first([shardsbase]),
                 workspace    = workspace
         }
@@ -27,7 +27,7 @@ workflow SubsetShardsWorkflow {
 
     call CheckInputsResolveShardsbaseBatchShards {
         input:
-            docker_image  = orchutils_docker_image,
+            docker_image  = sharding_docker_image,
             noregions     = !defined(regions),
             nosamples     = !defined(samples),
             sourcebase    = sourcebase,
@@ -46,7 +46,7 @@ workflow SubsetShardsWorkflow {
     scatter (batch in batches) {
         call SubsetShards {
             input:
-                docker_image = orchutils_docker_image,
+                docker_image = sharding_docker_image,
                 script       = script,
                 regions      = regions,
                 samples      = samples,
@@ -70,7 +70,7 @@ workflow SubsetShardsWorkflow {
 
             call GetTotalSize {
                 input:
-                    docker_image = orchutils_docker_image,
+                    docker_image = sharding_docker_image,
                     basedir      = basedir,
                     workspace    = workspace,
                     sequencing   = SubsetShards.sequencing
@@ -78,7 +78,7 @@ workflow SubsetShardsWorkflow {
 
             call ConcatenateShards {
                 input:
-                    docker_image = orchutils_docker_image,
+                    docker_image = sharding_docker_image,
                     disk_size    = 3 * GetTotalSize.footprint + 10,
                     basedir      = basedir,
                     shards       = spec.shards,
@@ -92,7 +92,7 @@ workflow SubsetShardsWorkflow {
         if (dodelete) {
             call DeleteShards {
                 input:
-                    docker_image = orchutils_docker_image,
+                    docker_image = sharding_docker_image,
                     shardsbase   = params.shardsbase,
                     workspace    = workspace,
                     sequencing   = ConcatenateShards.sequencing
