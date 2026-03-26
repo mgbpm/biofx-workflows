@@ -27,7 +27,7 @@ workflow BiobankScrub {
     Boolean  force                   = false
     Int      scrub_memory            = 26   # in GB
     Int      scrub_disk_size         = 375  # in GB
-    String   docker_image            = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:20260320"
+    String   docker_image            = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/biobank-scrub:20260326"
   }
 
   call BiobankUtils.ShowEnvironment as ShowEnvironment {
