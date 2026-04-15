@@ -102,9 +102,8 @@ Below is a flowchart that outlines the workflow step-by-step:
 | Type        | Name                | Required | Description | Default Value |
 | :---------- | :------------------ | :------: | :---------- | :--- |
 | File        | input_vcf           | Yes      | VCF to score | |
-| Array[File] | model_manifests     | Yes      | Adjustment model manifest file from MakeAdjustmentModelWorkflow WDL | |
+| File | model_manifest     | Yes      | Adjustment model manifest file from PrsModel WDL | |
 | Boolean     | norename            | No       | If `true`, do not rename chromosomes to have chr prefix | false |
-| Boolean     | perform_adjustment  | No       | If `true`, use ancestry adjustment model to adjust scores | true |
 | File        | renaming_lookup     | No       | Mapping file for renaming chromosomes | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
 | String      | ubuntu_docker_image | No       | Ubuntu Docker image | "ubuntu:latest" |
 
@@ -112,9 +111,9 @@ Below is a flowchart that outlines the workflow step-by-step:
 
 | Type        | Name               | When   | Description |
 | :---------- | :----------------- | :----- | :---------- |
-| Array[File] | prs_raw_scores     | Always | PRS raw scores |
-| File        | prs_mix_raw_score  | If a score weights file exists in the model manifest | PRS mix raw scores |
-| File        | prs_adjusted_score | If perform_adjustment is `true` | PRS scores or mix scores adjusted with population models |
+| Array[File] | raw_scores     | Always | PRS raw scores |
+| File        | mix_score  | If a score weights file exists in the model manifest | PRS mix raw scores |
+| File        | adjusted_score | If perform_adjustment is `true` | PRS scores or mix scores adjusted with population models |
 
 ## References
 

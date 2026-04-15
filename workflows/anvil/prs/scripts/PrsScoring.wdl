@@ -9,52 +9,48 @@ import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/main/
 workflow PrsScoringWorkflow {
     input {
         File input_vcf
-        Array[File] model_manifests
+        File model_manifest
         Boolean norename = false
-        Boolean perform_adjustment = true
         File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
         String ubuntu_docker_image = "ubuntu:latest"
     }
 
-    scatter (i in range(length(model_manifests))) {
-        AdjustmentModelData model_data = read_json(model_manifests[i])
+    AdjustmentModelData model_data = read_json(model_manifest)
 
-        String condition_code = model_data.condition_code
+    String condition_code = model_data.condition_code
 
-        call RawScoreWorkflow.RawScoreWorkflow as RawScores {
+    call RawScoreWorkflow.RawScoreWorkflow as RawScores {
+        input:
+            input_vcf = input_vcf,
+            adjustment_model_manifest = model_manifest,
+            norename = norename,
+            renaming_lookup = renaming_lookup
+    }
+
+    if (defined(model_data.score_weights)) {
+        call MixScoreWorkflow.MixScoreWorkflow as MixScores {
             input:
-                input_vcf = input_vcf,
-                adjustment_model_manifest = model_manifests[i],
-                norename = norename,
-                renaming_lookup = renaming_lookup
-        }
-
-        if (defined(model_data.score_weights)) {
-            call MixScoreWorkflow.MixScoreWorkflow as MixScores {
-                input:
-                    output_basename = condition_code,
-                    raw_scores = RawScores.prs_raw_scores,
-                    score_weights = select_first([model_data.score_weights])
-            }
-        }
-
-        if (perform_adjustment) {
-            call AdjustScoreWorkflow.AdjustScoreWorkflow as PerformPCA {
-                input:
-                    output_basename = condition_code,
-                    input_vcf = input_vcf,
-                    adjustment_model_manifest = model_manifests[i],
-                    prs_raw_scores = select_first([MixScores.prs_mix_raw_score, RawScores.prs_raw_scores]),
-                    norename = norename,
-                    renaming_lookup = renaming_lookup
-            }
+                output_basename = condition_code,
+                raw_scores = RawScores.prs_raw_scores,
+                score_weights = select_first([model_data.score_weights])
         }
     }
 
+    call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScores {
+        input:
+            output_basename = condition_code,
+            input_vcf = input_vcf,
+            adjustment_model_manifest = model_manifest,
+            prs_raw_scores = select_first([MixScores.prs_mix_raw_score, RawScores.prs_raw_scores[0]]),
+            norename = norename,
+            renaming_lookup = renaming_lookup
+    }
+
+
     output {
-        Array[Array[File]] prs_raw_scores = RawScores.prs_raw_scores
-        Array[File?] prs_mix_raw_score = MixScores.prs_mix_raw_score
-        Array[File?] prs_adjusted_score = PerformPCA.adjusted_scores
+        Array[File] raw_scores     = RawScores.prs_raw_scores
+        File?       mix_score      = MixScores.prs_mix_raw_score
+        File?       adjusted_score = AdjustScores.adjusted_scores
     }
 }
 
