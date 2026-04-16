@@ -32,7 +32,7 @@ workflow MixOrchestrationWorkflow {
         String      samtools_docker_image        = "biocontainers/samtools:v1.9-4-deb_cv1"
         String      ubuntu_docker_image          = "ubuntu:latest"
         String      gcp_project_id               = "mgb-lmm-gcp-infrast-1651079146"
-        String      workspace_name
+        String      workspace
     }
 
     call FileUtils.FetchFilesTask as FetchFiles {
@@ -43,7 +43,7 @@ workflow MixOrchestrationWorkflow {
             file_match_keys = [subject_id, sample_id],
             docker_image = orchutils_docker_image,
             gcp_project_id = gcp_project_id,
-            workspace_name = workspace_name,
+            workspace_name = workspace,
             disk_size = 75
     }
 
@@ -112,6 +112,7 @@ workflow MixOrchestrationWorkflow {
                 adjustment_model_manifest = model_manifests[i],
                 condition_code = condition_code,
                 norename = false,
+                workspace = workspace,
                 ubuntu_docker_image = ubuntu_docker_image
         }
     }

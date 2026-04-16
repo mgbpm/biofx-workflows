@@ -31,7 +31,7 @@ This workflow is also designed to be used with Sample Tracker.
 | String | python_docker_image | No | Docker image for Python | "python:3.14.2" |
 | String | samtools_docker_image | No | Docker image for samtools | "biocontainers/samtools:v1.9-4-deb_cv1" |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
-| String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
+| String | workspace | Yes | The name of the current workspace (for secret retrieval) | |
 
 ## Output Parameters
 
