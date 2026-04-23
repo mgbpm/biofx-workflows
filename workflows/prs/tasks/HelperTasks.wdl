@@ -10,7 +10,7 @@ task GetBaseMemory {
     Int    preemptible  = 1
   }
 
-  Int     file_size         = 2 * ceil(size(vcf, "GB"))
+  Int     file_size         = if defined(vcf) then 2 * ceil(size(vcf, "GB")) else 10
   Int     final_disk_size   = addldisk + file_size
   Boolean ERROR             = defined(vcf) == defined(nvariants)
   String  OUTPUTDIR         = "OUTPUT"
@@ -21,16 +21,12 @@ task GetBaseMemory {
   set -o errexit
   set -o pipefail
   set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
 
   if ~{if ERROR then "true" else "false"}
   then
       printf -- 'INTERNAL ERROR: too few or too many arguments specified' >&2
       exit 1
   fi
-
-  # --------------------------------------------------------------------------
 
   mkdir --verbose --parents '~{OUTPUTDIR}'
 
@@ -61,11 +57,11 @@ task RenameChromosomesInTsv {
   input {
     File    tsv
     Boolean skipheader
-    File    lookup      = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
-    String docker_image = "python:3.11"
-    Int    addldisk     = 20
-    Int    mem_size     = 2
-    Int    preemptible  = 1
+    File    lookup       = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    String  docker_image = "python:3.11"
+    Int     addldisk     = 20
+    Int     mem_size     = 2
+    Int     preemptible  = 1
   }
 
   Int    file_size       = 2 * ceil(size(tsv, "GB"))
@@ -163,12 +159,6 @@ task RenameChromosomesInVcf {
 
   command <<<
   set -o errexit
-  # set -o pipefail
-  # set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
-
-  # ---------------------------------------------------------------------------
 
   mkdir --verbose --parents "$( dirname '~{RENAMED}' )"
 
