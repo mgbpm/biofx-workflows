@@ -5,12 +5,10 @@ import "../../steps/HaplotypeCallerGvcfGATK4.wdl"
 import "../pgxrisk/PGxWorkflow.wdl"
 import "../pgxrisk/RiskAllelesWorkflow.wdl"
 import "../../steps/DepthOfCoverage.wdl"
-import "../../steps/AlamutBatch.wdl"
 import "../../steps/VCFUtils.wdl"
-import "../../steps/FASTUtils.wdl"
+import "../../steps/GDHIngestAndFilter.wdl"
 import "../../steps/QCEval.wdl"
 import "../../steps/IgvReport.wdl"
-import "../../steps/FASTOutputParser.wdl"
 import "../../steps/Utilities.wdl"
 
 workflow BgwgsWorkflow {
@@ -237,22 +235,6 @@ workflow BgwgsWorkflow {
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
-        # vcf filter inputs
-        File target_roi_bed = "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed"
-        # alamut inputs
-        File alamut_db = "gs://lmm-reference-data/annotation/alamut/alamut_db-1.5-2022.01.12.db"
-        File? alamut_fields_tsv
-        String alamut_db_name = "alamut_db"
-        String alamut_server = "a-ht-na.interactive-biosoftware.com"
-        String alamut_port = "80"
-        String alamut_user_secret_name = "alamut-batch-ini-user"
-        Int alamut_queue_limit = 4
-        String alamut_queue_folder = "gs://biofx-task-queue/alamut"
-        Int alamut_queue_wait_limit_hrs = 16
-        String alamut_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630"
-        Boolean alamut_save_working_files = false
-        String alamut_anno_src_id = "228"
-        String alamut_anno_min_age = "P6M"
         # qceval inputs
         String qceval_project_type = "BGE_DRAGEN_TP_BINNING"
         String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20250923"
@@ -263,23 +245,17 @@ workflow BgwgsWorkflow {
         File gnomad_coverage_file_idx = "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz.tbi"
         Array[String] gnomad_headers = [ "##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description=\"Read depth of GnomAD Genome\">" ]
         String gnomad_column_list = "CHROM,POS,INFO/DP_gnomadG"
-        # FAST loading inputs
-        Boolean has_haploid_sites = false
-        String sample_data_load_config_name = "Sample_vcf_BGE"
-        String gnomad_data_load_config_name = "Coverage"
-        String alamut_data_load_config_name = "Alamut"
-        Array[String] fast_annotated_sample_data_regions
-        Array[String]? fast_annotated_sample_data_scripts
-        String fast_annotated_sample_data_saved_filter_name
-        Int fast_data_load_wait_interval_secs = 300
-        Int fast_data_load_wait_max_intervals = 144
-        Int fast_adi_wait_interval_secs = 600
-        Int fast_adi_wait_max_intervals = 144
+        # GDH ingest and filter
+        String gdh_institution = "MGBPM"
+        String gdh_project = "Clinical"
+        String vcf_file_stage_name = "biofx_pipelines"
+        String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
+        String filter_name_or_code
+        String? pipeline_run_id
         # Reporting steps
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250923"
+        String gdh_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gdhoutputparser:dev"
         File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
-        String fast_parser_sample_type = "S"
         Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]
         Array[File] igv_track_index_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz.tbi" ]
     }
@@ -454,15 +430,6 @@ workflow BgwgsWorkflow {
         }
     }
 
-    # Filter called VCF to target region
-    call VCFUtils.FilterVCFWithBEDTask {
-        input:
-            input_vcf = sample_vcf,
-            input_bed = target_roi_bed,
-            output_basename = subject_id + "_" + sample_id + ".target",
-            docker_image = "~{bcftools_docker_image}"
-    }
-
 
     # The assignments at the end of the conditional block below ensure
     # that `ref_fasta` and `ref_fasta_index` are passed to
@@ -492,7 +459,7 @@ workflow BgwgsWorkflow {
     # Annotate target VCF with QCEval INFO field
     call QCEval.QCEvalTask {
         input:
-            input_vcf = FilterVCFWithBEDTask.output_vcf_gz,
+            input_vcf = sample_vcf,
             project_type = qceval_project_type,
             output_basename = subject_id + "_" + sample_id + ".qceval",
             reference_fasta = maybe_reference_fasta,
@@ -502,45 +469,11 @@ workflow BgwgsWorkflow {
             docker_image = qceval_docker_image
     }
 
-    # Pre-filter the VCF file to input to Alamut to remove
-    #  variants that already have Alamut annotations
-    call FASTUtils.FASTRemoveAlreadyAnnotatedFromVCFTask {
-        input:
-            input_vcf = FilterVCFWithBEDTask.output_vcf_gz,
-            output_basename = subject_id + "_" + sample_id + ".alamutprefilter",
-            reference_build = reference_build,
-            annotation_source_id = alamut_anno_src_id,
-            annotation_min_age = alamut_anno_min_age,
-            gcp_project_id = gcp_project_id,
-            workspace_name = workspace_name,
-            docker_image = orchutils_docker_image
-    }
-
-    # Annotate target VCF with Alamut
-    call AlamutBatch.AlamutBatchTask {
-        input:
-            input_vcf = FASTRemoveAlreadyAnnotatedFromVCFTask.output_vcf_gz,
-            output_basename = subject_id + "_" + sample_id + ".alamut",
-            alamut_db = alamut_db,
-            alamut_fields_tsv = alamut_fields_tsv,
-            alamut_db_name = alamut_db_name,
-            alamut_server = alamut_server,
-            alamut_port = alamut_port,
-            reference_build = reference_build,
-            gcp_project_id = gcp_project_id,
-            alamut_user_secret_name = alamut_user_secret_name,
-            alamut_queue_limit = alamut_queue_limit,
-            alamut_queue_folder = alamut_queue_folder,
-            alamut_queue_wait_limit_hrs = alamut_queue_wait_limit_hrs,
-            docker_image = alamut_docker_image,
-            output_working_files = alamut_save_working_files
-    }
-
     # Annotated target VCF with Gnomad coverage
     if (do_gnomad) {
         call VCFUtils.AnnotateVCFTask as AnnotateGnomadTask {
             input:
-                input_vcf = FilterVCFWithBEDTask.output_vcf_gz,
+                input_vcf = QCEvalTask.output_vcf_gz,
                 output_basename = subject_id + "_" + sample_id + ".gnomad",
                 annotations_file = gnomad_coverage_file,
                 annotations_idx_file = gnomad_coverage_file_idx,
@@ -550,177 +483,56 @@ workflow BgwgsWorkflow {
         }
     }
 
-    # Load sample data to FAST
-    call FASTUtils.FASTDataLoadTask as QCEvalLoadTask {
+    # Load sample data to GDH and run filtration
+    call GDHIngestAndFilter.GDHIngestAndFilterTask {
         input:
+            subject_id = subject_id,
+            sample_id = sample_id,
+            gdh_institution = gdh_institution,
+            gdh_project = gdh_project,
+            vcf_file = select_first([AnnotateGnomadTask.output_vcf_gz, QCEvalTask.output_vcf_gz]),
+            vcf_file_stage_name = vcf_file_stage_name,
+            vcf_file_stage_gspath = vcf_file_stage_gspath,
             reference_build = reference_build,
-            vcf_file = QCEvalTask.output_vcf_gz,
-            has_haploid_sites = has_haploid_sites,
-            sample_data_name = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name,
-            lab_batch_name = sample_id,
-            data_load_config_name = sample_data_load_config_name,
-            data_load_target = "SAMPLE_DATA",
-            annotation_record_ts = "now",
+            filter_name_or_code = filter_name_or_code,
+            pipeline_run_id = pipeline_run_id,
+            timeout_minutes = 90,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
             docker_image = orchutils_docker_image
     }
 
-    # Load Alamut annotations to FAST
-    call FASTUtils.FASTDataLoadTask as AlamutLoadTask {
+    call GDHIngestAndFilter.GDHOutputParserTask {
         input:
+            gdh_output_file = GDHIngestAndFilterTask.matching_variants,
             reference_build = reference_build,
-            vcf_file = AlamutBatchTask.output_vcf_gz,
-            has_haploid_sites = has_haploid_sites,
-            data_load_config_name = alamut_data_load_config_name,
-            data_load_target = "ANNOTATION_DATA",
-            merge_strategy = "MERGE",
-            annotation_record_ts = "now",
+            oms_query = "Y",
+            portable_db_file = portable_db_file,
+            filter_name_or_code = filter_name_or_code,
+            report_basename = "~{subject_id}_~{sample_id}_~{filter_name_or_code}",
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
-            docker_image = orchutils_docker_image
+            gdh_parser_image = gdh_parser_image
     }
-
-    # Load Gnomad annotations to FAST
-    if (defined(AnnotateGnomadTask.output_vcf_gz)) {
-        call FASTUtils.FASTDataLoadTask as GnomadLoadTask {
+    if (defined(GDHOutputParserTask.parsed_report)) {
+        call IgvReport.IgvReportFromParsedFASTOutputTask {
             input:
-                reference_build = reference_build,
-                vcf_file = select_first([AnnotateGnomadTask.output_vcf_gz]),
-                has_haploid_sites = has_haploid_sites,
-                data_load_config_name = gnomad_data_load_config_name,
-                data_load_target = "ANNOTATION_DATA",
-                merge_strategy = "MERGE",
-                annotation_record_ts = "now",
-                gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name,
-                docker_image = orchutils_docker_image
+                bam_cram = sample_bam,
+                bai_crai = sample_bai,
+                parsed_fast_output = select_first([GDHOutputParserTask.parsed_report]),
+                output_basename = "~{subject_id}_~{sample_id}_~{filter_name_or_code}.igvreport",
+                ref_fasta = ref_fasta,
+                ref_fasta_index = ref_fasta_index,
+                track_files = igv_track_files,
+                track_index_files = igv_track_index_files,
+                docker_image = igvreport_docker_image
         }
     }
-
-    # Wait for up to 12 hours data loads to complete
-    call FASTUtils.FASTWaitForDataLoadsTask {
+    call BgwgsGDHSummaryTask {
         input:
-            data_load_ids = select_all([QCEvalLoadTask.data_load_id, AlamutLoadTask.data_load_id, GnomadLoadTask.data_load_id]),
-            check_interval_secs = fast_data_load_wait_interval_secs,
-            max_checks = fast_data_load_wait_max_intervals,
-            gcp_project_id = gcp_project_id,
-            workspace_name = workspace_name,
-            docker_image = orchutils_docker_image
-    }
-    if (FASTWaitForDataLoadsTask.wait_result.total != FASTWaitForDataLoadsTask.wait_result.completed) {
-        call Utilities.FailTask as DataLoadTimeout {
-            input:
-                error_message = "One or more FAST data loads did not complete within allotted time"
-        }
-    }
-    if (FASTWaitForDataLoadsTask.wait_result.total != FASTWaitForDataLoadsTask.wait_result.succeeded) {
-        call Utilities.FailTask as DataLoadFailure {
-            input:
-                error_message = "One or more FAST data loads did not succeed"
-        }
-    }
-
-    # Create annotated sample data
-    if (FASTWaitForDataLoadsTask.wait_result.total == FASTWaitForDataLoadsTask.wait_result.succeeded) {
-
-        # Wait up to 24 hours for annotation data initialization to complete
-        call FASTUtils.FASTWaitForADITask {
-            input:
-                check_interval_secs = fast_adi_wait_interval_secs,
-                max_checks = fast_adi_wait_max_intervals,
-                gcp_project_id = gcp_project_id,
-                workspace_name = workspace_name,
-                docker_image = orchutils_docker_image
-        }
-        if (FASTWaitForADITask.num_pending >= 1) {
-            call Utilities.FailTask as ADINotComplete {
-                input:
-                    error_message = "FAST annotation data initialization did not complete within allotted time"
-            }
-        }
-        if (FASTWaitForADITask.num_pending <= 0) {
-            # Create annotated sample data
-            call FASTUtils.FASTCreateAnnotatedSampleDataTask {
-                input:
-                    annotated_sample_data_name = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name,
-                    sample_data_names_and_labels = [subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name],
-                    region_names_and_masks = fast_annotated_sample_data_regions,
-                    scripts = fast_annotated_sample_data_scripts,
-                    saved_filter_name = fast_annotated_sample_data_saved_filter_name,
-                    gcp_project_id = gcp_project_id,
-                    workspace_name = workspace_name,
-                    docker_image = orchutils_docker_image
-            }
-
-            # Wait up to 6 hours for annotated sample data to complete
-            call FASTUtils.FASTWaitForAnnotatedSampleDataTask {
-                input:
-                    annotated_sample_data_name = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
-                    check_interval_secs = 300,
-                    max_checks = 72,
-                    gcp_project_id = gcp_project_id,
-                    workspace_name = workspace_name,
-                    docker_image = orchutils_docker_image
-            }
-            if (FASTWaitForAnnotatedSampleDataTask.wait_result.total != FASTWaitForAnnotatedSampleDataTask.wait_result.completed) {
-                call Utilities.FailTask as AnnotatedSampleTimeout {
-                    input:
-                        error_message = "FAST annotated sample data creation did not complete within allotted time"
-                }
-            }
-            if (FASTWaitForAnnotatedSampleDataTask.wait_result.total != FASTWaitForAnnotatedSampleDataTask.wait_result.succeeded) {
-                call Utilities.FailTask as AnnotatedSampleFailure {
-                    input:
-                        error_message = "FAST annotated sample data creation did not succeed"
-                }
-            }
-
-            if (FASTWaitForAnnotatedSampleDataTask.wait_result.total == FASTWaitForAnnotatedSampleDataTask.wait_result.succeeded) {
-                call FASTUtils.FASTExportAnnotatedSampleDataTask {
-                    input:
-                        annotated_sample_data_name = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
-                        format = "TXT",
-                        output_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output + ".fastexport",
-                        gcp_project_id = gcp_project_id,
-                        workspace_name = workspace_name,
-                        docker_image = orchutils_docker_image
-                }
-                call FASTOutputParser.FASTOutputParserTask {
-                    input:
-                        fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
-                        sample_type = fast_parser_sample_type,
-                        reference_build = reference_build,
-                        oms_query = "Y",
-                        portable_db_file = portable_db_file,
-                        report_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output,
-                        gcp_project_id = gcp_project_id,
-                        workspace_name = workspace_name,
-                        fast_parser_image = fast_parser_image
-                }
-                if (defined(FASTOutputParserTask.parsed_report)) {
-                    call IgvReport.IgvReportFromParsedFASTOutputTask {
-                        input:
-                            bam_cram = sample_bam,
-                            bai_crai = sample_bai,
-                            parsed_fast_output = select_first([FASTOutputParserTask.parsed_report]),
-                            output_basename = FASTCreateAnnotatedSampleDataTask.annotated_sample_data_name_output + ".igvreport",
-                            ref_fasta = ref_fasta,
-                            ref_fasta_index = ref_fasta_index,
-                            track_files = igv_track_files,
-                            track_index_files = igv_track_index_files,
-                            docker_image = igvreport_docker_image
-                    }
-                }
-                call BgwgsFASTSummaryTask {
-                    input:
-                        subject_id = subject_id,
-                        sample_id = sample_id,
-                        fast_annotated_sample_data_regions = fast_annotated_sample_data_regions,
-                        fast_annotated_sample_data_saved_filter_name = fast_annotated_sample_data_saved_filter_name
-                }
-            }
-        }
+            subject_id = subject_id,
+            sample_id = sample_id,
+            filter_name_or_code = filter_name_or_code
     }
 
     output {
@@ -748,50 +560,44 @@ workflow BgwgsWorkflow {
         File? risk_alleles_report = RiskAllelesWorkflowAlias.risk_report
         File? risk_alleles_genotype_xlsx = RiskAllelesWorkflowAlias.genotype_xlsx
         File? risk_alleles_genotype_txt = RiskAllelesWorkflowAlias.genotype_txt
-        # filtered VCF
-        File target_vcf_gz = FilterVCFWithBEDTask.output_vcf_gz
         # annotated VCFs
-        File alamut_vcf_gz = AlamutBatchTask.output_vcf_gz
         File qceval_vcf_gz = QCEvalTask.output_vcf_gz
         File? gnomad_vcf_gz = AnnotateGnomadTask.output_vcf_gz
-        # FAST export file
-        File? fast_export_file = FASTExportAnnotatedSampleDataTask.output_file
-        # FAST summary file
-        File? fast_summary_file = BgwgsFASTSummaryTask.fast_summary_file
-        File? fast_summary_xlsx = BgwgsFASTSummaryTask.fast_summary_xlsx
+        # GDH export file
+        File gdh_export_file = GDHIngestAndFilterTask.matching_variants
+        # GDH summary file
+        File gdh_summary_file = BgwgsGDHSummaryTask.gdh_summary_file
+        File gdh_summary_xlsx = BgwgsGDHSummaryTask.gdh_summary_xlsx
         # IGV report
         File? igv_report = IgvReportFromParsedFASTOutputTask.igv_report
-        # FAST Parsed output and NVA report
-        File? fast_parsed_output = FASTOutputParserTask.parsed_report
-        File? nva_report = FASTOutputParserTask.nva_report
+        # GDH Parsed output and NVA report
+        File? gdh_parsed_output = GDHOutputParserTask.parsed_report
+        File nva_report = GDHOutputParserTask.nva_report
     }
 }
 
-task BgwgsFASTSummaryTask {
+task BgwgsGDHSummaryTask {
     input {
         String subject_id
         String sample_id
-        Array[String]? fast_annotated_sample_data_regions
-        String fast_annotated_sample_data_saved_filter_name
+        String filter_name_or_code
     }
 
     command <<<
-        summary_file="~{subject_id}_~{sample_id}_~{fast_annotated_sample_data_saved_filter_name}_FAST_summary.txt"
+        summary_file="~{subject_id}_~{sample_id}_~{filter_name_or_code}_GDH_summary.txt"
 
-        printf "PM_number\tSaved_filter\tRegions\n" >> "${summary_file}"
-        printf "%s\t%s\t%s\n" "~{subject_id}" "~{fast_annotated_sample_data_saved_filter_name}" "~{sep=',' fast_annotated_sample_data_regions}" >> "${summary_file}"
+        printf "PM_number\tFilter_Code\n" >> "${summary_file}"
+        printf "%s\t%s\n" "~{subject_id}" "~{filter_name_or_code}" >> "${summary_file}"
 
         pip install openpyxl
         python -c 'import openpyxl
 wb = openpyxl.Workbook()
 ws = wb.active
 ws.cell(row=1, column=1).value = "PM_number"
-ws.cell(row=1, column=2).value = "Saved_filter"
-ws.cell(row=1, column=3).value = "Regions"
+ws.cell(row=1, column=2).value = "Filter_Code"
 ws.cell(row=2, column=1).value = "~{subject_id}"
-ws.cell(row=2, column=2).value = "~{fast_annotated_sample_data_saved_filter_name}"
-ws.cell(row=2, column=3).value = "~{sep=',' fast_annotated_sample_data_regions}"
-wb.save("~{subject_id}_~{sample_id}_~{fast_annotated_sample_data_saved_filter_name}_FAST_summary.xlsx")'
+ws.cell(row=2, column=2).value = "~{filter_name_or_code}"
+wb.save("~{subject_id}_~{sample_id}_~{filter_name_or_code}_GDH_summary.xlsx")'
     >>>
 
     runtime {
@@ -799,7 +605,7 @@ wb.save("~{subject_id}_~{sample_id}_~{fast_annotated_sample_data_saved_filter_na
     }
 
     output {
-        File fast_summary_file = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name + "_FAST_summary.txt"
-        File fast_summary_xlsx = subject_id + "_" + sample_id + "_" + fast_annotated_sample_data_saved_filter_name + "_FAST_summary.xlsx"
+        File gdh_summary_file = subject_id + "_" + sample_id + "_" + filter_name_or_code + "_GDH_summary.txt"
+        File gdh_summary_xlsx = subject_id + "_" + sample_id + "_" + filter_name_or_code + "_GDH_summary.xlsx"
     }
 }
