@@ -104,7 +104,7 @@ task GDHOutputParserTask {
         fi
 
         # Run the parser
-        python gdh-output-parser $OMS_PARAM \
+        gdh-output-parser $OMS_PARAM \
             --input-file "~{gdh_output_file}" \
             --output "~{report_basename}.parsed.txt" \
             --excel-output "~{report_basename}.xlsm" \
