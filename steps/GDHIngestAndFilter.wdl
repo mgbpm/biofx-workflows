@@ -10,6 +10,7 @@ task GDHIngestAndFilterTask {
         String vcf_file_stage_name = "biofx_pipelines"
         String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
         String reference_build = "GRCh38"
+        String[]? vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
         String filter_name_or_code
         String? pipeline_run_id
         Int timeout_minutes = 90
@@ -47,7 +48,11 @@ EOF > biosample-template.json
 
         echo "~{subject_id}_~{sample_id}-$exec_id" > invoker-execution-id.txt
 
-        $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} \
+        if [ "~{sep="," vcf_transform_functions}" != "" ]; then
+            VCF_TRANSFORM_FUNCTIONS_STR="--vcf-transform-functions ~{sep="," vcf_transform_functions}"
+        fi
+
+        $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} $VCF_TRANSFORM_FUNCTIONS_STR \
             --client-config gdhpipeline-client-config.json \
             --run-type "single_sample" \
             --execution-id "~{subject_id}_~{sample_id}-$exec_id" \
