@@ -10,7 +10,7 @@ task GDHIngestAndFilterTask {
         String vcf_file_stage_name = "biofx_pipelines"
         String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
         String reference_build = "GRCh38"
-        String[]? vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
+        Array[String] vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
         String filter_name_or_code
         String? pipeline_run_id
         Int timeout_minutes = 90
