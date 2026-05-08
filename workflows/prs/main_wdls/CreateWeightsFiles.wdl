@@ -6,7 +6,7 @@ workflow CreatePrsWeightsWorkflow {
         File   b38_lookup_file
         File   b37_lookup_file
         File   chain_file
-        String prs_docker_image
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev"
   }
 
     call DownloadWeightsFileTask {
@@ -42,6 +42,7 @@ workflow CreatePrsWeightsWorkflow {
     }
 
     output {
+        String original_build = DownloadWeightsFileTask.build
         File output_weights = select_first([
             LiftoverWeightsTask.output_weights, CreateWeightsTask.output_weights
         ])
@@ -72,10 +73,10 @@ task DownloadWeightsFileTask {
                 "https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/~{pgs_id}/ScoringFiles/Harmonized/~{pgs_id}_hmPOS_GRCh37.txt.gz"
         
             printf -- "37" >> "build.txt"
-            mv "~{pgs_id}_hmPOS_GRCh37.txt.gz" "~{pgs_id}_weights.txt.gz"
+            mv "~{pgs_id}_hmPOS_GRCh37.txt.gz" "~{pgs_id}.txt.gz"
         else
             printf -- "38" >> "build.txt"
-            mv "~{pgs_id}_hmPOS_GRCh38.txt.gz" "~{pgs_id}_weights.txt.gz"
+            mv "~{pgs_id}_hmPOS_GRCh38.txt.gz" "~{pgs_id}.txt.gz"
         fi
     >>>
 
@@ -87,7 +88,7 @@ task DownloadWeightsFileTask {
     }
 
     output {
-        File   weights_file = "~{pgs_id}_weights.txt.gz"
+        File   weights_file = "~{pgs_id}.txt.gz"
         String build        = read_string("build.txt")
     }
 }
@@ -127,6 +128,7 @@ task CreateWeightsTask {
         File  output_weights = "~{pgs_id}.weights.tsv"
         File? bed_file       = "~{pgs_id}.original.bed"
         File  errors         = "~{pgs_id}.errors.tsv"
+        File  summary        = "~{pgs_id}.summary.txt"
     }
 }
 
@@ -148,15 +150,15 @@ task LiftoverWeightsTask {
     command <<<
         set -euxo pipefail
         
-        $PACKAGESDIR/biofx-prs/create_weights/liftOver \
-            "~{bed_file}"                              \
-            "~{chain_file}"                            \
-            "lifted.bed"                               \
+        $PACKAGESDIR/biofx-prs/create_weights/liftOver -positions \
+            "~{bed_file}"                                         \
+            "~{chain_file}"                                       \
+            "lifted.bed"                                          \
             "unmapped.bed"
 
         $PACKAGESDIR/biofx-prs/create_weights/liftover_weights.py \
-            --mapped "lifted.bed"                                 \
-            --unmapped "unmapped.bed"                             \
+            --lifted-bed "lifted.bed"                             \
+            --liftover-errors "unmapped.bed"                      \
             --b37-weights "~{input_weights}"                      \
             --outputdir .
     >>>
