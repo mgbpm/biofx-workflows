@@ -25,15 +25,16 @@ task GDHIngestAndFilterTask {
         set -euxo pipefail
 
         # Copy files to GS path that is also GDH external stage
-        ./bin/setup-rclone-remote.sh -p "~{gcp_project_id}" -w "~{workspace_name}" -r "~{vcf_file_stage_gspath}"
-        ./bin/copy_files.py ~{if verbose then "--verbose" else ""} \
-            --source "~{vcf_file}" --target "~{vcf_file_stage_gspath}"
+        $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/setup-rclone-remote.sh -p "~{gcp_project_id}" -w "~{workspace_name}" -r "~{vcf_file_stage_gspath}"
+        $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/copy_files.py ~{if verbose then "--verbose" else ""} \
+            --source "~{vcf_file}" --target "~{vcf_file_stage_gspath}" --required-file-types vcf
 
         # Start the ingest and filter process
         $MGBPMBIOFXPATH/biofx-orchestration-utils/bin/get-client-config.sh \
             -p ~{gcp_project_id} -w ~{workspace_name} -n gdhpipeline > gdhpipeline-client-config.json
         
-        cat <<EOF{ 
+        cat <<EOF > biosample-template.json
+{ 
     "biosample_id1_sys": "LMM-ACCESSION-ID",
     "biosample_id1_id": "~{subject_id}",
     "biosample_id1_lbl": "Accession ID",
@@ -41,23 +42,26 @@ task GDHIngestAndFilterTask {
     "biosample_id2_id": "~{sample_id}",
     "biosample_id2_lbl": "Sample ID"
 }
-EOF > biosample-template.json
-
+EOF
         exec_id="~{pipeline_run_id}"
-        [ ! -z "$exec_id" ] && exec_id=$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')
+        [ -z "$exec_id" ] && exec_id="~{subject_id}_~{sample_id}"
 
-        echo "~{subject_id}_~{sample_id}-$exec_id" > invoker-execution-id.txt
+        exec_id="${exec_id}-$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')"
+
+        echo "$exec_id" > invoker-execution-id.txt
 
         if [ "~{sep="," vcf_transform_functions}" != "" ]; then
             VCF_TRANSFORM_FUNCTIONS_STR="--vcf-transform-functions ~{sep="," vcf_transform_functions}"
         fi
 
+        VCF_FILE_NAME=$(basename "~{vcf_file}")
+
         $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} $VCF_TRANSFORM_FUNCTIONS_STR \
             --client-config gdhpipeline-client-config.json \
             --run-type "single_sample" \
             --execution-id "~{subject_id}_~{sample_id}-$exec_id" \
-            --biosample-default_template "@biosample-template.json" \
-            --vcf-file-name "~{vcf_file}" \
+            --biosample-default-template "@biosample-template.json" \
+            --vcf-file-name "$VCF_FILE_NAME" \
             --vcf-file-stage "~{vcf_file_stage_name}" \
             --institution "~{gdh_institution}" \
             --project "~{gdh_project}" \
