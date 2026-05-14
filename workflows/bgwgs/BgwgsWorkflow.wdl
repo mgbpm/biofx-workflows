@@ -235,6 +235,8 @@ workflow BgwgsWorkflow {
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
+        # vcf filter inputs
+        File? vcf_filter_bed
         # qceval inputs
         String qceval_project_type = "BGE_DRAGEN_TP_BINNING"
         String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20250923"
@@ -456,10 +458,21 @@ workflow BgwgsWorkflow {
       File maybe_reference_fasta_fai = ref_fasta_index
     }
 
+    # Filter the VCF to include only variants on the main chromosomes
+    if (defined(vcf_filter_bed)) {
+        call VCFUtils.FilterVCFWithBEDTask {
+            input:
+                input_vcf = sample_vcf,
+                input_bed = select_all([vcf_filter_bed])[0],
+                output_basename = subject_id + "_" + sample_id + ".target",
+                docker_image = "~{bcftools_docker_image}"
+        }
+    }
+
     # Annotate target VCF with QCEval INFO field
     call QCEval.QCEvalTask {
         input:
-            input_vcf = sample_vcf,
+            input_vcf = select_first([FilterVCFWithBEDTask.output_vcf_gz, sample_vcf]),
             project_type = qceval_project_type,
             output_basename = subject_id + "_" + sample_id + ".qceval",
             reference_fasta = maybe_reference_fasta,
