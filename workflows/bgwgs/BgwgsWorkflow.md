@@ -1,13 +1,14 @@
 # BGWGS Workflow
 The BGWGS (bigwigs) Workflow starts with a single CRAM or BAM file and provides variant calling,
-filtration, annotation, coverage, pharmacogenetic, risk and reporting capabilities.
+filtration, annotation, coverage, pharmacogenetic, risk and reporting capabilities. Variant data
+is ingested into GDH (Genomic Data Hub) for filtration and reporting.
 
 ## Input Parameters
 | Type | Name | Req'd | Description | Default Value |
 | :--- | :--- | :---: | :--- | :--- |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
-| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest" |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for GDH and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest" |
 | String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
 | String | subject_id | Yes | The subject id associated with the data | |
 | String | sample_id | Yes | The sample id associated with the data | |
@@ -46,20 +47,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | String | risk_alleles_docker_image | No | The name of the Docker image to generate the risk alleles report | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20230724" |
 | File | risk_alleles_workflow_fileset | No | Tar file containing the risk alleles reference data to generate the report | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar" |
 | File | risk_alleles_roi_bed | No | BED file that defines the genomic regions to include in the risk alleles analysis | "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed" |
-| File | target_roi_bed | No | The BED that defines the target region of interest for annotation and filtration | "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed" |
-| File | alamut_db | No | The database file for Alamut batch | "gs://lmm-reference-data/annotation/alamut/alamut_db-1.5-2022.01.12.db" |
-| File | alamut_fields_tsv | No | The file that defines how the Alamut output is transformed back to a VCF | |
-| String | alamut_db_name | No | The database name for the Alamut batch ini file | "alamut_db" |
-| String | alamut_server | No | The server name for the Alamut batch ini file | "a-ht-na.interactive-biosoftware.com" |
-| String | alamut_port | No | The server port for the Alamut batch ini file | "80" |
-| String | alamut_user_secret_name | No | The GCP secret name that contains the user stanza for the Alamut batch ini file | "alamut-batch-ini-user" |
-| Int | alamut_queue_limit | No | The maximum number of concurrent Alamut batch processes permitted | 4 |
-| String | alamut_queue_folder | No | The shared storage location for Alamut concurrency management | "gs://biofx-task-queue/alamut" |
-| Int | alamut_queue_wait_limit_hrs | No | The maximum number of hours to wait for a queue slot before failing | 16 |
-| String | alamut_docker_image | No | The name of the Alamut Docker image using to run Alamut Batch task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/alamut:20230630" |
-| Boolean | alamut_save_working_files | No | Whether or not to retain intermediate Alamut Batch task files | false |
-| String | alamut_anno_src_id | No | When removing already annotated variants prior to Alamut annotation, the annotation source id to query for | "228" |
-| String | alamut_anno_min_age | No | When removing already annotated variants prior to Alamut annotation, the annotation minimum timestamp to query for (ISO8601 duration) | "P6M" |
+| File? | vcf_filter_bed | No | BED file used to filter the VCF to include only variants in specified regions (e.g. main chromosomes); if not provided, VCF filtering is skipped |  |
 | String | qceval_project_type | No | The type of rules to apply for the QC evaluation task, one of "BGE_DRAGEN_TP_BINNING", "WGS", "WGS_DRAGEN", "WES" or "NONE" | "BGE_DRAGEN_TP_BINNING" |
 | String | qceval_docker_image | No | The name of the Docker image to run the QC evaluation task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20250923" |
 | File | thresholds | No | Thresholds for flagging possible false positives | "gs://lmm-reference-data/annotation/pmeval/thresholds_20250912.tsv" |
@@ -68,21 +56,15 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | gnomad_coverage_file_idx | No | The gnomad coverage data index file | "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz.tbi" |
 | Array[String] | gnomad_headers | No | List of VCF headers to add when annotating VCF with gnomad coverage data.  For example, ##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description="Read depth of GnomAD Genome"> | [ "##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description=\"Read depth of GnomAD Genome\">" ] |
 | String | gnomad_column_list | No | The column list to pass to bcftools annotate for gnomad coverage annotation | "CHROM,POS,INFO/DP_gnomadG" |
-| Boolean | has_haploid_sites | No | If true, modify the VCF file headers prior to FAST load to work around lack of support Number=G fields and haploid sites | false |
-| String | sample_data_load_config_name | No | The FAST load configuration name for the sample data VCF, use "Sample_vcf_BGE" for qceval_project_type=BGE_DRAGEN_TP_BINNING, "Sample_VCF_PPM_Eval" otherwise | "Sample_vcf_BGE" |
-| String | gnomad_data_load_config_name | No | The FAST load configuration name for the gnomad coverage VCF | "Coverage" |
-| String | alamut_data_load_config_name | No | The FAST load configuration name for the Alamut annotated VCF | "Alamut" |
-| Array[String] | fast_annotated_sample_data_regions | No | The list of regions to include in the FAST annotated sample data; each element is a "name:applyMask" pair |  |
-| Array[String] | fast_annotated_sample_data_scripts | No | The list of custom scripts to run on the FAST annotated sample data after creation | |
-| String | fast_annotated_sample_data_saved_filter_name | No | The saved filter to apply to the FAST annotated sample data | |
-| Int | fast_data_load_wait_interval_secs | No | The number of seconds in between checks when waiting for FAST data loads to complete | 300 |
-| Int | fast_data_load_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST data loads to complete | 144 |
-| Int | fast_adi_wait_interval_secs | No | The number of seconds in between checks when waiting for FAST annotation data initialization to complete | 600 |
-| Int | fast_adi_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST annotation data initialization to complete | 144 |
+| String | gdh_institution | No | The institution identifier for GDH ingest | "MGBPM" |
+| String | gdh_project | No | The project identifier for GDH ingest | "Clinical" |
+| String | vcf_file_stage_name | No | The stage name for VCF file upload to GDH | "biofx_pipelines" |
+| String | vcf_file_stage_gspath | No | The GCS path for the VCF file staging area | "gs://gdh-external-stage/biofx_pipelines_nonprod" |
+| String | filter_name_or_code | Yes | The GDH filter name or code to apply during variant filtration | |
+| String? | pipeline_run_id | No | Optional pipeline run identifier for GDH ingest | |
 | String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
-| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250923" |
+| String | gdh_parser_image | No | The name of the Docker image to run the GDH output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gdhoutputparser:dev" |
 | File | portable_db_file | No | A SQLite database that contains additional annotations that are merged into the Parser output | "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db" |
-| String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | "S" |
 | Array[File] | igv_track_files | List of track files for inclusion in the IGV report | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" |
 | Array[File] | igv_track_index_files | List of track index files | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz.tbi" |
 
@@ -285,12 +267,11 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | File | risk_alleles_report | If risk alleles is enabled | Risk alleles report |
 | File | risk_alleles_genotype_xlsx | If risk alleles is enabled | Full list of risk allele genotypes in XLSX format |
 | File | risk_alleles_genotype_txt | If risk alleles is enabled | Full list of risk allele genotypes in TSV format |
-| File | target_vcf_gz | Always | VCF file filtered to the target region of interest |
-| File | alamut_vcf_gz | Always | Target VCF file with Alamut annotations |
-| File | qceval_vcf_gz | Always | Target VCF file annotated with QC Evaluation |
-| File | gnomad_vcf_gz | If gnomad coverage is enabled | Target VCF annotated with gnomad coverage data |
-| File | fast_export_file | Always | Tab-delimited export of annotated sample data from FAST |
-| File | fast_summary_file | Always | Summary of FAST processing parameters |
-| File | igv_report | Always | HTML-based IGV report file |
-| File | fast_parsed_output | Always | Parsed FAST export |
+| File | qceval_vcf_gz | Always | VCF file annotated with QC Evaluation |
+| File | gnomad_vcf_gz | If gnomad coverage is enabled | VCF annotated with gnomad coverage data |
+| File | gdh_export_file | Always | Matching variants file from GDH ingest and filtration |
+| File | gdh_summary_file | Always | Summary of GDH processing parameters |
+| File | gdh_summary_xlsx | Always | Summary of GDH processing parameters in XLSX format |
+| File | igv_report | If GDH parsed report is produced | HTML-based IGV report file |
+| File | gdh_parsed_output | If GDH parsed report is produced | Parsed GDH output |
 | File | nva_report | Always | NVA report Excel document |
