@@ -1,6 +1,6 @@
 version 1.0
 
-import "../../steps/FileUtils.wdl"
+import "./FileUtils.wdl"
 
 workflow GenotypingBGWGSWorkflow {
     input {
