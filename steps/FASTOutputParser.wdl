@@ -3,6 +3,7 @@ version 1.0
 task FASTOutputParserTask {
     input {
         File fast_output_file
+        File? genotyping_vcf
         String sample_type
         String reference_build = "GRCh38"
         String oms_query = "Y"
@@ -39,6 +40,7 @@ task FASTOutputParserTask {
         # Run the parser
         if [ "~{gatk_source}" == "true" ]; then
             $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
+                        -g "~{genotyping_vcf}" \
                         -s "~{sample_type}" \
                         -o "~{oms_query}" \
                         -e "~{portable_db_file}" \
@@ -47,6 +49,7 @@ task FASTOutputParserTask {
                         -a
         else
            $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
+                        -g "~{genotyping_vcf}" \
                         -s "~{sample_type}" \
                         -o "~{oms_query}" \
                         -e "~{portable_db_file}" \
