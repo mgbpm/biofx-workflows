@@ -459,7 +459,7 @@ workflow BgwgsWorkflow {
 
     # Run genotyping
     if (do_genotyping) {
-        call GenotypingWorkflow.GenotypingWorkflow {
+        call GenotypingWorkflow.GenotypingWorkflow as GenotypingWorkflowAlias {
             input:
                 input_cram = sample_bam,
                 input_crai = sample_bai,
@@ -681,6 +681,7 @@ workflow BgwgsWorkflow {
                 call FASTOutputParser.FASTOutputParserTask {
                     input:
                         fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
+                        genotyping_vcf = GenotypingWorkflowAlias.annotated_vcf_file,
                         sample_type = fast_parser_sample_type,
                         reference_build = reference_build,
                         oms_query = "Y",
