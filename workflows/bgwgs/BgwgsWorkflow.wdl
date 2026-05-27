@@ -12,6 +12,7 @@ import "../../steps/QCEval.wdl"
 import "../../steps/IgvReport.wdl"
 import "../../steps/FASTOutputParser.wdl"
 import "../../steps/Utilities.wdl"
+import "../../steps/GenotypingBGWGS.wdl"
 
 workflow BgwgsWorkflow {
     input {
@@ -237,6 +238,10 @@ workflow BgwgsWorkflow {
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
+        # genotyping bgwgs inputs
+        do_genotyping = true
+        String genotyping_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genotyping-bgwgs:20260526"
+        String genotyping_test_code
         # vcf filter inputs
         File target_roi_bed = "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed"
         # alamut inputs
@@ -449,6 +454,25 @@ workflow BgwgsWorkflow {
                 gcp_project_id = gcp_project_id,
                 workspace_name = workspace_name,
                 mgbpmbiofx_docker_image = risk_alleles_docker_image
+        }
+    }
+
+    # Run genotyping
+    if (do_genotyping) {
+        call GenotypingWorkflow.GenotypingWorkflow {
+            input:
+                input_cram = sample_bam,
+                input_crai = sample_bai,
+                sample_id = sample_id,
+                accession_id = subject_id,
+                test_code = genotyping_test_code,
+                reference_fasta = ref_fasta,
+                reference_fasta_fai = ref_fasta_index,
+                reference_dict = ref_dict,
+                roi_bed = genotyping_roi_bed,
+                dbsnp = select_first([dbsnp_vcf]),
+                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                genotyping_docker_image = genotyping_docker_image
         }
     }
 
