@@ -239,8 +239,8 @@ workflow BgwgsWorkflow {
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
         # genotyping bgwgs inputs
-        do_genotyping = true
-        String genotyping_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genotyping-bgwgs:20260526"
+        Boolean do_genotyping = true
+        String genotyping_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genotyping-bgwgs:test"
         String genotyping_test_code
         # vcf filter inputs
         File target_roi_bed = "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed"
@@ -280,7 +280,7 @@ workflow BgwgsWorkflow {
         Int fast_adi_wait_max_intervals = 144
         # Reporting steps
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250205"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser::dev_genotyping_testing_ssp35"
         File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type = "S"
         Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]
