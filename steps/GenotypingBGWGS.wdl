@@ -176,7 +176,7 @@ task AddAnnotationsTask {
 
         mkdir -p ~{out_path}
 
-        python $MGBPMBIOFXPATH/biofx-qceval/bin/annotate_with_caller.py \
+        python $MGBPMBIOFXPATH/biofx-qceval/bin/annotate_with_gatk_caller.py \
             ~{all_calls_vcf_file} \
             ~{annotated_vcf}
         
