@@ -5,7 +5,7 @@ Applies QC rules depending on project type and adds the QC value to the INFO fie
 * File input_vcf - required - the input VCF file
 * String output_basename - optional - the basename that will be used to name the output file, defaults to the input
   VCF name with file extensions removed and ".qceval" added
-* String project_type - required - the type of project, one of "WGS", "WGS_DRAGEN", "WES" or "NONE"
+* String project_type - required - the type of project, one of "BGE_DRAGEN_TP_BINNING", "WGS", "WGS_DRAGEN", "WES" or "NONE"
 * String docker_image - required - the qceval Docker image to use
 * Int disk_size - optional - the disk size to allocate in GB, defaults to 12 times the VCF size plus 10
 

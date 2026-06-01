@@ -148,7 +148,8 @@ workflow MakeAdjustmentModel {
 
     input:
         model_data = object {
-            parameters            : "" + TrainModel.fitted_params
+            condition_code        : name
+          , parameters            : "" + TrainModel.fitted_params
 
           , principal_components  : "" + PerformPCA.pcs
           , loadings              : "" + PerformPCA.pc_loadings

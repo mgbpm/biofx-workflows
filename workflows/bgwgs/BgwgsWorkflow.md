@@ -7,7 +7,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | :--- | :--- | :---: | :--- | :--- |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |
 | String | workspace_name | Yes | The name of the current workspace (for secret retrieval) | |
-| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20230719" |
+| String | orchutils_docker_image | No | The name of the orchestration utils Docker image for FAST and file movement tasks | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest" |
 | String | bcftools_docker_image | No | The name of the bcftools Docker image for VCF annotation | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17" |
 | String | subject_id | Yes | The subject id associated with the data | |
 | String | sample_id | Yes | The sample id associated with the data | |
@@ -60,14 +60,16 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | Boolean | alamut_save_working_files | No | Whether or not to retain intermediate Alamut Batch task files | false |
 | String | alamut_anno_src_id | No | When removing already annotated variants prior to Alamut annotation, the annotation source id to query for | "228" |
 | String | alamut_anno_min_age | No | When removing already annotated variants prior to Alamut annotation, the annotation minimum timestamp to query for (ISO8601 duration) | "P6M" |
-| String | qceval_project_type | No | The type of rules to apply for the QC evaluation task, one of "WGS", "WGS_DRAGEN", "WES" or "NONE" | "WGS" |
-| String | qceval_docker_image | No | The name of the Docker image to run the QC evaluation task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20230630" |
+| String | qceval_project_type | No | The type of rules to apply for the QC evaluation task, one of "BGE_DRAGEN_TP_BINNING", "WGS", "WGS_DRAGEN", "WES" or "NONE" | "BGE_DRAGEN_TP_BINNING" |
+| String | qceval_docker_image | No | The name of the Docker image to run the QC evaluation task | "gcr.io/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20250923" |
+| File | thresholds | No | Thresholds for flagging possible false positives | "gs://lmm-reference-data/annotation/pmeval/thresholds_20250912.tsv" |
+| File | difficult_to_map_regions | No | List of difficult to map genomic regions used for flagging possible false positives | "gs://lmm-reference-data/annotation/pmeval/difficult_to_map_regions_20250912.tgz" |
 | File | gnomad_coverage_file | No | The gnomad coverage data file | "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz" |
 | File | gnomad_coverage_file_idx | No | The gnomad coverage data index file | "gs://lmm-reference-data/annotation/gnomad/genomes.r3.0.1.coverage_targetROI-filtered.dedup.txt.gz.tbi" |
 | Array[String] | gnomad_headers | No | List of VCF headers to add when annotating VCF with gnomad coverage data.  For example, ##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description="Read depth of GnomAD Genome"> | [ "##INFO=<ID=DP_gnomadG,Number=1,Type=Float,Description=\"Read depth of GnomAD Genome\">" ] |
 | String | gnomad_column_list | No | The column list to pass to bcftools annotate for gnomad coverage annotation | "CHROM,POS,INFO/DP_gnomadG" |
 | Boolean | has_haploid_sites | No | If true, modify the VCF file headers prior to FAST load to work around lack of support Number=G fields and haploid sites | false |
-| String | sample_data_load_config_name | No | The FAST load configuration name for the sample data VCF | "Sample_VCF_PPM_Eval" |
+| String | sample_data_load_config_name | No | The FAST load configuration name for the sample data VCF, use "Sample_vcf_BGE" for qceval_project_type=BGE_DRAGEN_TP_BINNING, "Sample_VCF_PPM_Eval" otherwise | "Sample_vcf_BGE" |
 | String | gnomad_data_load_config_name | No | The FAST load configuration name for the gnomad coverage VCF | "Coverage" |
 | String | alamut_data_load_config_name | No | The FAST load configuration name for the Alamut annotated VCF | "Alamut" |
 | Array[String] | fast_annotated_sample_data_regions | No | The list of regions to include in the FAST annotated sample data; each element is a "name:applyMask" pair |  |
@@ -78,7 +80,7 @@ filtration, annotation, coverage, pharmacogenetic, risk and reporting capabiliti
 | Int | fast_adi_wait_interval_secs | No | The number of seconds in between checks when waiting for FAST annotation data initialization to complete | 600 |
 | Int | fast_adi_wait_max_intervals | No | The maximum number of checks to perform when waiting for FAST annotation data initialization to complete | 144 |
 | String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
-| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250205" |
+| String | fast_parser_image | No | The name of the Docker image to run the FAST output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250923" |
 | File | portable_db_file | No | A SQLite database that contains additional annotations that are merged into the Parser output | "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db" |
 | String | fast_parser_sample_type | No | The sample type flag for the FAST output parser: S for single-sample Exome or M for multi-sample Exome or B for batch/Biobank or N for NVA-Lite | "S" |
 | Array[File] | igv_track_files | List of track files for inclusion in the IGV report | "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" |

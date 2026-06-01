@@ -201,3 +201,120 @@ task DownloadOutputsTask {
         File outputs_manifest = "copy-manifest.json"
     }
 }
+
+task GCPCopyAndRenameVCF {
+    input {
+        String source_file
+        String sample_id
+        String subject_id
+        String target_location
+        String docker_image
+        Int disk_size = 75
+    }
+
+    command <<<
+        set -euxo pipefail
+        #run gsutil cp to move file from one bucket to another
+        gsutil -q stat "~{source_file}"
+        PATH_EXIST=$?
+        if [ ${PATH_EXIST} -eq 0 ]; then
+            echo "~{source_file} exists."
+        else
+            echo "~{source_file} does not exist."
+            exit 1
+        fi
+
+        #copy file from one bucket to another
+        FILE_NAME=$(basename "~{source_file}")
+        echo "FILE_NAME variable: ${FILE_NAME}"
+        #strip off ending 
+        #subject_id="${FILE_NAME%.*}"
+        echo "subject_id variable: ~{subject_id}"
+        #grab extension
+        EXTENSION=$(echo "$FILE_NAME" | sed 's/^[^.]*\.//')
+        echo "EXTENSION variable: ${EXTENSION}"
+        #set new filename
+        SAMPLE_ID_CLEAN=$(sed -e 's/^"//' -e 's/"$//' <<<"~{sample_id}")
+        FILE_NAME_NEW="~{subject_id}_$SAMPLE_ID_CLEAN.$EXTENSION"
+        echo "renamed ${FILE_NAME} to ${FILE_NAME_NEW}"
+        gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME_NEW}
+        COPY_STATUS_VCF=$?
+        #download vcf locally
+        gsutil cp "~{source_file}" .
+        #generate index file
+        tabix -p vcf ${FILE_NAME_NEW}
+        #copy index file
+        gsutil cp ${FILE_NAME_NEW}.tbi "~{target_location}/${FILE_NAME_NEW}.tbi"
+        COPY_STATUS_TBI=$?
+        #relocalize renamed vcf
+        gsutil cp "~{target_location}"/${FILE_NAME_NEW} .
+
+        #check copy success
+        if [ ${COPY_STATUS_VCF} -eq 0 ] && [ ${COPY_STATUS_TBI} -eq 0 ]; then
+            echo 'Successfully copied "~{source_file}" to "~{target_location}"/${FILE_NAME_NEW}.'
+            echo 'Successfully copied "~{source_file}" to "~{target_location}"/${FILE_NAME_NEW}.' > copy-manifest.log
+        else
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}"
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}" > copy-manifest.log
+            exit ${COPY_STATUS_VCF}
+        fi
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+
+    output {
+        File outputs_manifest = "copy-manifest.log"
+        File output_vcf = "~{subject_id}_~{sample_id}.vcf.gz"
+        File output_vcf_index = "~{subject_id}_~{sample_id}.vcf.gz.tbi"
+    }
+}
+
+
+task SimpleGCPCopyFileTask {
+    input {
+        String source_file
+        String target_location
+        String docker_image
+        Int disk_size = 75
+    }
+
+    command <<<
+        set -euxo pipefail
+        #run gsutil cp to move file from one bucket to another
+        gsutil -q stat "~{source_file}"
+        PATH_EXIST=$?
+        if [ ${PATH_EXIST} -eq 0 ]; then
+            echo "~{source_file} exists."
+        else
+            echo "~{source_file} does not exist."
+            exit 1
+        fi
+
+        #copy file from one bucket to another
+        FILE_NAME=$(basename "~{source_file}")
+        gsutil cp "~{source_file}" "~{target_location}"/${FILE_NAME}
+
+        COPY_STATUS=$?
+        if [ ${COPY_STATUS} -eq 0 ]; then
+            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.'
+            echo 'Successfully coppied "~{source_file}" to "~{target_location}"/${FILE_NAME}.' > copy-manifest.log
+        else
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}"
+            echo "Unsuccessfull copy. Error code ${COPY_STATUS}" > copy-manifest.log
+            exit ${COPY_STATUS}
+        fi
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+
+    output {
+        File outputs_manifest = "copy-manifest.log"
+    }
+}
+

@@ -286,27 +286,18 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - BiobankSharding_*
-  - name: BiobankScrub
+  - name: BiobankScrubWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/biobank-scrub/BiobankScrubWorkflow.wdl
     filters:
       branches:
-        - /.+/
-      tags:
-        - BiobankScrub_*
-  - name: insiMWorkflow
-    subclass: WDL
-    primaryDescriptorPath: /workflows/mutagenesis/insiM.wdl
-    readMePath: /workflows/mutagenesis/insiM.md
-    filters:
-      branches:
         - /.*[a-zA-Z0-9].*/
       tags:
-        - insiM_*
+        - BiobankScrub_*
   - name: BamsurgeonWorkflow
     subclass: WDL
-    primaryDescriptorPath: /workflows/mutagenesis/bamsurgeon.wdl
-    readMePath: /workflows/mutagenesis/bamsurgeon.md
+    primaryDescriptorPath: /workflows/insilico/bamsurgeon.wdl
+    readMePath: /workflows/insilico/bamsurgeon.md
     filters:
       branches:
         - /.*[a-zA-Z0-9].*/
@@ -414,4 +405,118 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - ignore-all-tags
-  
+  - name: KingOrchestrationWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/ibd/KingOrchestration.wdl
+    readMePath: /workflows/ibd/KingOrchestration.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - IBD_*
+  - name: KingAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/king/King.wdl
+    readMePath: /workflows/anvil/king/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: PrsInputAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/prs/PrsInputPrep.wdl
+    readMePath: /workflows/anvil/prs/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: PrsModelAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/prs/PrsModel.wdl
+    readMePath: /workflows/anvil/prs/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: PrsScoringAnvilWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/anvil/prs/PrsScoring.wdl
+    readMePath: /workflows/anvil/prs/README.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - AnVIL_*
+  - name: GCSToBaseSpaceUpload
+    subclass: WDL 
+    primaryDescriptorPath: /workflows/gcs_basespace_upload/GCSToBaseSpaceUpload.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - GCSToBaseSpaceUpload_*
+  - name: CRAMOrBAMToFASTQWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /steps/CRAMOrBAMToFASTQWorkflow.wdl
+    readMePath: /steps/CRAMOrBAMToFASTQWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - CRAMOrBAMToFASTQ_*
+  - name: VEPAnnotateVCF.wdl
+    subclass: WDL
+    primaryDescriptorPath: /workflows/vep/VEPAnnotateVCF.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - VEPAnnotateVCF.wdl*
+  - name: CTBHaplotypeCallerGvcf
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/CTBHaplotypeCallerGvcf.wdl
+    readMePath: /workflows/joint_calling/CTBHaplotypeCallerGvcf.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - CTBHaplotypeCallerGvcf_*
+  - name: JointCalling
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/JointCalling.wdl
+    readMePath: /workflows/joint_calling/JointCalling.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - JointCalling_*
+  - name: MergeCrams
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/MergeCrams.wdl
+    readMePath: /workflows/joint_calling/MergeCrams.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - MergeCrams_*
+  - name: ReblockGVCFandPush
+    subclass: WDL
+    primaryDescriptorPath: /workflows/joint_calling/ReblockGVCFandPush.wdl
+    readMePath: /workflows/joint_calling/ReblockGVCFandPush.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ReblockGVCFandPush_*
+  - name: FASTOutputParser
+    subclass: WDL
+    primaryDescriptorPath: /steps/FASTOutputParser.wdl
+    readMePath: /steps/FASTOutputParser.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - FASTOutputParser_*

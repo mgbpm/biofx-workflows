@@ -1,0 +1,11 @@
+{
+    "KingWorkflow.input_vcfs": [
+        "gs://king_test/example.vcf.gz"
+        ],
+    "KingWorkflow.input_vcfs_idx": [
+        "gs://king_test/example1.vcf.gz.tbi"
+        ],
+    "KingWorkflow.output_basename": "king_test",
+    "KingWorkflow.input_bed": "gs://king_test/example.bed",
+    "KingWorkflow.run_type": "related"
+}
