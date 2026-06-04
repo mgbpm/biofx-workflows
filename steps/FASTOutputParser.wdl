@@ -3,6 +3,8 @@ version 1.0
 workflow FASTOutputParser {
     input {
         File fast_output_file
+        File? genotyping_vcf
+        File? genotyping_bed_file
         String sample_type = "S"
         String reference_build = "GRCh38"
         String oms_query = "Y"
@@ -17,6 +19,8 @@ workflow FASTOutputParser {
     call FASTOutputParserTask {
         input:
             fast_output_file = fast_output_file,
+            genotyping_vcf = genotyping_vcf,
+            genotyping_bed_file = genotyping_bed_file,
             sample_type = sample_type,
             reference_build = reference_build,
             oms_query = oms_query,
@@ -38,6 +42,7 @@ task FASTOutputParserTask {
     input {
         File fast_output_file
         File? genotyping_vcf
+        File? genotyping_bed_file
         String sample_type
         String reference_build = "GRCh38"
         String oms_query = "Y"
@@ -75,6 +80,7 @@ task FASTOutputParserTask {
         if [ "~{gatk_source}" == "true" ]; then
             $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
                         -g "~{genotyping_vcf}" \
+                        -gb "~{genotyping_bed_file}" \
                         -s "~{sample_type}" \
                         -o "~{oms_query}" \
                         -e "~{portable_db_file}" \
@@ -84,6 +90,7 @@ task FASTOutputParserTask {
         else
            $MGBPMBIOFXPATH/biofx-fast-output-parser/bin/run_parser.py -f "~{file_name}" \
                         -g "~{genotyping_vcf}" \
+                        -gb "~{genotyping_bed_file}" \
                         -s "~{sample_type}" \
                         -o "~{oms_query}" \
                         -e "~{portable_db_file}" \
