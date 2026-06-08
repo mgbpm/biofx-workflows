@@ -479,7 +479,8 @@ workflow BgwgsWorkflow {
             reference_fasta_fai = maybe_reference_fasta_fai,
             thresholds_tsv = thresholds,
             regions_tgz = difficult_to_map_regions,
-            docker_image = qceval_docker_image
+            docker_image = qceval_docker_image,
+            preemptible = 0
     }
 
     # Annotated target VCF with Gnomad coverage
