@@ -21,6 +21,7 @@ task QCEvalTask {
                               else 0))
 
         Int preemptible = 1
+        Int number_cpus = 2
         # -------------------------------------------------------------
         # BGE_DRAGEN_TP_BINNING-specific inputs
         File? reference_fasta
@@ -78,6 +79,7 @@ task QCEvalTask {
         docker: "~{docker_image}"
         disks: "local-disk " + disk_size + " HDD"
         preemptible: preemptible
+        cpu: number_cpus
     }
 
     output {
