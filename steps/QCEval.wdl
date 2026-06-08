@@ -80,6 +80,7 @@ task QCEvalTask {
         disks: "local-disk " + disk_size + " HDD"
         preemptible: preemptible
         cpu: number_cpus
+        memory: (number_cpus * 2) + "G"
     }
 
     output {
