@@ -44,11 +44,9 @@ task GDHIngestAndFilterTask {
 }
 EOF
         exec_id="~{pipeline_run_id}"
-        [ -z "$exec_id" ] && exec_id="~{subject_id}_~{sample_id}"
+        [ -z "$exec_id" ] && exec_id="$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')"
 
-        exec_id="${exec_id}-$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')"
-
-        echo "$exec_id" > invoker-execution-id.txt
+        echo "~{subject_id}_~{sample_id}-$exec_id" > invoker-execution-id.txt
 
         if [ "~{sep="," vcf_transform_functions}" != "" ]; then
             VCF_TRANSFORM_FUNCTIONS_STR="--vcf-transform-functions ~{sep="," vcf_transform_functions}"
