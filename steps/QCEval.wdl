@@ -21,7 +21,7 @@ task QCEvalTask {
                               else 0))
         Int preemptible = 1
         Int number_cpus = 1
-        Int memory_gb = (if project_type == "BGE_DRAGEN_TP_BINNING" then 8 else 2)
+        Int memory_gb = (if project_type == "BGE_DRAGEN_TP_BINNING" then 12 else 2)
         # -------------------------------------------------------------
         # BGE_DRAGEN_TP_BINNING-specific inputs
         File? reference_fasta
