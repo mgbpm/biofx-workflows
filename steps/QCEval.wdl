@@ -21,7 +21,9 @@ task QCEvalTask {
                               else 0))
         Int preemptible = 1
         Int number_cpus = 1
-        Int memory_gb = (if project_type == "BGE_DRAGEN_TP_BINNING" then 12 else 2)
+        # bedtools annotate requires memory to scale with the 
+        #  size of the input VCF (estimate 2gb mem per 40mb of input VCF)
+        Int memory_gb = max(if project_type == "BGE_DRAGEN_TP_BINNING" then (size(input_vcf, "MB") / 40) * 2 else 2, 2)
         # -------------------------------------------------------------
         # BGE_DRAGEN_TP_BINNING-specific inputs
         File? reference_fasta
