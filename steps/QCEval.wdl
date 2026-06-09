@@ -19,9 +19,9 @@ task QCEvalTask {
                              (if defined(regions_tgz) then
                               2 * size(select_first([regions_tgz]), "GB")
                               else 0))
-
         Int preemptible = 1
-        Int number_cpus = 2
+        Int number_cpus = 1
+        Int memory_gb = (if project_type == "BGE_DRAGEN_TP_BINNING" then 8 else 2)
         # -------------------------------------------------------------
         # BGE_DRAGEN_TP_BINNING-specific inputs
         File? reference_fasta
@@ -80,7 +80,7 @@ task QCEvalTask {
         disks: "local-disk " + disk_size + " HDD"
         preemptible: preemptible
         cpu: number_cpus
-        memory: (number_cpus * 2) + "G"
+        memory: memory_gb + "G"
     }
 
     output {
