@@ -326,7 +326,8 @@ workflow BgwgsWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_index = ref_fasta_index,
                 docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710",
-                samtools_path = "samtools"
+                samtools_path = "samtools",
+                preemptible_attempts = 0
         }
     }
 
