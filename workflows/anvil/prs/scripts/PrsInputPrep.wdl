@@ -7,19 +7,16 @@ workflow PrsInputPrep {
   input {
     Array[File] weights_files
     File        pca_variants
-    String      workspace
     String      source
     String      target
     Int         nbatches         = 500
-    Boolean     resuming         = false
     Boolean     norename         = false
     Array[File] query_vcfs
-    String      prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
+    String      prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs-anvil:20260612"
   }
 
   String tmp              = target + "/.PreparePrsInputs"
   String workdir          = tmp    + "/work"
-  String sentinels        = tmp    + "/sentinels"
 
   if (! norename) {
     scatter (weights in weights_files) {
@@ -45,7 +42,6 @@ workflow PrsInputPrep {
   call GetTotalSize as FootprintOfWeightsAndPCA {
     input:
         urls         = flatten([weights_files_, [pca_variants_]])
-      , workspace    = workspace
       , docker_image = prs_docker_image
   }
 
@@ -56,36 +52,22 @@ workflow PrsInputPrep {
       , footprint     = FootprintOfWeightsAndPCA.gigabytes
   }
 
-  call HelperTasks.ListShards {
+  call ListShards {
     input:
         source       = source
-      , workspace    = workspace
       , docker_image = prs_docker_image
   }
 
-  if (resuming) {
-    call FetchSentinels {
-      input:
-          basedir      = sentinels
-        , workspace    = workspace
-        , docker_image = prs_docker_image
-    }
-  }
-
-  if (!resuming) {
-    call PurgeTmp as MaybePurgeTmp {
-      input:
-          tmp          = tmp
-        , workspace    = workspace
-        , docker_image = prs_docker_image
-    }
+  call PurgeTmp as PurgeTmpAtStart {
+    input:
+        tmp          = tmp
+      , docker_image = prs_docker_image
   }
 
   call HelperTasks.MakeBatches {
     input:
         cases    = ListShards.relpaths
       , nbatches = nbatches
-      , exclude  = select_first([FetchSentinels.sentinels, []])
   }
 
   scatter (batch in MakeBatches.batches) {
@@ -95,8 +77,6 @@ workflow PrsInputPrep {
         , regions      = GetRegions.regions
         , source       = source
         , target       = workdir
-        , sentinels    = sentinels
-        , workspace    = workspace
         , docker_image = prs_docker_image
     }
   }
@@ -104,19 +84,17 @@ workflow PrsInputPrep {
   call GetTotalSize as FootprintOfSubsettedShards {
     input:
         urls         = [workdir]
-      , workspace    = workspace
       , sequencing   = SubsetShards.sequencing
       , docker_image = prs_docker_image
   }
 
   call ConcatenateShards {
     input:
-      basedir      = workdir
-    , target       = target
-    , relpaths     = ListShards.relpaths
-    , workspace    = workspace
-    , storage      = 3 * FootprintOfSubsettedShards.gigabytes + 10
-    , docker_image = prs_docker_image
+        basedir      = workdir
+      , target       = target
+      , relpaths     = ListShards.relpaths
+      , storage      = 3 * FootprintOfSubsettedShards.gigabytes + 10
+      , docker_image = prs_docker_image
   }
 
   call HelperTasks.GetBaseMemory as GetMemoryForReference {
@@ -156,7 +134,6 @@ workflow PrsInputPrep {
   call GetTotalSize as FootprintOfVariantFiles {
     input:
         urls         = ExtractQueryVariants.ids
-      , workspace    = workspace
       , docker_image = prs_docker_image
   }
 
@@ -183,7 +160,6 @@ workflow PrsInputPrep {
   call PurgeTmp {
     input:
         tmp          = tmp
-      , workspace    = workspace
       , sequencing   = MaybeTrimPcaVariants.sequencing
       , docker_image = prs_docker_image
   }
@@ -204,7 +180,6 @@ workflow PrsInputPrep {
 task GetTotalSize {
   input {
     Array[String]+  urls
-    String          workspace
     String          docker_image
     Array[Boolean]+ sequencing = [false]  # ignored!
   }
@@ -221,7 +196,16 @@ task GetTotalSize {
 
   # ---------------------------------------------------------------------------
 
-  export WORKSPACE='~{workspace}'
+  mapurl() {
+      case "${1}" in
+          gs://*) printf 'gcs:%s' "${1#gs://}" ;;
+          s3://*) printf 's3:%s'  "${1#s3://}" ;;
+          *)      printf '%s'     "${1}"       ;;
+      esac
+  }
+
+  # ---------------------------------------------------------------------------
+
   OUTPUTDIR='~{OUTPUTDIR}'
 
   mkdir --verbose --parents "${OUTPUTDIR}"
@@ -230,7 +214,7 @@ task GetTotalSize {
   for URL in '~{sep="' '" urls}'
   do
       BYTES="$(
-                rclone size "$( mapurl.sh "${URL}" )"  \
+                rclone size "$( mapurl "${URL}" )"     \
                   | tail --lines=1                     \
                   | perl -lpe 's/^.*?(\d+) Byte.*/$1/'
               )"
@@ -317,48 +301,72 @@ task GetRegions {
   }
 }
 
-task FetchSentinels {
+task ListShards {
   input {
-    String basedir
-    String workspace
+    String source
     String docker_image
   }
 
-  String SENTINELS = "output/SENTINELS"
+  String OUTPUTDIR = "OUTPUT"
+  String STDOUT    = OUTPUTDIR + "/STDOUT"
 
   command <<<
   set -o errexit
   set -o pipefail
   set -o nounset
-  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-  # set -o xtrace
+  set -o xtrace
+  # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCALL[0]:+${FUNCNAME[0]}(): }'
 
-  typeset -p >&2
-  rclone version >&2
+  # ---------------------------------------------------------------------------
 
-  mkdir --verbose --parents "$( dirname '~{SENTINELS}' )"
+  mapurl() {
+      case "${1}" in
+          gs://*) printf 'gcs:%s' "${1#gs://}" ;;
+          s3://*) printf 's3:%s'  "${1#s3://}" ;;
+          *)      printf '%s'     "${1}"       ;;
+      esac
+  }
 
-  export WORKSPACE='~{workspace}'
-  BASEDIR="$( mapurl.sh '~{basedir}' )"
+  # ---------------------------------------------------------------------------
 
-  rclone             \
-      lsf            \
-      --recursive    \
-      --files-only   \
-      "${BASEDIR}"   \
-    > '~{SENTINELS}'
+  SOURCE="$( mapurl '~{source}' )"
 
+  mkdir --parents '~{OUTPUTDIR}'
+
+  rclone lsf --files-only --recursive "${SOURCE}" \
+    | grep --perl-regexp 'shards/.*\.gz$'         \
+    | perl -lne '
+        BEGIN {
+          %lookup = (
+                      X  => 23,
+                      Y  => 24,
+                      XY => 25,
+                      MT => 26
+                    )
+        }
+        $_ =~ /chr(\d+|XY|X|Y|MT)\b/;
+        $index = ( $lookup{$1} or $1 );
+        printf qq(%s\t%s\n), $index, $_;
+       '                                          \
+    | sort                                        \
+          --field-separator=$'\t'                 \
+          --key=1,1n                              \
+          --key=2,2V                              \
+    | cut --fields=2                              \
+    | tee '~{STDOUT}'                             \
+    >&2
   >>>
 
   output {
-    Array[String] sentinels = read_lines(SENTINELS)
+    File relpaths = STDOUT
   }
 
   runtime {
-    preemptible: 5
-    docker     : docker_image
+    docker: docker_image
   }
 }
+
+
 
 task SubsetShards {
   input {
@@ -366,8 +374,6 @@ task SubsetShards {
     File           regions
     String         source
     String         target
-    String         sentinels
-    String         workspace
     String         docker_image
   }
 
@@ -381,48 +387,23 @@ task SubsetShards {
   set -o xtrace
   export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  export WORKSPACE='~{workspace}'
+  # ---------------------------------------------------------------------------
 
-  SOURCE="$( mapurl.sh '~{source}' )"
-  TARGET="$( mapurl.sh '~{target}' )"
-  SENTINELS="$( mapurl.sh '~{sentinels}' )"
-
-  fileexists() {
-      local url="${1%/}"
-      local parent="$( dirname "${url}" )"
-      local basename="$( basename "${url}" )"
-      local -a found
-      readarray -t found < <(
-                              rclone                      \
-                                  lsf                     \
-                                  --files-only            \
-                                  --include="${basename}" \
-                                  "${parent}"
-                            )
-
-      local nfound="${#found[@]}"
-      if (( nfound == 0 ))
-      then
-          printf -- 'false'
-      elif (( nfound == 1 )) && [[ "${found[0]}" == */"${basename}" ]]
-      then
-          printf -- 'true'
-      else
-          printf -- 'fileexists: unexpected nfound=%d\n' "${nfound}" >&2
-          exit 1
-      fi
+  mapurl() {
+      case "${1}" in
+          gs://*) printf 'gcs:%s' "${1#gs://}" ;;
+          s3://*) printf 's3:%s'  "${1#s3://}" ;;
+          *)      printf '%s'     "${1}"       ;;
+      esac
   }
+
+  # ---------------------------------------------------------------------------
+
+  SOURCE="$( mapurl '~{source}' )"
+  TARGET="$( mapurl '~{target}' )"
 
   subsetshard () {
       local relpath="${1}"
-      local sentinel="${SENTINELS}/${relpath}"
-
-      if "$( fileexists "${sentinel}" )"
-      then
-          return
-      fi
-
-      local shard="${SOURCE}/${relpath}"
 
       local inputshard="$( mktemp )"
       local outputshard="$( mktemp )"
@@ -463,8 +444,6 @@ task SubsetShards {
 
       rclone copyto "${outputshard}"     "${TARGET}/${relpath}"
       rclone copyto "${outputshard}.tbi" "${TARGET}/${relpath}.tbi"
-
-      rclone touch "${sentinel}"
 
       rm --force "${inputshard}"* "${outputshard}"*
   }
@@ -788,7 +767,6 @@ task ConcatenateShards {
     String basedir
     String target
     File   relpaths
-    String workspace
     Int    storage
     String docker_image
 
@@ -805,19 +783,23 @@ task ConcatenateShards {
   export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
   set -o xtrace
 
-  # export RCLONE_LOG_LEVEL=DEBUG
-  # export RCLONE_STATS_LOG_LEVEL=DEBUG
+  # ---------------------------------------------------------------------------
 
-  # typeset -p >&2
-  # rclone version >&2
+  mapurl() {
+      case "${1}" in
+          gs://*) printf 'gcs:%s' "${1#gs://}" ;;
+          s3://*) printf 's3:%s'  "${1#s3://}" ;;
+          *)      printf '%s'     "${1}"       ;;
+      esac
+  }
+
+  # ---------------------------------------------------------------------------
 
   free --bytes >&2
   free --human >&2
 
-  export WORKSPACE='~{workspace}'
-
-  BASEDIR="$( mapurl.sh '~{basedir}' )"
-  TARGET="$( mapurl.sh '~{target}' )"
+  BASEDIR="$( mapurl '~{basedir}' )"
+  TARGET="$( mapurl '~{target}' )"
 
   LOCALBASEDIR="$( mktemp --directory )"
 
@@ -871,7 +853,6 @@ task ConcatenateShards {
 task PurgeTmp {
   input {
     String tmp
-    String workspace
     String docker_image
     String sequencing   = "ignored"
   }
@@ -883,10 +864,22 @@ task PurgeTmp {
   # set -o xtrace
   # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-  export WORKSPACE='~{workspace}'
-  TMP="$( mapurl.sh '~{tmp}' )"
+  # ---------------------------------------------------------------------------
+
+  mapurl() {
+      case "${1}" in
+          gs://*) printf 'gcs:%s' "${1#gs://}" ;;
+          s3://*) printf 's3:%s'  "${1#s3://}" ;;
+          *)      printf '%s'     "${1}"       ;;
+      esac
+  }
+
+  # ---------------------------------------------------------------------------
+
+  TMP="$( mapurl '~{tmp}' )"
   rclone purge "${TMP}"
   >>>
+
   runtime {
     preemptible: 5
     docker     : docker_image
