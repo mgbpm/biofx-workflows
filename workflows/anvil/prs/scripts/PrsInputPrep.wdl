@@ -199,7 +199,6 @@ task GetTotalSize {
   mapurl() {
       case "${1}" in
           gs://*) printf 'gcs:%s' "${1#gs://}" ;;
-          s3://*) printf 's3:%s'  "${1#s3://}" ;;
           *)      printf '%s'     "${1}"       ;;
       esac
   }
@@ -322,7 +321,6 @@ task ListShards {
   mapurl() {
       case "${1}" in
           gs://*) printf 'gcs:%s' "${1#gs://}" ;;
-          s3://*) printf 's3:%s'  "${1#s3://}" ;;
           *)      printf '%s'     "${1}"       ;;
       esac
   }
@@ -392,7 +390,6 @@ task SubsetShards {
   mapurl() {
       case "${1}" in
           gs://*) printf 'gcs:%s' "${1#gs://}" ;;
-          s3://*) printf 's3:%s'  "${1#s3://}" ;;
           *)      printf '%s'     "${1}"       ;;
       esac
   }
@@ -788,7 +785,6 @@ task ConcatenateShards {
   mapurl() {
       case "${1}" in
           gs://*) printf 'gcs:%s' "${1#gs://}" ;;
-          s3://*) printf 's3:%s'  "${1#s3://}" ;;
           *)      printf '%s'     "${1}"       ;;
       esac
   }
@@ -869,7 +865,6 @@ task PurgeTmp {
   mapurl() {
       case "${1}" in
           gs://*) printf 'gcs:%s' "${1#gs://}" ;;
-          s3://*) printf 's3:%s'  "${1#s3://}" ;;
           *)      printf '%s'     "${1}"       ;;
       esac
   }
