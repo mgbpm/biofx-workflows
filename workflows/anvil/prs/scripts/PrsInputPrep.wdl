@@ -12,7 +12,7 @@ workflow PrsInputPrep {
     Int         nbatches         = 500
     Boolean     norename         = false
     Array[File] query_vcfs
-    String      prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs-anvil:20260612"
+    String      prs_docker_image = "mgbpm/prs-anvil:20260612"
   }
 
   String tmp              = target + "/.PreparePrsInputs"
