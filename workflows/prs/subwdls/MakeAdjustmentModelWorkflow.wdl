@@ -147,7 +147,8 @@ workflow MakeAdjustmentModel {
     # all; it needs only their locations.
 
     input:
-        model_data = object {
+        condition_code = name
+      , model_data = object {
             condition_code        : name
           , parameters            : "" + TrainModel.fitted_params
 
@@ -445,12 +446,16 @@ task MaybeTrimPcaVariants {
 task BundleAdjustmentModel {
   input {
     Object model_data
+    String condition_code
   }
 
-  command {}
-
+  File tmp = write_json(model_data)
+  String filename = condition_code + "_model_manifest.json"
+  command <<<
+    cp ~{tmp} ~{filename}
+  >>>
   output {
-    File manifest = write_json(model_data)
+    File manifest = filename
   }
 
   runtime {

@@ -151,7 +151,8 @@ workflow MakeMixModelWorkflow {
     call BundleAdjustmentModel {
         # Convert files to string types so a VM is not used
         input:
-            model_data = object {
+            condition_code = condition_code
+          , model_data = object {
                 condition_code        : condition_code
               , parameters            : "" + TrainModel.fitted_params
               , scoring_inputs        :      TrainModel.scoring_inputs
@@ -450,13 +451,18 @@ task TrimPCAVariants {
 task BundleAdjustmentModel {
     input {
         Object model_data
+        String condition_code
         String docker_image
     }
 
-    command {}
+    File tmp = write_json(model_data)
+    String filename = condition_code + "_model_manifest.json"
+    command <<<
+      cp ~{tmp} ~{filename}
+    >>>
 
     output {
-        File manifest = write_json(model_data)
+        File manifest = filename
     }
 
     runtime {
