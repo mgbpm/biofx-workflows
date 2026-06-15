@@ -13,6 +13,7 @@ workflow AdjustScoreWorkflow {
         File adjustment_model_manifest
         File? prs_raw_scores
         Boolean norename = false
+        Int? pca_memory
         File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
     }
 
@@ -34,7 +35,7 @@ workflow AdjustScoreWorkflow {
             vcf = input_vcf_,
             pruning_sites = model_data.pca_variants,
             basename = output_basename,
-            mem = model_data.base_memory
+            mem = select_first([pca_memory, model_data.base_memory])
     }
 
     # Run PCA with query VCF
@@ -46,7 +47,7 @@ workflow AdjustScoreWorkflow {
             pc_loadings = model_data.loadings,
             pc_meansd = model_data.meansd,
             basename = output_basename + "_pca",
-            mem = model_data.base_memory
+            mem = select_first([pca_memory, model_data.base_memory])
     }
 
     # Plot PCA
