@@ -12,7 +12,7 @@ workflow PrsScoringWorkflow {
         Array[File] model_manifests
         Boolean norename = false
         Boolean perform_adjustment = true
-        File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+        File renaming_lookup
         String ubuntu_docker_image = "ubuntu:latest"
     }
 

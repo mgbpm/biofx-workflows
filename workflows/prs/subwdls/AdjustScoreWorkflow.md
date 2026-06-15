@@ -9,7 +9,7 @@
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | File? | prs_raw_scores | No | Raw PRS scores for all subjects to adjust | |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
-| File | renaming_lookup | No | Mapping file for renaming chromosomes | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
+| File | renaming_lookup | No | Mapping file for renaming chromosomes |  |
 
 ## Output Parameters
 

@@ -32,7 +32,7 @@ Renames the human chromosomes mentioned in the first column of
 | :---    | :---         | :---  | :---        | :---          |
 | File    | tsv          | Yes   | TSV with chromosomes to rename | |
 | Boolean | skipheader   | Yes   | Whether or not to skip the header of the TSV | |
-| File    | lookup       | No    | Chromosome name mapping | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
+| File    | lookup       | No    | Chromosome name mapping |  |
 
 ### Output Parameters
 
@@ -50,7 +50,7 @@ column of <code>vcf</code> to 1, 2, ..., 22, X, Y, MT.
 | Type   | Name         | Req'd | Description | Default Value |
 | :---   | :---         | :---  | :---        | :---          |
 | File   | vcf          | Yes   | VCF with chromosomes to rename | |
-| File   | rename       | No    | Chromosome name mapping | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
+| File   | rename       | No    | Chromosome name mapping |  |
 
 ### Output Parameters
 

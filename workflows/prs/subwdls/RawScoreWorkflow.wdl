@@ -9,7 +9,7 @@ workflow RawScoreWorkflow {
         File input_vcf
         File adjustment_model_manifest
         Boolean norename = false
-        File renaming_lookup = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+        File renaming_lookup
     }
 
     AdjustmentModelData model_data = read_json(adjustment_model_manifest)

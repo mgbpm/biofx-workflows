@@ -60,7 +60,7 @@ task RenameChromosomesInTsv {
   input {
     File    tsv
     Boolean skipheader
-    File    lookup     = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    File    lookup
   }
 
   Int    storage = 20 + 2 * ceil(size(tsv, "GB"))
@@ -144,7 +144,7 @@ task RenameChromosomesInTsv {
 task RenameChromosomesInVcf {
   input {
     File vcf
-    File rename = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
+    File rename
   }
 
   Int    storage = 20 + 2 * ceil(size(vcf, "GB"))
