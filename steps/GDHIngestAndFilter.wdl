@@ -64,7 +64,7 @@ EOF
             --project "~{gdh_project}" \
             --reference-asm "~{reference_build}" \
             --filter-name "~{filter_name_or_code}" \
-            --output-file "~{subject_id}_~{sample_id}_~{filter_name_or_code}_matching_variants.json" \
+            --output-file "~{subject_id}_~{sample_id}_~{filter_name_or_code}.matching_variants.json" \
             --timeout-minutes ~{timeout_minutes}
     >>>
 
@@ -75,7 +75,7 @@ EOF
 
     output {
         String ingest_and_filter_execution_id = read_string("invoker-execution-id.txt")
-        File matching_variants = "~{subject_id}_~{sample_id}_~{filter_name_or_code}_matching_variants.json"
+        File matching_variants = "~{subject_id}_~{sample_id}_~{filter_name_or_code}.matching_variants.json"
     }
 }
 
