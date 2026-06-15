@@ -253,7 +253,7 @@ workflow BgwgsWorkflow {
         String vcf_file_stage_name = "biofx_pipelines"
         String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
         String filter_name_or_code
-        String? pipeline_run_id
+        String? pipeline_run_name
         # Reporting steps
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
         String gdh_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gdhoutputparser:dev"
@@ -510,7 +510,7 @@ workflow BgwgsWorkflow {
             vcf_file_stage_gspath = vcf_file_stage_gspath,
             reference_build = reference_build,
             filter_name_or_code = filter_name_or_code,
-            pipeline_run_id = pipeline_run_id,
+            pipeline_run_name = pipeline_run_name,
             timeout_minutes = 90,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
@@ -578,6 +578,8 @@ workflow BgwgsWorkflow {
         # annotated VCFs
         File qceval_vcf_gz = QCEvalTask.output_vcf_gz
         File? gnomad_vcf_gz = AnnotateGnomadTask.output_vcf_gz
+        # GDH ingest and filter execution id
+        String gdh_ingest_and_filter_execution_id = GDHIngestAndFilterTask.ingest_and_filter_execution_id
         # GDH export file
         File gdh_export_file = GDHIngestAndFilterTask.matching_variants
         # GDH summary file

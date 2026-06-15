@@ -12,7 +12,7 @@ task GDHIngestAndFilterTask {
         String reference_build = "GRCh38"
         Array[String] vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
         String filter_name_or_code
-        String? pipeline_run_id
+        String pipeline_run_name = subject_id + "_" + sample_id + "_" + filter_name_or_code
         Int timeout_minutes = 90
         String gcp_project_id
         String workspace_name
@@ -43,10 +43,9 @@ task GDHIngestAndFilterTask {
     "biosample_id2_lbl": "Sample ID"
 }
 EOF
-        exec_id="~{pipeline_run_id}"
-        [ -z "$exec_id" ] && exec_id="$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')"
+        exec_id="$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')"
 
-        echo "~{subject_id}_~{sample_id}-$exec_id" > invoker-execution-id.txt
+        echo "~{pipeline_run_name}_$exec_id" > invoker-execution-id.txt
 
         if [ "~{sep="," vcf_transform_functions}" != "" ]; then
             VCF_TRANSFORM_FUNCTIONS_STR="--vcf-transform-functions ~{sep="," vcf_transform_functions}"
@@ -57,7 +56,7 @@ EOF
         $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} $VCF_TRANSFORM_FUNCTIONS_STR \
             --client-config gdhpipeline-client-config.json \
             --run-type "single_sample" \
-            --execution-id "~{subject_id}_~{sample_id}-$exec_id" \
+            --execution-id "~{pipeline_run_name}_$exec_id" \
             --biosample-default-template "@biosample-template.json" \
             --vcf-file-name "$VCF_FILE_NAME" \
             --vcf-file-stage "~{vcf_file_stage_name}" \

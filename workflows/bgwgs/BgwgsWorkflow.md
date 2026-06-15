@@ -61,7 +61,7 @@ is ingested into GDH (Genomic Data Hub) for filtration and reporting.
 | String | vcf_file_stage_name | No | The stage name for VCF file upload to GDH | "biofx_pipelines" |
 | String | vcf_file_stage_gspath | No | The GCS path for the VCF file staging area | "gs://gdh-external-stage/biofx_pipelines_nonprod" |
 | String | filter_name_or_code | Yes | The GDH filter name or code to apply during variant filtration | |
-| String? | pipeline_run_id | No | Optional pipeline run identifier for GDH ingest | |
+| String? | pipeline_run_name | No | Optional pipeline run identifier for GDH ingest | |
 | String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
 | String | gdh_parser_image | No | The name of the Docker image to run the GDH output parser task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/gdhoutputparser:dev" |
 | File | portable_db_file | No | A SQLite database that contains additional annotations that are merged into the Parser output | "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db" |
