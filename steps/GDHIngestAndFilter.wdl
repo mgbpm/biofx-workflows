@@ -11,6 +11,8 @@ task GDHIngestAndFilterTask {
         String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
         String reference_build = "GRCh38"
         Array[String] vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
+        String? vep_config_name
+        Int? vep_max_wait_minutes
         String filter_name_or_code
         String pipeline_run_name = subject_id + "_" + sample_id + "_" + filter_name_or_code
         Int timeout_minutes = 90
@@ -47,13 +49,20 @@ EOF
 
         echo "~{pipeline_run_name}_$exec_id" > invoker-execution-id.txt
 
+        OPTIONAL_PARAMS=""
         if [ "~{sep="," vcf_transform_functions}" != "" ]; then
-            VCF_TRANSFORM_FUNCTIONS_STR="--vcf-transform-functions ~{sep="," vcf_transform_functions}"
+            OPTIONAL_PARAMS="--vcf-transform-functions ~{sep="," vcf_transform_functions}"
+        fi
+        if [ -n "~{vep_config_name}" ]; then
+            OPTIONAL_PARAMS="${OPTIONAL_PARAMS} --vep-config-name ~{vep_config_name}"
+        fi
+        if [ -n "~{vep_max_wait_minutes}" ]; then
+            OPTIONAL_PARAMS="${OPTIONAL_PARAMS} --vep-max-wait-minutes ~{vep_max_wait_minutes}"
         fi
 
         VCF_FILE_NAME=$(basename "~{vcf_file}")
 
-        $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} $VCF_TRANSFORM_FUNCTIONS_STR \
+        $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} $OPTIONAL_PARAMS \
             --client-config gdhpipeline-client-config.json \
             --run-type "single_sample" \
             --execution-id "~{pipeline_run_name}_$exec_id" \
