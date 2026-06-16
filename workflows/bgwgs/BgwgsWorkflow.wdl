@@ -254,6 +254,7 @@ workflow BgwgsWorkflow {
         String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
         String? vep_config_name
         Int? vep_max_wait_minutes
+        Int? vrsmap_max_wait_minutes
         String filter_name_or_code
         String? pipeline_run_name
         # Reporting steps
@@ -513,9 +514,9 @@ workflow BgwgsWorkflow {
             reference_build = reference_build,
             vep_config_name = vep_config_name,
             vep_max_wait_minutes = vep_max_wait_minutes,
+            vrsmap_max_wait_minutes = vrsmap_max_wait_minutes,
             filter_name_or_code = filter_name_or_code,
             pipeline_run_name = pipeline_run_name,
-            timeout_minutes = 90,
             gcp_project_id = gcp_project_id,
             workspace_name = workspace_name,
             docker_image = orchutils_docker_image

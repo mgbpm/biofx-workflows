@@ -60,6 +60,9 @@ is ingested into GDH (Genomic Data Hub) for filtration and reporting.
 | String | gdh_project | No | The project identifier for GDH ingest | "Clinical" |
 | String | vcf_file_stage_name | No | The stage name for VCF file upload to GDH | "biofx_pipelines" |
 | String | vcf_file_stage_gspath | No | The GCS path for the VCF file staging area | "gs://gdh-external-stage/biofx_pipelines_nonprod" |
+| String? | vep_config_name | No | The VEP configuration to run during the annotation phase | |
+| Int? | vep_max_wait_minutes | No | The maximum number of minutes to wait for VEP annotation to start before failing | |
+| Int? | vrsmap_max_wait_minutes | No | The maximum number of minutes to wait for VRS mapping to start before failing | |
 | String | filter_name_or_code | Yes | The GDH filter name or code to apply during variant filtration | |
 | String? | pipeline_run_name | No | Optional pipeline run identifier for GDH ingest | |
 | String | igvreport_docker_image | No | The name of the Docker image to run the IGV report task | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511" |
@@ -269,6 +272,7 @@ is ingested into GDH (Genomic Data Hub) for filtration and reporting.
 | File | risk_alleles_genotype_txt | If risk alleles is enabled | Full list of risk allele genotypes in TSV format |
 | File | qceval_vcf_gz | Always | VCF file annotated with QC Evaluation |
 | File | gnomad_vcf_gz | If gnomad coverage is enabled | VCF annotated with gnomad coverage data |
+| String | ingest_and_filter_execution_id | Always | The execution identifier for the GDH ingest and filter run |
 | File | gdh_export_file | Always | Matching variants file from GDH ingest and filtration |
 | File | gdh_summary_file | Always | Summary of GDH processing parameters |
 | File | gdh_summary_xlsx | Always | Summary of GDH processing parameters in XLSX format |

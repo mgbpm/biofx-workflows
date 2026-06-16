@@ -13,9 +13,12 @@ Ingests a VCF file into the GDH (Genomic Data Hub) platform and runs a filter ag
 * String vcf_file_stage_gspath - optional - the GCS path for the VCF file stage, defaults to "gs://gdh-external-stage/biofx_pipelines_nonprod"
 * String reference_build - optional - the reference genome build, defaults to "GRCh38"
 * Array[String] vcf_transform_functions - optional - list of VCF transform functions to apply, defaults to ["sample_base.lmm_calculate_variant_call_attributes"]
+* String? vep_config_name - optional - the VEP configuration to run during the annotation phase
+* Int vep_max_wait_minutes - required - the maximum number of minutes to wait for VEP annotation to start before failing, defaults to 240
+* Int vrsmap_max_wait_minutes - required - the maximum number of minutes to wait for VRS mapping to start before failing, defaults to 60
 * String filter_name_or_code - required - the name or code of the filter to apply
 * String? pipeline_run_name - optional - an identifier for the pipeline run; if not provided, defaults to subject_id + sample_id
-* Int timeout_minutes - optional - the maximum time in minutes to wait for the ingest and filter to complete, defaults to 90
+* Int timeout_minutes - optional - the maximum time in minutes to wait for the ingest and filter to complete, defaults to `vep_max_wait_minutes + vrsmap_max_wait_minutes + 60`
 * String gcp_project_id - required - the GCP project to fetch secrets from
 * String workspace_name - required - the name of the current workspace (for secret retrieval)
 * String docker_image - required - the Docker image name:tag
