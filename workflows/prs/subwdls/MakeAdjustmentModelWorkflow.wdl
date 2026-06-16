@@ -13,7 +13,7 @@ workflow MakeAdjustmentModel {
     File        query_file
     String      name
     Boolean     norename      = false
-    File        rename
+    File?        rename
   }
 
 
@@ -23,7 +23,7 @@ workflow MakeAdjustmentModel {
         input:
             tsv        = tsv
           , skipheader = true
-          , lookup     = rename
+          , lookup     = select_first([rename])
       }
     }
 
@@ -31,13 +31,13 @@ workflow MakeAdjustmentModel {
       input:
           tsv        = pca_variants
         , skipheader = false
-        , lookup     = rename
+        , lookup     = select_first([rename])
     }
 
     call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
       input:
           vcf    = reference_vcf
-        , rename = rename
+        , rename = select_first([rename])
     }
   }
 
@@ -71,7 +71,7 @@ workflow MakeAdjustmentModel {
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
         input:
             vcf    = query_file
-          , rename = rename
+          , rename = select_first([rename])
       }
     }
 
@@ -91,7 +91,7 @@ workflow MakeAdjustmentModel {
         input:
             tsv        = query_file
           , skipheader = false
-          , lookup     = rename
+          , lookup     = select_first([rename])
       }
     }
     File query_file_ = select_first([RenameChromosomesInQueryVariants.renamed,

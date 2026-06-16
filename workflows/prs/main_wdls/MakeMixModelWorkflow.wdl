@@ -14,7 +14,7 @@ workflow MakeMixModelWorkflow {
         File query_file
         File score_weights
         Boolean norename = false
-        File rename
+        File? rename
         String ubuntu_docker_image = "ubuntu:21.10"
     }
 
@@ -32,7 +32,7 @@ workflow MakeMixModelWorkflow {
               input:
                   tsv = var_weights[i],
                   skipheader = true,
-                  lookup = rename
+                  lookup = select_first([rename])
           }
       }
 
@@ -40,13 +40,13 @@ workflow MakeMixModelWorkflow {
           input:
               tsv = pca_variants,
               skipheader = false,
-              lookup = rename
+              lookup = select_first([rename])
       }
 
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
           input:
               vcf = reference_vcf,
-              rename = rename
+              rename = select_first([rename])
       }
     }
 
@@ -81,7 +81,7 @@ workflow MakeMixModelWorkflow {
             call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
                 input:
                     vcf = query_file,
-                    rename = rename
+                    rename = select_first([rename])
             }
         }
 
@@ -100,7 +100,7 @@ workflow MakeMixModelWorkflow {
                 input:
                     tsv = query_file,
                     skipheader = false,
-                    lookup = rename
+                    lookup = select_first([rename])
             }
         }
         File query_file_ = select_first([RenameChromosomesInQueryVariants.renamed,
