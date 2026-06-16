@@ -12,7 +12,7 @@ workflow PrsScoringWorkflow {
         Array[File] model_manifests
         Boolean norename = false
         Boolean perform_adjustment = true
-        File renaming_lookup
+        File? renaming_lookup
         String ubuntu_docker_image = "ubuntu:latest"
     }
 
@@ -26,7 +26,7 @@ workflow PrsScoringWorkflow {
                 input_vcf = input_vcf,
                 adjustment_model_manifest = model_manifests[i],
                 norename = norename,
-                renaming_lookup = renaming_lookup
+                renaming_lookup = select_first([renaming_lookup])
         }
 
         if (defined(model_data.score_weights)) {
@@ -46,7 +46,7 @@ workflow PrsScoringWorkflow {
                     adjustment_model_manifest = model_manifests[i],
                     prs_raw_scores = select_first([MixScores.prs_mix_raw_score, RawScores.prs_raw_scores]),
                     norename = norename,
-                    renaming_lookup = renaming_lookup
+                    renaming_lookup = select_first([renaming_lookup])
             }
         }
     }
