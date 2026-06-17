@@ -12,11 +12,9 @@ task GDHIngestAndFilterTask {
         String reference_build = "GRCh38"
         Array[String] vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
         String? vep_config_name
-        Int vep_max_wait_minutes = 240
-        Int vrsmap_max_wait_minutes = 60
         String filter_name_or_code
         String pipeline_run_name = subject_id + "_" + sample_id + "_" + filter_name_or_code
-        Int timeout_minutes = vep_max_wait_minutes + vrsmap_max_wait_minutes + 60
+        Int timeout_minutes = 360
         String gcp_project_id
         String workspace_name
         String docker_image
@@ -56,12 +54,6 @@ EOF
         fi
         if [ -n "~{vep_config_name}" ]; then
             OPTIONAL_PARAMS="${OPTIONAL_PARAMS} --vep-config-name ~{vep_config_name}"
-        fi
-        if [ -n "~{vep_max_wait_minutes}" ]; then
-            OPTIONAL_PARAMS="${OPTIONAL_PARAMS} --vep-max-wait-minutes ~{vep_max_wait_minutes}"
-        fi
-        if [ -n "~{vrsmap_max_wait_minutes}" ]; then
-            OPTIONAL_PARAMS="${OPTIONAL_PARAMS} --vrsmap-max-wait-minutes ~{vrsmap_max_wait_minutes}"
         fi
 
         VCF_FILE_NAME=$(basename "~{vcf_file}")
