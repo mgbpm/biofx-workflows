@@ -135,6 +135,15 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - ignore-all-tags
+  - name: ProbeCoverageRegions
+    subclass: WDL
+    primaryDescriptorPath: /workflows/validation/ProbeCoverageRegionsWorkflow.wdl
+    readMePath: /workflows/validation/ProbeCoverageRegionsWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: GATKWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/pgxrisk/GATKWorkflow.wdl
