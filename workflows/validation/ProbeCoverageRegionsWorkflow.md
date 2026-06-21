@@ -19,6 +19,9 @@ details on the ROI, Gene, and Summary sub-tasks.
   for the ROI task
 * Array[RoiAndRefGeneFilePair] roigenes - required - list of
   ROI and ref gene file pairs for the Gene task
+* File genenames - optional - tab-delimited gene name file for
+  the Summary task; defaults to
+  `gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt`
 * File inputcram - required - the sample CRAM file
 * File referencefasta - optional - reference genome FASTA;
   defaults to `gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta`

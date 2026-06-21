@@ -7,6 +7,7 @@ workflow ProbeCoverageRegions {
     File   coveragebed
     Array[RoiAndRefGeneFilePair]
            roigenes
+    File   genenames      = "gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt"
     File   inputcram
     File   referencefasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File   referenceindex = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
@@ -38,7 +39,7 @@ workflow ProbeCoverageRegions {
       , bai               = CramToBam.output_bai
       , roi_all_bed       = coveragebed
       , roi_genes         = roigenes
-      , gene_names        = "gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt"
+      , gene_names        = genenames
       , cov_docker_image  = cov_image
       , gatk_docker_image = gatk_image
   }
