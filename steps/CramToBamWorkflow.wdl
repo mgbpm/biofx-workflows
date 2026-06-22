@@ -8,6 +8,7 @@ workflow CramToBam {
     File    ref_fasta_index
     File    ref_dict
     String  docker          = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
+    Int     ncpus           = 4
     Int     preemptible     = 2
   }
 
@@ -19,6 +20,7 @@ workflow CramToBam {
       , ref_fasta_index = ref_fasta_index
       , ref_dict        = ref_dict
       , docker          = docker
+      , ncpus           = ncpus
       , preemptible     = preemptible
   }
 
@@ -36,6 +38,7 @@ task ConvertCramToBam {
     File    ref_fasta_index
     File    ref_dict
     String  docker          = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
+    Int     ncpus           = 4
     Int     preemptible     = 2
   }
 
@@ -49,15 +52,32 @@ task ConvertCramToBam {
   command <<<
   set -o errexit
   set -o pipefail
+  set -o xtrace
 
-  samtools view -h -T '~{ref_fasta}' '~{input_cram}' |
-  samtools view -b -o '~{output_bam_}' -
-  samtools index -b '~{output_bam_}'
+  date +'%H:%M:%S  start conversion' >&2
+
+  samtools view           \
+      -b                  \
+      -@ ~{ncpus}         \
+      -T '~{ref_fasta}'   \
+      -o '~{output_bam_}' \
+      '~{input_cram}'
+
+  date +'%H:%M:%S  conversion done, indexing' >&2
+
+  samtools index       \
+      -b               \
+      -@ ~{ncpus}      \
+      '~{output_bam_}'
+
   mv '~{output_bam_}.bai' '~{output_bai_}'
+
+  date +'%H:%M:%S  done' >&2
   >>>
 
   runtime {
     docker      : docker
+    cpu         : ncpus
     memory      : "15 GB"
     disks       : "local-disk ~{disk_size} HDD"
     preemptible : preemptible

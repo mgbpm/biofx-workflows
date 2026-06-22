@@ -5,8 +5,8 @@ single task so it can be called either as a standalone workflow
 or imported as a task from other workflows.
 
 # Task: ConvertCramToBam
-Pipes `samtools view` (CRAM→SAM) into `samtools view` (SAM→BAM),
-then indexes the result.
+Single-pass `samtools view --bam` conversion (CRAM→BAM directly,
+no intermediate SAM), then `samtools index`.  Multi-threaded.
 
 # Input Parameters
 * File input_cram - required - the CRAM file to convert
@@ -19,6 +19,8 @@ then indexes the result.
 * String docker - optional - Docker image containing samtools;
   defaults to
   `us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710`
+* Int ncpus - optional - number of threads for samtools;
+  defaults to `4`
 * Int preemptible - optional - preemptible attempt count;
   defaults to `2`
 
