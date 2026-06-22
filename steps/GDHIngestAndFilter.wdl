@@ -70,6 +70,7 @@ EOF
             --reference-asm "~{reference_build}" \
             --filter-name "~{filter_name_or_code}" \
             --output-file "~{subject_id}_~{sample_id}_~{filter_name_or_code}.matching_variants.json" \
+            --ingest-filter-durable-key-output-file "ingest_filter_durable_key.txt" \
             --timeout-minutes ~{timeout_minutes}
     >>>
 
@@ -80,6 +81,7 @@ EOF
 
     output {
         String ingest_and_filter_execution_id = read_string("invoker-execution-id.txt")
+        String ingest_and_filter_durable_key = read_string("ingest_filter_durable_key.txt")
         File matching_variants = "~{subject_id}_~{sample_id}_~{filter_name_or_code}.matching_variants.json"
     }
 }
