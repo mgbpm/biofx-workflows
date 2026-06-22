@@ -50,6 +50,9 @@ task ConvertCramToBam {
   String output_bai_ = "~{sample_name}.bai"
 
   command <<<
+  # ensure `date` produces ET
+  ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
+
   set -o errexit
   set -o pipefail
   set -o xtrace
