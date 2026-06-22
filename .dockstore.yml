@@ -135,6 +135,15 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - ignore-all-tags
+  - name: CramToBam
+    subclass: WDL
+    primaryDescriptorPath: /steps/CramToBamWorkflow.wdl
+    readMePath: /steps/CramToBamWorkflow.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: ProbeCoverageRegions
     subclass: WDL
     primaryDescriptorPath: /workflows/validation/ProbeCoverageRegionsWorkflow.wdl
