@@ -270,7 +270,8 @@ is ingested into GDH (Genomic Data Hub) for filtration and reporting.
 | File | risk_alleles_genotype_txt | If risk alleles is enabled | Full list of risk allele genotypes in TSV format |
 | File | qceval_vcf_gz | Always | VCF file annotated with QC Evaluation |
 | File | gnomad_vcf_gz | If gnomad coverage is enabled | VCF annotated with gnomad coverage data |
-| String | ingest_and_filter_execution_id | Always | The execution identifier for the GDH ingest and filter run |
+| String | gdh_ingest_and_filter_execution_id | Always | The execution identifier for the GDH ingest and filter run |
+| String | gdh_ingest_and_filter_durable_key | Always | The task durable key for the GDH ingest and filter run |
 | File | gdh_export_file | Always | Matching variants file from GDH ingest and filtration |
 | File | gdh_summary_file | Always | Summary of GDH processing parameters |
 | File | gdh_summary_xlsx | Always | Summary of GDH processing parameters in XLSX format |

@@ -25,6 +25,7 @@ Ingests a VCF file into the GDH (Genomic Data Hub) platform and runs a filter ag
 
 ## Output Parameters
 * String ingest_and_filter_execution_id - the execution identifier for the ingest and filter run
+* String ingest_and_filter_durable_key - the durable key for the ingest and filter run
 * File matching_variants - a JSON file containing the variants matching the specified filter
 
 # GDHOutputParserTask

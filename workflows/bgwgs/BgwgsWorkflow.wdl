@@ -581,6 +581,7 @@ workflow BgwgsWorkflow {
         File? gnomad_vcf_gz = AnnotateGnomadTask.output_vcf_gz
         # GDH ingest and filter execution id
         String gdh_ingest_and_filter_execution_id = GDHIngestAndFilterTask.ingest_and_filter_execution_id
+        String gdh_ingest_and_filter_durable_key = GDHIngestAndFilterTask.ingest_and_filter_durable_key
         # GDH export file
         File gdh_export_file = GDHIngestAndFilterTask.matching_variants
         # GDH summary file
