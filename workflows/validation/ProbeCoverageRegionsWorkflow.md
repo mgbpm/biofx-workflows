@@ -28,9 +28,8 @@ details on the ROI, Gene, and Summary sub-tasks.
   for the ROI task
 * Array[RoiAndRefGeneFilePair] roigenes - required - list of
   ROI and ref gene file pairs for the Gene task
-* File genenames - optional - tab-delimited gene name file for
-  the Summary task; defaults to
-  `gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt`
+* File genenames - required - tab-delimited gene name file for
+  the Summary task
 * File bam_or_cram - required - sample BAM or CRAM file
 * File? bai - conditional - BAM index; required when
   bam_or_cram is a BAM, must be omitted when it is a CRAM

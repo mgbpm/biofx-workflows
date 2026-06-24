@@ -9,7 +9,7 @@ workflow ProbeCoverageRegions {
     File   coveragebed
     Array[RoiAndRefGeneFilePair]
            roigenes
-    File   genenames      = "gs://lmm-reference-data/roi/HGNC_genenames_05272022.txt"
+    File   genenames
     File   bam_or_cram
     File?  bai
     File   referencefasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
