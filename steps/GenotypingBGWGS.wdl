@@ -16,7 +16,7 @@ workflow GenotypingBGWGSWorkflow {
         Boolean fetch_files_verbose = false
         String workspace_name
         Int fetch_disk_size = 75
-        String orchutils_docker_image = "us-docker.pkg.dev/mgbpmbiofx/orchestration-utils/orchestration-utils:20250203"
+        String orchutils_docker_image = "us-docker.pkg.dev/mgbpmbiofx/orchestration-utils/orchestration-utils:latest"
 
         # Inputs for HaplotypeCaller
         File? input_cram
@@ -29,7 +29,7 @@ workflow GenotypingBGWGSWorkflow {
         File dbsnp
         File dbsnp_vcf_index
         String gatk_path = "/gatk/gatk"
-        String genotyping_docker_image
+        String genotyping_docker_image = "us-docker.pkg.dev/mgbpmbiofx/genotyping/genotyping:20260630"
     }
 
     String out_path = "outputs/"
