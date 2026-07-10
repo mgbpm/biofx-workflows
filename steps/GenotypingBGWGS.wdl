@@ -68,19 +68,12 @@ workflow GenotypingBGWGSWorkflow {
             gatk_path = gatk_path,
             out_path = out_path,
             gvcf = gvcf,
-            all_calls_vcf = all_calls_vcf
-    }
-
-    call AddAnnotationsTask {
-        input:
-            all_calls_vcf_file = HaplotypeCallerTask.all_calls_vcf_file,
-            annotated_vcf = annotated_vcf,
-            out_path = out_path,
-            genotyping_docker_image = genotyping_docker_image
+            all_calls_vcf = all_calls_vcf,
+            annotated_vcf = annotated_vcf
     }
 
     output {
-        File annotated_vcf_file = AddAnnotationsTask.annotated_vcf_file
+        File annotated_vcf_file = HaplotypeCallerTask.annotated_vcf_file
     }
 }
 
@@ -99,6 +92,7 @@ task HaplotypeCallerTask {
         String out_path
         String gvcf
         String all_calls_vcf
+        String annotated_vcf
         Int mem_gb = 24
         Int disk_size = ceil(size(input_cram, "GB") + size(dbsnp, "GB")) + 10
     }
@@ -144,7 +138,25 @@ task HaplotypeCallerTask {
         --read-filter MappingQualityReadFilter \
         --minimum-mapping-quality '17' \
         --read-filter MappingQualityNotZeroReadFilter
-        
+
+        if [[ -z "${GATK_CALLER_ANNOTATION:-}" ]]
+        then
+            GATK_CALLER_ANNOTATION=$(
+                unzip -p "$( dirname ~{gatk_path} )/gatk.jar" \
+                      META-INF/MANIFEST.MF                    \
+                    | tr -d '\r'                              \
+                    | awk -F': ' '
+                          /^Implementation-Version:/ {
+                              sub(/-SNAPSHOT$/, "", $2)
+                              print "gatk_" $2
+                              exit
+                          }'
+            )
+        fi
+        : "${GATK_CALLER_ANNOTATION:=unknown_caller}"
+
+        "${MGBPMBIOFXPATH}/biofx-qceval/bin/annotate_with_gatk_caller.py" \
+            '~{all_calls_vcf}' '~{annotated_vcf}' "${GATK_CALLER_ANNOTATION}"
     >>>
 
     runtime {
@@ -158,37 +170,6 @@ task HaplotypeCallerTask {
         File all_calls_vcf_idx_file = "~{all_calls_vcf}.idx"
         File gvcf_file = "~{gvcf}"
         File gvcf_idx_file = "~{gvcf}.idx"
-    }
-}
-
-task AddAnnotationsTask {
-    input {
-        File all_calls_vcf_file
-        String annotated_vcf
-        String out_path
-        String genotyping_docker_image
-        Int mem_gb = 24
-        Int disk_size = ceil(size(all_calls_vcf_file, "GB")) + 10
-    }
-
-    command <<<
-        set -euxo pipefail
-
-        mkdir -p ~{out_path}
-
-        python $MGBPMBIOFXPATH/biofx-qceval/bin/annotate_with_gatk_caller.py \
-            ~{all_calls_vcf_file} \
-            ~{annotated_vcf}
-        
-    >>>
-
-    runtime {
-        docker: "~{genotyping_docker_image}"
-        disks: "local-disk ~{disk_size} SSD"
-        memory: "~{mem_gb} GB"
-    }
-
-    output {
         File annotated_vcf_file = "~{annotated_vcf}"
     }
 }

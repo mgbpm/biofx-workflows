@@ -41,10 +41,7 @@ This workflow performs variant genotyping for genome samples, producing a fully 
    Fetches CRAM/CRAI files from a GCP data location using the `FetchFilesTask` from `FileUtils.wdl`.
 
 2. **HaplotypeCallerTask**  
-   Runs GATK HaplotypeCaller to generate a GVCF (BP_RESOLUTION mode), then runs GATK GenotypeGVCFs to produce an all-calls VCF.
-
-3. **AddAnnotationsTask**  
-   Annotates the VCF with caller/version information using `annotate_with_caller.py`.
+   Runs GATK HaplotypeCaller to generate a GVCF (BP_RESOLUTION mode), then runs GATK GenotypeGVCFs to produce an all-calls VCF, then annotates every record with a `Caller` INFO field via `annotate_with_gatk_caller.py`.  The annotation string is taken from the `GATK_CALLER_ANNOTATION` environment variable (set in the genotyping docker image); if unset, it is read from the GATK jar's `META-INF/MANIFEST.MF`; if that also fails, it defaults to `unknown_caller`.
 
 ## Example Output File Names
 
