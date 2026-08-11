@@ -22,7 +22,7 @@ version 1.0
 #                       subject_id is matched against Biosample_ID (exact, case-sensitive)
 #                       path is a directory path relative to s3_prefix
 
-import "CopySampleFilesWorkflow.wdl" as CopySampleFilesWf
+import "../../workflows/orchestration/CopySampleFilesWorkflow.wdl" as CopySampleFilesWf
 
 workflow VariantListIgvScreenshots {
 
