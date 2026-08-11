@@ -511,3 +511,11 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - FASTOutputParser_*
+  - name: VariantListIgvScreenshots
+    subclass: WDL 
+    primaryDescriptorPath: /workflows/biobank_igv_screenshot/VariantListIgvScreenshots.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - VariantListIgvScreenshots_*
