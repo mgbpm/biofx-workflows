@@ -22,7 +22,7 @@ version 1.0
 #                       subject_id is matched against Biosample_ID (exact, case-sensitive)
 #                       path is a directory path relative to s3_prefix
 
-import "../orchestration/CopySampleFilesWorkflow.wdl" as CopySampleFilesWf
+import "../../steps/FileUtils.wdl" as FilesUtilsWf
 
 workflow VariantListIgvScreenshots {
 
@@ -51,16 +51,16 @@ workflow VariantListIgvScreenshots {
         # Wasabi / S3 source configuration
         # source_location = s3_prefix + "/" + manifest.path
         # -----------------------------------------------------------------------
-        String s3_prefix = "s3://prod-biobank-cram-2023-1"
+        String s3_prefix
 
         # -----------------------------------------------------------------------
         # CopySampleFilesWorkflow configuration
         # -----------------------------------------------------------------------
-        String        staging_bucket    = "gs://fc-secure-f06c68c4-d169-4cdb-a05b-2305c8eb1199/cram_stage"
-        String        gcp_project_id    = "mgb-lmm-gcp-infrast-1651079146"
-        String        workspace_name    = "nonprod-biobank-igv-screenshot"
+        String        staging_bucket
+        String        gcp_project_id
+        String        workspace_name
         # File extensions to copy; includes crai so the IGV task can find the index
-        Array[String] cram_file_types   = ["cram", "crai", "md5", "md5sum"]
+        Array[String] cram_file_types   = ["cram", "crai"]
 
         # -----------------------------------------------------------------------
         # Docker images
@@ -107,14 +107,14 @@ workflow VariantListIgvScreenshots {
         #         .../cram_stage/10000001/1/sample.cram   ← distinct, not overwritten
         # -------------------------------------------------------------------
         scatter (j in range(length(source_paths))) {
-            call CopySampleFilesWf.CopySampleFilesWorkflow as CopyCram {
+            call FilesUtilsWf.CopyFilesTask as CopyCram {
                 input:
-                    sample_id              = biosample_id,
+                    file_match_keys        = [biosample_id],
                     source_location        = source_paths[j],
                     flatten                = true,
                     recursive              = true,
                     target_location        = staging_bucket + "/" + biosample_id + "/" + j,
-                    orchutils_docker_image = orchutils_docker_image,
+                    docker_image           = orchutils_docker_image,
                     gcp_project_id         = gcp_project_id,
                     workspace_name         = workspace_name,
                     file_types             = cram_file_types,
