@@ -39,11 +39,11 @@ Outputs  (written to the current working directory)
     paths/{index}.txt        — S3 source_location paths for that biosample,
                                one per line (empty if no manifest match found)
 
-    variant_bed_paths.txt    — absolute paths to each variants/{index}.bed file,
+    variant_bed_paths.txt    — task-relative paths to each variants/{index}.bed file,
                                in the same order as biosample_ids.txt
                                (consumed by WDL Array[File] output declaration)
 
-    source_paths_paths.txt   — absolute paths to each paths/{index}.txt file,
+    source_paths_paths.txt   — task-relative paths to each paths/{index}.txt file,
                                in the same order as biosample_ids.txt
                                (consumed by WDL Array[File] output declaration)
 
@@ -128,37 +128,37 @@ def write_outputs(biosample_ids, variants_by_biosample, paths_by_biosample):
     os.makedirs("variants", exist_ok=True)
     os.makedirs("paths", exist_ok=True)
 
-    bed_abs_paths = []
-    paths_abs_paths = []
+    bed_paths = []
+    paths_paths = []
 
     for idx, bid in enumerate(biosample_ids):
         prefix = f"{idx:06d}"
 
         # BED file — header required by igv-reports for --info-columns
-        bed_path = os.path.abspath(f"variants/{prefix}.bed")
+        bed_path = f"variants/{prefix}.bed"
         with open(bed_path, "w") as fh:
             fh.write("chr\tstart\tend\tPredicted_Impact\tVariant_ID_VCF\n")
             for chrom, s, e, impact, vid in variants_by_biosample[bid]:
                 fh.write(f"{chrom}\t{s}\t{e}\t{impact}\t{vid}\n")
-        bed_abs_paths.append(bed_path)
+        bed_paths.append(bed_path)
 
         # Source paths file — one S3 directory path per line (may be empty)
-        paths_path = os.path.abspath(f"paths/{prefix}.txt")
+        paths_path = f"paths/{prefix}.txt"
         with open(paths_path, "w") as fh:
             for p in sorted(paths_by_biosample.get(bid, [])):
                 fh.write(p + "\n")
-        paths_abs_paths.append(paths_path)
+        paths_paths.append(paths_path)
 
-    # WDL Array[File] output manifests — one absolute path per line,
+    # WDL Array[File] output manifests — one task-relative path per line,
     # aligned with biosample_ids.txt ordering
     with open("biosample_ids.txt", "w") as fh:
         fh.write("\n".join(biosample_ids) + "\n")
 
     with open("variant_bed_paths.txt", "w") as fh:
-        fh.write("\n".join(bed_abs_paths) + "\n")
+        fh.write("\n".join(bed_paths) + "\n")
 
     with open("source_paths_paths.txt", "w") as fh:
-        fh.write("\n".join(paths_abs_paths) + "\n")
+        fh.write("\n".join(paths_paths) + "\n")
 
 
 def main():
