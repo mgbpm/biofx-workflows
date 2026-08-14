@@ -180,7 +180,7 @@ task PrepSampleDataTask {
     command <<<
         set -euxo pipefail
 
-        $MGBPMBIOFXPATH/workflows/biobank_igv_screenshot/bin/prep_sample_data.py \
+        $MGBPMBIOFXPATH/biofx-igv-screenshot/bin/prep_sample_data.py \
             '~{variant_list_tsv}' \
             '~{manifest_tsv}'     \
             '~{s3_prefix}'
