@@ -67,7 +67,7 @@ workflow VariantListIgvScreenshots {
         # -----------------------------------------------------------------------
         String igvreport_docker_image                 = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
         String orchutils_docker_image                 = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
-        String variantlistigvscreenshots_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/wasabi-igv-screenshot:20260814"
+        String variantlistigvscreenshots_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/wasabi-igv-screenshot:202608142"
 
         Int    preemptible = 1
     }
