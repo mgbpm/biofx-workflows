@@ -197,8 +197,10 @@ task PrepSampleDataTask {
         # Parallel arrays — biosample_ids[i] corresponds to
         # variant_bed_files[i] and source_paths_files[i]
         Array[String] biosample_ids      = read_lines("biosample_ids.txt")
-        Array[File]   variant_bed_files  = read_lines("variant_bed_paths.txt")
-        Array[File]   source_paths_files = read_lines("source_paths_paths.txt")
+        # Collect generated files directly from task outputs to avoid any
+        # dependency on intermediate path-manifest files.
+        Array[File]   variant_bed_files  = glob("variants/*.bed")
+        Array[File]   source_paths_files = glob("paths/*.txt")
     }
 }
 
