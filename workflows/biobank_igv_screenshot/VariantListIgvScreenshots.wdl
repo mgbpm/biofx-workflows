@@ -123,15 +123,20 @@ workflow VariantListIgvScreenshots {
             }
         }
 
+        # CopyFilesTask.local_files is only populated when files are copied to
+        # local disk. Here target_location is a GCS bucket, so consume
+        # target_files and coerce to File to force localization in the next task.
+        Array[File] copied_cram_files = flatten(CopyCram.target_files)
+
         # -------------------------------------------------------------------
         # Step 2b — Generate IGV screenshots
-        # All localized files across every copied directory are flattened into
-        # a single list; the task finds CRAMs/CRAIs and runs create_report
-        # for each CRAM against every variant in the biosample's BED file.
+        # All copied files across every directory are localized by WDL as File
+        # inputs; the task finds CRAMs/CRAIs and runs create_report for each
+        # CRAM against every variant in the biosample's BED file.
         # -------------------------------------------------------------------
         call IgvReportFromVariantBedTask {
             input:
-                all_localized_files = flatten(CopyCram.local_files),
+                all_localized_files = copied_cram_files,
                 variant_bed         = variant_bed,
                 biosample_id        = biosample_id,
                 ref_fasta           = ref_fasta,
