@@ -269,8 +269,13 @@ task IgvReportFromVariantBedTask {
             exit 0
         fi
 
-        # Count variant rows (exclude the BED header line)
-        num_variants=$(tail -n +2 "~{variant_bed}" | wc -l)
+        # igv-reports BED parser expects coordinate rows only (no header).
+        # Build a headerless BED view for reporting and validation.
+        BED_NO_HEADER="variant_rows.bed"
+        tail -n +2 "~{variant_bed}" > "${BED_NO_HEADER}"
+
+        # Count variant rows after removing header
+        num_variants=$(wc -l < "${BED_NO_HEADER}")
         if [ "${num_variants}" -eq 0 ]; then
             echo "WARNING: Variant BED file is empty for biosample ~{biosample_id}." >&2
             touch "~{biosample_id}_no_variants.igvreport.html"
@@ -302,12 +307,12 @@ task IgvReportFromVariantBedTask {
 
             out_html="~{biosample_id}_${cram_stem}.igvreport.html"
 
-            create_report "~{variant_bed}" "~{ref_fasta}"  \
+            create_report "${BED_NO_HEADER}" "~{ref_fasta}" \
                 --sequence 1                               \
                 --begin    2                               \
                 --end      3                               \
                 --flanking ~{igv_flanking}                 \
-                --info-columns Predicted_Impact Variant_ID_VCF \
+                --info-columns 4 5                         \
                 --tracks   "working/${cram_base}"          \
                 --output   "${out_html}"
 
