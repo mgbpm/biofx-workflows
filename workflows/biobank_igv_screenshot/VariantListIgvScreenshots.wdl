@@ -8,14 +8,13 @@ version 1.0
 #   2. Copies the CRAM (and CRAI, MD5) files for that biosample from Wasabi S3
 #      to a GCS staging bucket using CopySampleFilesWorkflow.
 #   3. Generates an HTML IGV screenshot report—one per CRAM—covering all
-#      variants listed for that biosample, with Predicted_Impact annotated
-#      in the report table.
+#      variants listed for that biosample.
 #
 # All biosamples are processed in parallel (one scatter branch per biosample).
 #
 # Inputs
 # ------
-#   variant_list_tsv  : TSV with columns Variant_ID_VCF, Biosample_ID, Predicted_Impact
+#   variant_list_tsv  : TSV with columns Variant_ID_VCF, Biosample_ID
 #                       Variant_ID_VCF format: CHR-POS-REF-ALT  (e.g. "X-31126647-T-A")
 #
 #   manifest_tsv      : TSV with columns subject_id, path, filename, size
@@ -30,7 +29,7 @@ workflow VariantListIgvScreenshots {
         # -----------------------------------------------------------------------
         # Input data files
         # -----------------------------------------------------------------------
-        File   variant_list_tsv    # Variant_ID_VCF, Biosample_ID, Predicted_Impact
+        File   variant_list_tsv    # Variant_ID_VCF, Biosample_ID
         File   manifest_tsv        # subject_id, path, filename, size
 
         # -----------------------------------------------------------------------
@@ -74,7 +73,7 @@ workflow VariantListIgvScreenshots {
 
     # -------------------------------------------------------------------------
     # Step 1 — Parse inputs
-    # Produces one BED file and one source-paths file per unique Biosample_ID.
+    # Produces one variant TSV file and one source-paths file per unique Biosample_ID.
     # -------------------------------------------------------------------------
     call PrepSampleDataTask {
         input:
@@ -91,7 +90,7 @@ workflow VariantListIgvScreenshots {
     scatter (i in range(length(PrepSampleDataTask.biosample_ids))) {
 
         String biosample_id = PrepSampleDataTask.biosample_ids[i]
-        File   variant_bed  = PrepSampleDataTask.variant_bed_files[i]
+        File   variant_tsv  = PrepSampleDataTask.variant_tsv_files[i]
 
         # Source S3 directory paths for this biosample (one per manifest row)
         Array[String] source_paths = read_lines(PrepSampleDataTask.source_paths_files[i])
@@ -132,12 +131,12 @@ workflow VariantListIgvScreenshots {
         # Step 2b — Generate IGV screenshots
         # All copied files across every directory are localized by WDL as File
         # inputs; the task finds CRAMs/CRAIs and runs create_report for each
-        # CRAM against every variant in the biosample's BED file.
+        # CRAM against every variant in the biosample's TSV file.
         # -------------------------------------------------------------------
-        call IgvReportFromVariantBedTask {
+        call IgvReportFromVariantTsvTask {
             input:
                 all_localized_files = copied_cram_files,
-                variant_bed         = variant_bed,
+            variant_tsv         = variant_tsv,
                 biosample_id        = biosample_id,
                 ref_fasta           = ref_fasta,
                 ref_fasta_index     = ref_fasta_index,
@@ -151,7 +150,7 @@ workflow VariantListIgvScreenshots {
     output {
         # Outer array: one entry per biosample
         # Inner array: one HTML report per CRAM found for that biosample
-        Array[Array[File]] igv_reports = IgvReportFromVariantBedTask.igv_report_htmls
+        Array[Array[File]] igv_reports = IgvReportFromVariantTsvTask.igv_report_htmls
     }
 }
 
@@ -161,15 +160,15 @@ workflow VariantListIgvScreenshots {
 # Reads the variant list TSV and manifest TSV and produces, for each unique
 # Biosample_ID:
 #
-#   variants/{index}.bed  — 5-column BED file (with header) for igv-reports:
-#                           chr, start (0-based), end, Predicted_Impact, Variant_ID_VCF
+#   variants/{index}.tsv  — per-biosample TSV file (with header):
+#                           CHR, START, END, REF, ALT, Biosample_ID
 #
 #   paths/{index}.txt     — One S3 source_location path per line, built from
 #                           s3_prefix + manifest.path for every manifest row
 #                           whose subject_id matches the Biosample_ID.
 #
 # Output arrays are guaranteed to be aligned: biosample_ids[i] corresponds to
-# variant_bed_files[i] and source_paths_files[i].
+# variant_tsv_files[i] and source_paths_files[i].
 # =============================================================================
 
 task PrepSampleDataTask {
@@ -200,28 +199,25 @@ task PrepSampleDataTask {
 
     output {
         # Parallel arrays — biosample_ids[i] corresponds to
-        # variant_bed_files[i] and source_paths_files[i]
+        # variant_tsv_files[i] and source_paths_files[i]
         Array[String] biosample_ids      = read_lines("biosample_ids.txt")
         # Collect generated files directly from task outputs to avoid any
         # dependency on intermediate path-manifest files.
-        Array[File]   variant_bed_files  = glob("variants/*.bed")
+        Array[File]   variant_tsv_files  = glob("variants/*.tsv")
         Array[File]   source_paths_files = glob("paths/*.txt")
     }
 }
 
 # =============================================================================
-# Task: IgvReportFromVariantBedTask
+# Task: IgvReportFromVariantTsvTask
 #
 # Given the flat list of all files copied by CopySampleFilesWorkflow (CRAMs,
 # CRAIs, MD5s), this task:
 #
 #   1. Identifies every .cram file and its matching .crai index.
 #   2. For each CRAM, calls igv-reports' create_report using the per-biosample
-#      variant BED file (chr, start, end, Predicted_Impact, Variant_ID_VCF).
+#      variant TSV file (CHR, START, END, REF, ALT, Biosample_ID).
 #   3. Outputs one HTML report per CRAM.
-#
-# Predicted_Impact and Variant_ID_VCF are surfaced in the IGV report table via
-# --info-columns.
 #
 # CRAI matching logic
 # -------------------
@@ -231,13 +227,13 @@ task PrepSampleDataTask {
 #   - /sample.crai        (index with only the sample stem)
 # =============================================================================
 
-task IgvReportFromVariantBedTask {
+task IgvReportFromVariantTsvTask {
 
     input {
         # All files returned by CopySampleFilesWorkflow (CRAMs, CRAIs, MD5s)
         Array[File] all_localized_files
-        # Per-biosample variant BED produced by PrepSampleDataTask
-        File        variant_bed
+        # Per-biosample variant TSV produced by PrepSampleDataTask
+        File        variant_tsv
         String      biosample_id
         File        ref_fasta
         File        ref_fasta_index
@@ -269,15 +265,10 @@ task IgvReportFromVariantBedTask {
             exit 0
         fi
 
-        # igv-reports BED parser expects coordinate rows only (no header).
-        # Build a headerless BED view for reporting and validation.
-        BED_NO_HEADER="variant_rows.bed"
-        tail -n +2 "~{variant_bed}" > "${BED_NO_HEADER}"
-
-        # Count variant rows after removing header
-        num_variants=$(wc -l < "${BED_NO_HEADER}")
+        # Count variant rows after removing header line
+        num_variants=$(tail -n +2 "~{variant_tsv}" | wc -l)
         if [ "${num_variants}" -eq 0 ]; then
-            echo "WARNING: Variant BED file is empty for biosample ~{biosample_id}." >&2
+            echo "WARNING: Variant TSV file is empty for biosample ~{biosample_id}." >&2
             touch "~{biosample_id}_no_variants.igvreport.html"
             exit 0
         fi
@@ -307,13 +298,13 @@ task IgvReportFromVariantBedTask {
 
             out_html="~{biosample_id}_${cram_stem}.igvreport.html"
 
-            create_report "${BED_NO_HEADER}" "~{ref_fasta}" \
-                --sequence 1                               \
-                --begin    2                               \
-                --end      3                               \
-                --flanking ~{igv_flanking}                 \
-                --info-columns 4 5                         \
-                --tracks   "working/${cram_base}"          \
+            create_report "~{variant_tsv}" "~{ref_fasta}"          \
+                --sequence 1                                       \
+                --begin    2                                       \
+                --end      3                                       \
+                --flanking ~{igv_flanking}                         \
+                --info-columns CHR STAR END REF ALT Biosample_ID   \
+                --tracks   "working/${cram_base}"                  \
                 --output   "${out_html}"
 
         done < cram_files.txt
