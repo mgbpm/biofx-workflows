@@ -303,7 +303,7 @@ task IgvReportFromVariantTsvTask {
                 --begin    2                                       \
                 --end      3                                       \
                 --flanking ~{igv_flanking}                         \
-                --info-columns CHR STAR END REF ALT Biosample_ID   \
+                --info-columns CHR START END REF ALT Biosample_ID   \
                 --tracks   "working/${cram_base}"                  \
                 --output   "${out_html}"
 
