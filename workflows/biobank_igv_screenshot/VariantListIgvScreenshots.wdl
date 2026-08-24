@@ -151,6 +151,8 @@ workflow VariantListIgvScreenshots {
         # Outer array: one entry per biosample
         # Inner array: one HTML report per CRAM found for that biosample
         Array[Array[File]] igv_reports = IgvReportFromVariantTsvTask.igv_report_htmls
+        # Flat list of all HTML reports across all biosamples
+        Array[File] all_igv_reports = flatten(IgvReportFromVariantTsvTask.igv_report_htmls)
     }
 }
 
