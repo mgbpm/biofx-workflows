@@ -230,8 +230,8 @@ workflow BgwgsWorkflow {
         String gatk3_docker_image = "broadinstitute/gatk3:3.7-0"
         # pgx inputs
         String pgx_test_code = "lmPGX-pnlD_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20251212"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20251212.tar"
         File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # risk alleles inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
@@ -239,10 +239,10 @@ workflow BgwgsWorkflow {
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
         # genotyping bgwgs inputs
-        Boolean do_genotyping = true
-        File genotyping_roi_bed
-        String genotyping_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genotyping-bgwgs:test"
-        String genotyping_test_code
+        Boolean do_genotyping = false
+        File? genotyping_roi_bed
+        String genotyping_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genotyping-bgwgs:20260825"
+        String? genotyping_test_code
         # vcf filter inputs
         File target_roi_bed = "gs://lmm-reference-data/roi/targetROI_hg38_2023_08_24_withCHR.bed"
         # alamut inputs
@@ -283,7 +283,7 @@ workflow BgwgsWorkflow {
         Int fast_adi_wait_max_intervals = 144
         # Reporting steps
         String igvreport_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/igvreport:20230511"
-        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:dev_genotyping_testing_ssp35"
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20260825"
         File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
         String fast_parser_sample_type = "S"
         Array[File] igv_track_files = [ "gs://lmm-reference-data/annotation/ucsc/hg38/refGene_20231019.txt.gz" ]
@@ -468,11 +468,11 @@ workflow BgwgsWorkflow {
                 input_crai = sample_bai,
                 sample_id = sample_id,
                 accession_id = subject_id,
-                test_code = genotyping_test_code,
+                test_code = select_first([genotyping_test_code]),
                 reference_fasta = ref_fasta,
                 reference_fasta_fai = ref_fasta_index,
                 reference_dict = ref_dict,
-                roi_bed = genotyping_roi_bed,
+                roi_bed = select_first([genotyping_roi_bed]),
                 dbsnp = select_first([dbsnp_vcf]),
                 dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
                 genotyping_docker_image = genotyping_docker_image,
@@ -715,8 +715,8 @@ workflow BgwgsWorkflow {
                 call FASTOutputParser.FASTOutputParserTask {
                     input:
                         fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
-                        genotyping_vcf = GenotypingWorkflowAlias.annotated_vcf_file,
-                        genotyping_bed_file = genotyping_roi_bed,
+                        genotyping_vcf = select_first([GenotypingWorkflowAlias.annotated_vcf_file]),
+                        genotyping_bed_file = select_first([genotyping_roi_bed]),
                         sample_type = fast_parser_sample_type,
                         reference_build = reference_build,
                         oms_query = "Y",
