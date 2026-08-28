@@ -279,14 +279,23 @@ task IgvReportFromVariantTsvTask {
         # CRAM's index without needing write access to the localized file paths
         mkdir -p working
 
+        report_idx=0
         while IFS= read -r cram_path; do
             cram_base=$(basename "${cram_path}")     # e.g. sample.cram
             cram_stem="${cram_base%.cram}"           # e.g. sample
 
-            # Search for the CRAI that belongs to this CRAM.
-            # Dragen convention: <name>.cram.crai; also accept <name>.crai
-            crai_path=$(grep -E "(/${cram_base}\.crai$|/${cram_stem}\.crai$)" \
-                        "$ALL_FILES_LIST" | head -1 || true)
+            # Prefer CRAI in the same directory as the CRAM to avoid pairing
+            # identical basenames from different source directories.
+            cram_dir=$(dirname "${cram_path}")
+            if [ -f "${cram_path}.crai" ]; then
+                crai_path="${cram_path}.crai"
+            elif [ -f "${cram_dir}/${cram_stem}.crai" ]; then
+                crai_path="${cram_dir}/${cram_stem}.crai"
+            else
+                # Fallback: any matching CRAI by basename
+                crai_path=$(grep -E "(/${cram_base}\.crai$|/${cram_stem}\.crai$)" \
+                            "$ALL_FILES_LIST" | head -1 || true)
+            fi
 
             if [ -z "${crai_path}" ]; then
                 echo "WARNING: No CRAI found for ${cram_path}; skipping." >&2
@@ -298,7 +307,9 @@ task IgvReportFromVariantTsvTask {
             ln -sf "${cram_path}" "working/${cram_base}"
             ln -sf "${crai_path}" "working/${cram_base}.crai"
 
-            out_html="~{biosample_id}_${cram_stem}.igvreport.html"
+            # Include loop index so duplicate CRAM basenames produce distinct
+            # report files instead of overwriting each other.
+            out_html="~{biosample_id}_${report_idx}_${cram_stem}.igvreport.html"
 
             create_report "~{variant_tsv}" "~{ref_fasta}"          \
                 --sequence 1                                       \
@@ -308,6 +319,8 @@ task IgvReportFromVariantTsvTask {
                 --info-columns CHR START END REF ALT Biosample_ID   \
                 --tracks   "working/${cram_base}"                  \
                 --output   "${out_html}"
+
+            report_idx=$((report_idx + 1))
 
         done < cram_files.txt
     >>>
