@@ -715,8 +715,8 @@ workflow BgwgsWorkflow {
                 call FASTOutputParser.FASTOutputParserTask {
                     input:
                         fast_output_file = FASTExportAnnotatedSampleDataTask.output_file,
-                        genotyping_vcf = select_first([GenotypingWorkflowAlias.annotated_vcf_file]),
-                        genotyping_bed_file = select_first([genotyping_roi_bed]),
+                        genotyping_vcf = GenotypingWorkflowAlias.annotated_vcf_file,
+                        genotyping_bed_file = genotyping_roi_bed,
                         sample_type = fast_parser_sample_type,
                         reference_build = reference_build,
                         oms_query = "Y",
