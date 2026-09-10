@@ -46,7 +46,7 @@ task GDHIngestAndFilterTask {
 EOF
         exec_id="$(dd if=/dev/random bs=6 count=1 2>>/dev/null | base64 | tr -dC '[:alnum:]')"
 
-        echo "~{pipeline_run_name}_$exec_id" > invoker-execution-id.txt
+        echo "~{pipeline_run_name}-$exec_id" > invoker-execution-id.txt
 
         OPTIONAL_PARAMS=""
         if [ "~{sep="," vcf_transform_functions}" != "" ]; then
@@ -61,7 +61,7 @@ EOF
         $MGBPMBIOFXPATH/biofx-pygdh/bin/run_ingest_and_filter.py ~{if verbose then "--verbose" else ""} $OPTIONAL_PARAMS \
             --client-config gdhpipeline-client-config.json \
             --run-type "single_sample" \
-            --execution-id "~{pipeline_run_name}_$exec_id" \
+            --execution-id "~{pipeline_run_name}-$exec_id" \
             --biosample-default-template "@biosample-template.json" \
             --vcf-file-name "$VCF_FILE_NAME" \
             --vcf-file-stage "~{vcf_file_stage_name}" \
