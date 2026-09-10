@@ -294,6 +294,14 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - BiobankScrub_*
+  - name: BiobankRequestWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/biobank-request/BiobankRequestWorkflow.wdl
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - BiobankRequest_*
   - name: BamsurgeonWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/insilico/bamsurgeon.wdl
