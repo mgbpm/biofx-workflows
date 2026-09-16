@@ -153,6 +153,12 @@ workflow VariantListIgvScreenshots {
         Array[Array[File]] igv_reports = IgvReportFromVariantTsvTask.igv_report_htmls
         # Flat list of all HTML reports across all biosamples
         Array[File] all_igv_reports = flatten(IgvReportFromVariantTsvTask.igv_report_htmls)
+        # Per-biosample status tables and counts for CRAM detection/report generation
+        Array[File] cram_report_status_tables = IgvReportFromVariantTsvTask.cram_report_status_tsv
+        Array[Int]  detected_cram_counts      = IgvReportFromVariantTsvTask.detected_cram_count
+        Array[Int]  generated_report_counts   = IgvReportFromVariantTsvTask.generated_report_count
+        Array[Int]  skipped_no_crai_counts    = IgvReportFromVariantTsvTask.skipped_no_crai_count
+        Array[Int]  failed_report_counts      = IgvReportFromVariantTsvTask.failed_report_count
     }
 }
 
@@ -190,6 +196,30 @@ task PrepSampleDataTask {
             '~{variant_list_tsv}' \
             '~{manifest_tsv}'     \
             '~{s3_prefix}'
+
+        # Build deterministic, index-aligned manifests for variants and paths.
+        # This avoids relying on glob ordering for parallel arrays.
+        : > variant_tsv_files.txt
+        : > source_paths_files.txt
+        num_biosamples=$(wc -l < biosample_ids.txt)
+        i=0
+        while [ "$i" -lt "$num_biosamples" ]; do
+            variant_file="variants/${i}.tsv"
+            paths_file="paths/${i}.txt"
+
+            if [ ! -f "$variant_file" ]; then
+                echo "ERROR: Missing expected variant file: ${variant_file}" >&2
+                exit 1
+            fi
+            if [ ! -f "$paths_file" ]; then
+                echo "ERROR: Missing expected paths file: ${paths_file}" >&2
+                exit 1
+            fi
+
+            printf '%s\n' "$variant_file" >> variant_tsv_files.txt
+            printf '%s\n' "$paths_file" >> source_paths_files.txt
+            i=$((i + 1))
+        done
     >>>
 
     runtime {
@@ -203,10 +233,8 @@ task PrepSampleDataTask {
         # Parallel arrays — biosample_ids[i] corresponds to
         # variant_tsv_files[i] and source_paths_files[i]
         Array[String] biosample_ids      = read_lines("biosample_ids.txt")
-        # Collect generated files directly from task outputs to avoid any
-        # dependency on intermediate path-manifest files.
-        Array[File]   variant_tsv_files  = glob("variants/*.tsv")
-        Array[File]   source_paths_files = glob("paths/*.txt")
+        Array[File]   variant_tsv_files  = read_lines("variant_tsv_files.txt")
+        Array[File]   source_paths_files = read_lines("source_paths_files.txt")
     }
 }
 
@@ -241,6 +269,7 @@ task IgvReportFromVariantTsvTask {
         File        ref_fasta_index
         Int         igv_flanking = 50
         Int         disk_gb      = 200
+        Boolean     fail_on_report_error = true
         String      docker_image
         Int         preemptible  = 1
     }
@@ -259,19 +288,34 @@ task IgvReportFromVariantTsvTask {
         grep -i '\.cram$' "$ALL_FILES_LIST" | sort > cram_files.txt || true
         grep -i '\.crai$' "$ALL_FILES_LIST" | sort > crai_files.txt || true
 
+        # Status output for this biosample: one row per detected CRAM
+        status_tsv="~{biosample_id}.cram_report_status.tsv"
+        printf 'biosample_id\tcram_path\tcrai_path\treport_html\tstatus\n' > "$status_tsv"
+
         num_crams=$(wc -l < cram_files.txt)
 
         if [ "${num_crams}" -eq 0 ]; then
             echo "WARNING: No CRAM files found for biosample ~{biosample_id}." >&2
             touch "~{biosample_id}_no_crams.igvreport.html"
+            printf '~{biosample_id}\tNA\tNA\t~{biosample_id}_no_crams.igvreport.html\tNO_CRAMS_FOUND\n' >> "$status_tsv"
+            printf '0\n' > detected_cram_count.txt
+            printf '0\n' > generated_report_count.txt
+            printf '0\n' > skipped_no_crai_count.txt
+            printf '0\n' > failed_report_count.txt
             exit 0
         fi
+
+        printf '%s\n' "${num_crams}" > detected_cram_count.txt
 
         # Count variant rows after removing header line
         num_variants=$(tail -n +2 "~{variant_tsv}" | wc -l)
         if [ "${num_variants}" -eq 0 ]; then
             echo "WARNING: Variant TSV file is empty for biosample ~{biosample_id}." >&2
             touch "~{biosample_id}_no_variants.igvreport.html"
+            printf '~{biosample_id}\tNA\tNA\t~{biosample_id}_no_variants.igvreport.html\tNO_VARIANTS_FOUND\n' >> "$status_tsv"
+            printf '0\n' > generated_report_count.txt
+            printf '0\n' > skipped_no_crai_count.txt
+            printf '0\n' > failed_report_count.txt
             exit 0
         fi
 
@@ -280,6 +324,9 @@ task IgvReportFromVariantTsvTask {
         mkdir -p working
 
         report_idx=0
+        generated_reports=0
+        skipped_no_crai=0
+        failed_reports=0
         while IFS= read -r cram_path; do
             cram_base=$(basename "${cram_path}")     # e.g. sample.cram
             cram_stem="${cram_base%.cram}"           # e.g. sample
@@ -299,6 +346,8 @@ task IgvReportFromVariantTsvTask {
 
             if [ -z "${crai_path}" ]; then
                 echo "WARNING: No CRAI found for ${cram_path}; skipping." >&2
+                printf '~{biosample_id}\t%s\tNA\tNA\tSKIPPED_NO_CRAI\n' "${cram_path}" >> "$status_tsv"
+                skipped_no_crai=$((skipped_no_crai + 1))
                 continue
             fi
 
@@ -311,6 +360,7 @@ task IgvReportFromVariantTsvTask {
             # report files instead of overwriting each other.
             out_html="~{biosample_id}_${report_idx}_${cram_stem}.igvreport.html"
 
+            set +e
             create_report "~{variant_tsv}" "~{ref_fasta}"          \
                 --sequence 1                                       \
                 --begin    2                                       \
@@ -319,10 +369,31 @@ task IgvReportFromVariantTsvTask {
                 --info-columns CHR START END REF ALT Biosample_ID   \
                 --tracks   "working/${cram_base}"                  \
                 --output   "${out_html}"
+            create_report_exit_code=$?
+            set -e
+
+            if [ "$create_report_exit_code" -eq 0 ]; then
+                printf '~{biosample_id}\t%s\t%s\t%s\tREPORT_GENERATED\n' \
+                    "${cram_path}" "${crai_path}" "${out_html}" >> "$status_tsv"
+                generated_reports=$((generated_reports + 1))
+            else
+                printf '~{biosample_id}\t%s\t%s\t%s\tREPORT_FAILED\n' \
+                    "${cram_path}" "${crai_path}" "${out_html}" >> "$status_tsv"
+                failed_reports=$((failed_reports + 1))
+            fi
 
             report_idx=$((report_idx + 1))
 
         done < cram_files.txt
+
+        printf '%s\n' "${generated_reports}" > generated_report_count.txt
+        printf '%s\n' "${skipped_no_crai}" > skipped_no_crai_count.txt
+        printf '%s\n' "${failed_reports}" > failed_report_count.txt
+
+        if [ "~{fail_on_report_error}" = "true" ] && [ "${failed_reports}" -gt 0 ]; then
+            echo "ERROR: ${failed_reports} report(s) failed for biosample ~{biosample_id}." >&2
+            exit 1
+        fi
     >>>
 
     runtime {
@@ -335,5 +406,10 @@ task IgvReportFromVariantTsvTask {
     output {
         # One HTML report per CRAM; placeholder file if no CRAMs were found
         Array[File] igv_report_htmls = glob("*.igvreport.html")
+        File        cram_report_status_tsv = "~{biosample_id}.cram_report_status.tsv"
+        Int         detected_cram_count    = read_int("detected_cram_count.txt")
+        Int         generated_report_count = read_int("generated_report_count.txt")
+        Int         skipped_no_crai_count  = read_int("skipped_no_crai_count.txt")
+        Int         failed_report_count    = read_int("failed_report_count.txt")
     }
 }
