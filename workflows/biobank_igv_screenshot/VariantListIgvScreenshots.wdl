@@ -197,28 +197,32 @@ task PrepSampleDataTask {
             '~{manifest_tsv}'     \
             '~{s3_prefix}'
 
-        # Build deterministic, index-aligned manifests for variants and paths.
-        # This avoids relying on glob ordering for parallel arrays.
+        # Build scatter inputs from the files actually produced by the prep
+        # script. Some biosamples are intentionally skipped when the manifest
+        # has no matching entry, so only keep biosamples with both files.
+        : > matched_biosample_ids.txt
         : > variant_tsv_files.txt
         : > source_paths_files.txt
-        num_biosamples=$(wc -l < biosample_ids.txt)
+
         i=0
-        while [ "$i" -lt "$num_biosamples" ]; do
-            variant_file="variants/${i}.tsv"
-            paths_file="paths/${i}.txt"
+        while IFS= read -r biosample_id; do
+            variant_file="variants/${biosample_id}.tsv"
+            paths_file="paths/${biosample_id}.txt"
 
-            if [ ! -f "$variant_file" ]; then
-                echo "ERROR: Missing expected variant file: ${variant_file}" >&2
-                exit 1
-            fi
-            if [ ! -f "$paths_file" ]; then
-                echo "ERROR: Missing expected paths file: ${paths_file}" >&2
-                exit 1
+            if [ ! -f "$variant_file" ] || [ ! -f "$paths_file" ]; then
+                variant_file="variants/${i}.tsv"
+                paths_file="paths/${i}.txt"
             fi
 
-            printf '%s\n' "$variant_file" >> variant_tsv_files.txt
-            printf '%s\n' "$paths_file" >> source_paths_files.txt
+            if [ -f "$variant_file" ] && [ -f "$paths_file" ]; then
+                printf '%s\n' "$biosample_id" >> matched_biosample_ids.txt
+                printf '%s\n' "$variant_file" >> variant_tsv_files.txt
+                printf '%s\n' "$paths_file" >> source_paths_files.txt
+            else
+                echo "WARNING: Skipping biosample ${biosample_id}; prep script did not produce both ${variant_file} and ${paths_file}." >&2
+            fi
             i=$((i + 1))
+        done < biosample_ids.txt
         done
     >>>
 
@@ -232,7 +236,7 @@ task PrepSampleDataTask {
     output {
         # Parallel arrays — biosample_ids[i] corresponds to
         # variant_tsv_files[i] and source_paths_files[i]
-        Array[String] biosample_ids      = read_lines("biosample_ids.txt")
+        Array[String] biosample_ids      = read_lines("matched_biosample_ids.txt")
         Array[File]   variant_tsv_files  = read_lines("variant_tsv_files.txt")
         Array[File]   source_paths_files = read_lines("source_paths_files.txt")
     }
