@@ -223,7 +223,6 @@ task PrepSampleDataTask {
             fi
             i=$((i + 1))
         done < biosample_ids.txt
-        done
     >>>
 
     runtime {
