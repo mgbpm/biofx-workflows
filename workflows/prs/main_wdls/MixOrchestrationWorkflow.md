@@ -1,6 +1,6 @@
 # PRS Mix Orchestration Workflow
 
-This workflow combines GLIMPSE and PRS WDLs to determine risk scores and percentiles of individuals for a certain disease and model(s). The workflow is designed for single sample input. The model manifests used for each desired condition in the assay are to be generated before running this workflow using the MakeAdjustmentModelWorkflow WDL. It is also recommended that the inputs for running the model -- and thus those consequently used in this workflow -- are cleaned using the PreparePrsMixInputsWorkflow WDL to ensure no errors occur when using flashpca.
+This workflow combines GLIMPSE and PRS WDLs to determine disease risk scores and percentiles of a single sample. Before running this workflow, all input model manifests should be generated using the MakeModelWorkflow WDL. It is also recommended that the inputs for running the model are prepared using the PrepareInputsWorkflow WDL to ensure no errors occur when using flashpca.
 
 This workflow is also designed to be used with Sample Tracker.
 
@@ -11,8 +11,8 @@ This workflow is also designed to be used with Sample Tracker.
 | String | data_location | Yes | Source location of CRAM and CRAI | |
 | String | sample_id | Yes | Sample ID for CRAM and CRAI | |
 | String | subject_id | Yes | Subject ID to match the input sample ID | |
-| String | reported_sex | No | Subject reported sex; "M" for male and "F" for female | |
-| Boolean | skip_sex_check | No | If `true`, checking the imputed sex against the reported sex will be skipped | false |
+| String | reported_sex | No | Subject reported sex; Options are "Male", "Female", or "Unspecified" | |
+| Boolean | skip_sex_check | No | If `true`, checking the imputed sex against the reported sex will be skipped | true |
 | File | glimpse_reference_chunks | Yes | List of file paths to files that contain reference chunks for GLIMPSE | |
 | File | ref_fasta | Yes | HG38 reference FASTA file | |
 | File | ref_fai | Yes | HG38 reference FASTA index file | |
@@ -37,8 +37,8 @@ This workflow is also designed to be used with Sample Tracker.
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| Float | xy_cov_ratio | When a sex check is performed (if `reported_sex` is defined and `skip_sex_check` is false) | X:Y coverage ratio |
-| File | sex_guess | When a sex check is performed (if `reported_sex` is defined and `skip_sex_check` is false) | Sex determined from X:Y coverage ratio |
+| Float | xy_cov_ratio | When a sex check is performed | X:Y coverage ratio |
+| File | sex_guess | When a sex check is performed | Sex determined from X:Y coverage ratio |
 | File | glimpse_vcf | Always | Output imputed VCF from running GLIMPSE |
 | File | glimpse_vcf_index | Always | Output imputer VCF index from running GLIMPSE |
 | File | glimpse_qc_metrics | Always | QC metrics from running GLIMPSE |

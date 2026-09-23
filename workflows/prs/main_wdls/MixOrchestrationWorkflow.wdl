@@ -13,7 +13,7 @@ workflow MixOrchestrationWorkflow {
         String      sample_id
         String      subject_id
         String?     reported_sex
-        Boolean     skip_sex_check               = false
+        Boolean     skip_sex_check               = true
         File        glimpse_reference_chunks
         File        ref_fasta
         File        ref_fai
@@ -56,16 +56,16 @@ workflow MixOrchestrationWorkflow {
         }
 
         if (FindXYRatioTask.xy_cov_ratio < 1) {
-            String undetermined1 = "U"
+            String undetermined1 = "Unspecified"
         }
         if ((FindXYRatioTask.xy_cov_ratio >= 1) && (FindXYRatioTask.xy_cov_ratio <= 4)) {
-            String male = "M"
+            String male = "Male"
         }
         if ((FindXYRatioTask.xy_cov_ratio > 4) && (FindXYRatioTask.xy_cov_ratio < 10)) {
-            String undetermined2 = "U"
+            String undetermined2 = "Unspecified"
         }
         if ((FindXYRatioTask.xy_cov_ratio >= 10)) {
-            String female = "F"
+            String female = "Female"
         }
 
         String determined_sex = select_first([undetermined1, male, undetermined2, female])
@@ -78,7 +78,7 @@ workflow MixOrchestrationWorkflow {
         }
     }
 
-    if (!defined(reported_sex) || skip_sex_check || (defined(FindXYRatioTask.xy_cov_ratio) && determined_sex == reported_sex)) {
+    if (!defined(reported_sex) || skip_sex_check || determined_sex == reported_sex) {
         call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
             input:
                 reference_chunks = glimpse_reference_chunks,
