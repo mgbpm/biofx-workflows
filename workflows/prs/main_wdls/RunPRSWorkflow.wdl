@@ -18,7 +18,7 @@ workflow RunPrsWorkflow {
         String?      ref_target
         String       condition_code
         Boolean      norename            = false
-        String       prs_docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
+        String       prs_docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923"
         String       ubuntu_docker_image = "ubuntu:latest"
         String       workspace
     }

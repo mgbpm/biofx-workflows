@@ -27,7 +27,7 @@ This workflow is also designed to be used with Sample Tracker.
 | String | glimpse_extract_docker_image | No | Docker image to get the number of sites in a GLIMPSE reference chunnk | "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a" |
 | String | orchutils_docker_image | No | Docker image for orchestration tasks, such as fetching CRAM and CRAI | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203" |
 | String | ubuntu_docker_image | No | Ubuntu Docker image | "ubuntu:latest" |
-| String | prs_docker_image | No | Docker image with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515" |
+| String | prs_docker_image | No | Docker image with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923" |
 | String | python_docker_image | No | Docker image for Python | "python:3.14.2" |
 | String | samtools_docker_image | No | Docker image for samtools | "biocontainers/samtools:v1.9-4-deb_cv1" |
 | String | gcp_project_id | No | The GCP project to fetch secrets from | "mgb-lmm-gcp-infrast-1651079146" |

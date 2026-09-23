@@ -6,7 +6,7 @@ workflow CreatePrsWeightsWorkflow {
         File   b38_lookup_file
         File   b37_lookup_file
         File   chain_file
-        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev"
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923"
   }
 
     call DownloadWeightsFileTask {

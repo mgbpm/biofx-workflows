@@ -7,8 +7,8 @@ is compatible with the remaining input parameters.
 ## Input Parameters
 
 | Type | Name | Req'd | Description | Default Value |
-| :--- | :--- | :---  | :--- | :--- |
-| Array[File] | variant_weights | Yes   | Array of 3-column TSV files describing variants and their weights (the content and format of each of these files is as described for the `weights` input parameter of the RunPRS workflow) | |
+| :--- | :--- | :--- | :--- | :--- |
+| Array[File] | variant_weights | Yes | Array of 3-column TSV files describing variants and their weights (the content and format of each of these files is as described for the `weights` input parameter of the RunPRS workflow) | |
 | File | pca_variants | Yes | text file listing the variants for principal component analysis (PCA), one variant per line (the content and format of this file is as described for the `pca_variants` input parameter of the RunPRS workflow) | |
 | String | workspace | Yes | name of the Terra workspace where the workflow will be run | |
 | String | source | Yes | URL to location of reference VCF shards | |
@@ -17,7 +17,7 @@ is compatible with the remaining input parameters.
 | Boolean | resuming | No | whether this run is the resumption of an earlier run | false |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomes*` tasks | false |
 | Array[File] | query_vcfs | Yes | array of gz-compressed VCF files of the samples to be scored | |
-| String | prs_docker_image | No | Docker image equipped with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515" |
+| String | prs_docker_image | No | Docker image equipped with PRS scripts | "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923" |
 
 ## Output Parameters
 

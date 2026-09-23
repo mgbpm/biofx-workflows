@@ -27,7 +27,7 @@ workflow MixOrchestrationWorkflow {
         String      glimpse_docker_image         = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String      glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
         String      orchutils_docker_image       = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203"
-        String      prs_docker_image             = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
+        String      prs_docker_image             = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923"
         String      python_docker_image          = "python:3.14.2"
         String      samtools_docker_image        = "biocontainers/samtools:v1.9-4-deb_cv1"
         String      ubuntu_docker_image          = "ubuntu:latest"

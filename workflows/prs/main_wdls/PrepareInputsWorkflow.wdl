@@ -14,7 +14,7 @@ workflow PreparePrsInputs {
     Boolean     resuming            = false
     Boolean     norename            = false
     Array[File] query_vcfs
-    String      prs_docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20250515"
+    String      prs_docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923"
     String      ubuntu_docker_image = "ubuntu:latest"
   }
 
