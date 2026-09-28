@@ -11,7 +11,7 @@ This workflow is also designed to be used with Sample Tracker.
 | String | data_location | Yes | Source location of CRAM and CRAI | |
 | String | sample_id | Yes | Sample ID for CRAM and CRAI | |
 | String | subject_id | Yes | Subject ID to match the input sample ID | |
-| String | reported_sex | No | Subject reported sex; Options are "Male", "Female", or "Unspecified" | |
+| String | reported_sex | No | Subject reported sex; Options are "368000001" for male or "368000000" for female | |
 | Boolean | skip_sex_check | No | If `true`, checking the imputed sex against the reported sex will be skipped | true |
 | File | glimpse_reference_chunks | Yes | List of file paths to files that contain reference chunks for GLIMPSE | |
 | File | ref_fasta | Yes | HG38 reference FASTA file | |

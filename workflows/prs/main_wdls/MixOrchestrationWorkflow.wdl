@@ -26,7 +26,7 @@ workflow MixOrchestrationWorkflow {
         File        renaming_lookup              = "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv"
         String      glimpse_docker_image         = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String      glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
-        String      orchutils_docker_image       = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:20250203"
+        String      orchutils_docker_image       = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/orchutils:latest"
         String      prs_docker_image             = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:20260923"
         String      python_docker_image          = "python:3.14.2"
         String      samtools_docker_image        = "biocontainers/samtools:v1.9-4-deb_cv1"
@@ -56,16 +56,16 @@ workflow MixOrchestrationWorkflow {
         }
 
         if (FindXYRatioTask.xy_cov_ratio < 1) {
-            String undetermined1 = "Unspecified"
+            String undetermined1 = "Undetermined"
         }
         if ((FindXYRatioTask.xy_cov_ratio >= 1) && (FindXYRatioTask.xy_cov_ratio <= 4)) {
-            String male = "Male"
+            String male = "368000001"
         }
         if ((FindXYRatioTask.xy_cov_ratio > 4) && (FindXYRatioTask.xy_cov_ratio < 10)) {
-            String undetermined2 = "Unspecified"
+            String undetermined2 = "Undetermined"
         }
         if ((FindXYRatioTask.xy_cov_ratio >= 10)) {
-            String female = "Female"
+            String female = "368000000"
         }
 
         String determined_sex = select_first([undetermined1, male, undetermined2, female])
@@ -73,7 +73,7 @@ workflow MixOrchestrationWorkflow {
         if (determined_sex != reported_sex) {
             call Utilities.FailTask as SexCheck {
                 input:
-                    error_message = "Input sex does not match determined sex."
+                    error_message = "Input sex does not match determined sex. Check the input sex code and XY ratio results."
             }
         }
     }
