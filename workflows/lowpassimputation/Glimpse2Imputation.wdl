@@ -253,7 +253,7 @@ task GlimpseLigate {
 
         # sort ligated.vcf first otherwise it does not run other bcftools commands
         # change ID and deduplicate it
-        bcftools sort ligated.vcf.gz -Ou | bcftools annotate --set-id '%CHROM:%POS:%REF:%ALT' -Ou | bcftools norm -d both -Oz -o ligated_cleaned.vcf.gz
+        bcftools sort ligated.vcf.gz -Ou | bcftools annotate --set-id '%CHROM:%POS:%REF:%ALT' -Ou | bcftools norm -d none -Oz -o ligated_cleaned.vcf.gz
 
         # Set correct reference dictionary
         bcftools view -h --no-version ligated.vcf.gz > old_header.vcf

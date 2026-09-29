@@ -1,5 +1,39 @@
 version 1.0
 
+workflow FASTOutputParser {
+    input {
+        File fast_output_file
+        String sample_type = "S"
+        String reference_build = "GRCh38"
+        String oms_query = "Y"
+        File portable_db_file = "gs://lmm-reference-data/annotation/gil_lmm/gene_info.db"
+        String report_basename = sub(basename(fast_output_file), "\\.(txt.gz|txt|TXT.GZ|TXT)$", "")
+        Boolean gatk_source = false
+        String gcp_project_id = "mgb-lmm-gcp-infrast-1651079146"
+        String workspace_name
+        String fast_parser_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/fastoutputparser:20250923"
+    }
+
+    call FASTOutputParserTask {
+        input:
+            fast_output_file = fast_output_file,
+            sample_type = sample_type,
+            reference_build = reference_build,
+            oms_query = oms_query,
+            portable_db_file = portable_db_file,
+            report_basename = report_basename,
+            gatk_source = gatk_source,
+            gcp_project_id = gcp_project_id,
+            workspace_name = workspace_name,
+            fast_parser_image = fast_parser_image
+    }
+
+    output {
+        File? parsed_report = FASTOutputParserTask.parsed_report
+        File nva_report = FASTOutputParserTask.nva_report
+    }
+}
+
 task FASTOutputParserTask {
     input {
         File fast_output_file
