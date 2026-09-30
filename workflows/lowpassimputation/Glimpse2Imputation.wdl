@@ -15,7 +15,7 @@ workflow Glimpse2Imputation {
         String output_basename
 
         File ref_dict
-        String af_cutoff
+        String af_cutoff = ">=0.0001"
         File gnomadAF_ref_vcf
 
         Boolean impute_reference_only_variants = false
@@ -27,7 +27,6 @@ workflow Glimpse2Imputation {
 
         Boolean collect_qc_metrics = true
         
-        Int preemptible = 1
         String docker = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String docker_extract_num_sites_from_reference_chunk = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
         File? monitoring_script
@@ -52,22 +51,21 @@ workflow Glimpse2Imputation {
 
         Int nCrams = if defined(crams) then length(select_first([crams])) else 0
 
-        #Int n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
         Int n_samples = select_first([CountSamples.nSamples, nCrams])
 
         call SelectResourceParameters {
             input:
                 n_rare = n_rare,
                 n_common = n_common,
-                #n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
                 n_samples = n_samples
         }
 
+        # Force failure if resources are too expensive
         if (SelectResourceParameters.memory_gb > 256 || SelectResourceParameters.request_n_cpus > 32) {
-            # force failure if we're accidently going to request too much resources and spend too much money
             Int safety_check_memory_gb = -1
             Int safety_check_n_cpu = -1
         }
+
         call GlimpsePhase {
             input:
                 reference_chunk = reference_chunk,
@@ -84,7 +82,6 @@ workflow Glimpse2Imputation {
                 sample_ids = sample_ids,
                 fasta = fasta,
                 fasta_index = fasta_index,
-                preemptible = preemptible,
                 docker = docker,
                 cpu = select_first([safety_check_n_cpu, SelectResourceParameters.request_n_cpus]),
                 mem_gb = select_first([safety_check_memory_gb, SelectResourceParameters.memory_gb]),
@@ -98,7 +95,6 @@ workflow Glimpse2Imputation {
             imputed_chunks_indices = GlimpsePhase.imputed_vcf_index,
             output_basename = output_basename,
             ref_dict = ref_dict,
-            preemptible = preemptible,
             docker = docker,
             monitoring_script = monitoring_script
     }
@@ -159,15 +155,12 @@ task GlimpsePhase {
     }
 
     parameter_meta {
-        crams: {
-                        localization_optional: true
-                    }
-        cram_indices: {
-                        localization_optional: true
-                    }
+        crams: {localization_optional: true}
+        cram_indices: {localization_optional: true}
     }
 
     String bam_file_list_input = if defined(crams) then "--bam-list crams.list" else ""
+
     command <<<
         set -euo pipefail
 
