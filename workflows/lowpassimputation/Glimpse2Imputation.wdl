@@ -15,7 +15,7 @@ workflow Glimpse2Imputation {
         String output_basename
 
         File ref_dict
-        String af_cutoff = ">=0.0001"
+        String af_cutoff
         File gnomadAF_ref_vcf
 
         Boolean impute_reference_only_variants = false
@@ -27,6 +27,7 @@ workflow Glimpse2Imputation {
 
         Boolean collect_qc_metrics = true
         
+        Int preemptible = 1
         String docker = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String docker_extract_num_sites_from_reference_chunk = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
         File? monitoring_script
@@ -51,21 +52,22 @@ workflow Glimpse2Imputation {
 
         Int nCrams = if defined(crams) then length(select_first([crams])) else 0
 
+        #Int n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
         Int n_samples = select_first([CountSamples.nSamples, nCrams])
 
         call SelectResourceParameters {
             input:
                 n_rare = n_rare,
                 n_common = n_common,
+                #n_samples = select_first([CountSamples.nSamples, length(select_first([crams]))])
                 n_samples = n_samples
         }
 
-        # Force failure if resources are too expensive
         if (SelectResourceParameters.memory_gb > 256 || SelectResourceParameters.request_n_cpus > 32) {
+            # force failure if we're accidently going to request too much resources and spend too much money
             Int safety_check_memory_gb = -1
             Int safety_check_n_cpu = -1
         }
-
         call GlimpsePhase {
             input:
                 reference_chunk = reference_chunk,
@@ -82,6 +84,7 @@ workflow Glimpse2Imputation {
                 sample_ids = sample_ids,
                 fasta = fasta,
                 fasta_index = fasta_index,
+                preemptible = preemptible,
                 docker = docker,
                 cpu = select_first([safety_check_n_cpu, SelectResourceParameters.request_n_cpus]),
                 mem_gb = select_first([safety_check_memory_gb, SelectResourceParameters.memory_gb]),
@@ -95,6 +98,7 @@ workflow Glimpse2Imputation {
             imputed_chunks_indices = GlimpsePhase.imputed_vcf_index,
             output_basename = output_basename,
             ref_dict = ref_dict,
+            preemptible = preemptible,
             docker = docker,
             monitoring_script = monitoring_script
     }
@@ -102,7 +106,6 @@ workflow Glimpse2Imputation {
     call Filter_af {
         input:
             input_vcf = GlimpseLigate.imputed_vcf,
-            input_vcf_idx = GlimpseLigate.imputed_vcf_index,
             gnomadAF_ref_vcf = gnomadAF_ref_vcf,
             af_cutoff = af_cutoff,
             output_basename = output_basename,
@@ -149,18 +152,21 @@ task GlimpsePhase {
         Int cpu = 8
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
         Int preemptible = 1
-        Int max_retries = 3
+        Int max_retries = 2
         String docker
         File? monitoring_script
     }
 
     parameter_meta {
-        crams: {localization_optional: true}
-        cram_indices: {localization_optional: true}
+        crams: {
+                        localization_optional: true
+                    }
+        cram_indices: {
+                        localization_optional: true
+                    }
     }
 
     String bam_file_list_input = if defined(crams) then "--bam-list crams.list" else ""
-
     command <<<
         set -euo pipefail
 
@@ -228,9 +234,9 @@ task GlimpseLigate {
 
         Int mem_gb = 24
         Int cpu = 8
-        Int disk_size_gb = ceil(2.2 * size(imputed_chunks, "GiB") + 200)
+        Int disk_size_gb = ceil(2.2 * size(imputed_chunks, "GiB") + 100)
         Int preemptible = 1
-        Int max_retries = 2
+        Int max_retries = 1
         String docker
         File? monitoring_script
     }
@@ -432,44 +438,53 @@ task SelectResourceParameters {
 
 task Filter_af {
     input{
-        File input_vcf
-        File input_vcf_idx
+        String input_vcf
         String af_cutoff = ">=0.0001"
-        File gnomadAF_ref_vcf
+        String gnomadAF_ref_vcf
         String output_basename
 
         Int mem_gb = 16
         Int cpu = 4
-        Int disk_size_gb = ceil(2.5 * (size(input_vcf, "GB") + size(gnomadAF_ref_vcf, "GB"))) + 100
+        Int disk_size_gb = ceil(2.5 * (size(input_vcf, "GiB") + size(gnomadAF_ref_vcf, "GiB"))) + 10
         Int preemptible = 1
         Int max_retries = 1
         String bcftools_docker = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
     }
 
     String input_vcf_name = basename(input_vcf)
-    String input_vcf_index = basename(input_vcf_idx)
+    String input_vcf_index = basename(input_vcf) + ".tbi"
+    #String input_vcf_filtered_name = sub(basename(input_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + "_filtered.vcf.gz"
+    #String input_vcf_filtered_name_index = input_vcf_filtered_name + ".tbi"
 
     String gnomadAF_ref_vcf_name = basename(gnomadAF_ref_vcf)
     String gnomadAF_ref_vcf_index = basename(gnomadAF_ref_vcf) + ".tbi"
     String gnomadAF_ref_vcf_filtered_name = sub(basename(gnomadAF_ref_vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "") + "_filtered.vcf.gz"
+
+    File input_vcf_file = input_vcf
+    File input_vcf_file_index = input_vcf_file + ".tbi"
+    File gnomadAF_ref_vcf_file = gnomadAF_ref_vcf
+    File gnomadAF_ref_vcf_file_index = gnomadAF_ref_vcf_file + ".tbi"
 
     command <<<
         set -euo pipefail
 
         mkdir vcf_dir
         mkdir sort_tmp_dir
-        ln -s "~{input_vcf}" vcf_dir/~{input_vcf_name}
-        ln -s "~{input_vcf_index}" vcf_dir/~{input_vcf_index}
-        ln -s "~{gnomadAF_ref_vcf}" vcf_dir/~{gnomadAF_ref_vcf_name}
-        ln -s "~{gnomadAF_ref_vcf_index}" vcf_dir/~{gnomadAF_ref_vcf_index}
+        ln -s ~{input_vcf_file} vcf_dir/~{input_vcf_name}
+        ln -s ~{input_vcf_file_index} vcf_dir/~{input_vcf_index}
+        ln -s ~{gnomadAF_ref_vcf_file} vcf_dir/~{gnomadAF_ref_vcf_name}
+        ln -s ~{gnomadAF_ref_vcf_file_index} vcf_dir/~{gnomadAF_ref_vcf_index}
 
         bcftools filter -i "INFO/VEP_gnomad4.1_joint_frequency_AF_grpmax_joint ~{af_cutoff}" \
-                vcf_dir/~{gnomadAF_ref_vcf_name} \
-                -Oz \
-                -o ~{gnomadAF_ref_vcf_filtered_name}
+                 vcf_dir/~{gnomadAF_ref_vcf_name} \
+                 -Oz \
+                 -o ~{gnomadAF_ref_vcf_filtered_name}
         bcftools index -ft ~{gnomadAF_ref_vcf_filtered_name}
 
         bcftools isec -p '.' -w1 -Oz vcf_dir/~{input_vcf_name} ~{gnomadAF_ref_vcf_filtered_name}
+
+        #mv 0002.vcf.gz ~{output_basename}.imputed.filtered.vcf.gz
+        #mv 0002.vcf.gz.tbi ~{output_basename}.imputed.filtered.vcf.gz.tbi
 
         bcftools sort --temp-dir sort_tmp_dir -Oz -o ~{output_basename}.imputed.filtered.vcf.gz 0002.vcf.gz
         bcftools index -ft ~{output_basename}.imputed.filtered.vcf.gz
@@ -478,7 +493,7 @@ task Filter_af {
     runtime {
         docker: bcftools_docker
         disks: "local-disk " + disk_size_gb + " HDD"
-        memory: mem_gb + " GB"
+        memory: mem_gb + " GiB"
         cpu: cpu
         preemptible: preemptible
         maxRetries: max_retries
