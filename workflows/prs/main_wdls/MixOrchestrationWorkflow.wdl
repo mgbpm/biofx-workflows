@@ -91,11 +91,6 @@ workflow MixOrchestrationWorkflow {
                 output_basename = subject_id + "_" + sample_id + "_" + prs_test_code,
                 af_cutoff = ">=0.0001",
                 gnomadAF_ref_vcf = gnomadAF_ref_vcf,
-                impute_reference_only_variants = false,
-                call_indels = false,
-                keep_monomorphic_ref_sites = false,
-                collect_qc_metrics = true,
-                preemptible = 1,
                 docker = glimpse_docker_image,
                 docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image
         }

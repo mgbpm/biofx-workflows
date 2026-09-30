@@ -152,7 +152,7 @@ task GlimpsePhase {
         Int cpu = 8
         Int disk_size_gb = ceil(2.2 * size(input_vcf, "GiB") + size(reference_chunk, "GiB") + 10)
         Int preemptible = 1
-        Int max_retries = 2
+        Int max_retries = 3
         String docker
         File? monitoring_script
     }
@@ -234,9 +234,9 @@ task GlimpseLigate {
 
         Int mem_gb = 24
         Int cpu = 8
-        Int disk_size_gb = ceil(2.2 * size(imputed_chunks, "GiB") + 100)
+        Int disk_size_gb = ceil(2.2 * size(imputed_chunks, "GiB") + 200)
         Int preemptible = 1
-        Int max_retries = 1
+        Int max_retries = 2
         String docker
         File? monitoring_script
     }
