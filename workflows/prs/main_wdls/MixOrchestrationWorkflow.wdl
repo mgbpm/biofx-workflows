@@ -3,7 +3,9 @@ version 1.0
 import "../../../steps/Utilities.wdl"
 import "../../../steps/FileUtils.wdl"
 import "../../lowpassimputation/Glimpse2Imputation.wdl"
-import "RunPRSWorkflow.wdl"
+import "../subwdls/RawScoreWorkflow.wdl"
+import "../subwdls/MixScoreWorkflow.wdl"
+import "../subwdls/AdjustScoreWorkflow.wdl"
 import "../tasks/Structs.wdl"
 import "../tasks/HelperTasks.wdl"
 
@@ -101,21 +103,36 @@ workflow MixOrchestrationWorkflow {
 
         String condition_code = model_data.condition_code
 
-        call RunPRSWorkflow.RunPrsWorkflow as GetScores {
+        call RawScoreWorkflow.RawScoreWorkflow as RawScores {
             input:
-                query_vcf = select_first([RunGlimpse.imputed_afFiltered_vcf]),
+                input_vcf = select_first([RunGlimpse.imputed_afFiltered_vcf]),
                 adjustment_model_manifest = model_manifests[i],
-                condition_code = condition_code,
                 norename = false,
-                workspace = workspace,
-                ubuntu_docker_image = ubuntu_docker_image
+                renaming_lookup = renaming_lookup
+        }
+
+        call MixScoreWorkflow.MixScoreWorkflow as MixScores {
+            input:
+                output_basename = condition_code,
+                input_scores = RawScores.raw_scores,
+                score_weights = select_first([model_data.score_weights])
+        }
+
+        call AdjustScoreWorkflow.AdjustScoreWorkflow as AdjustScores {
+            input:
+                output_basename = condition_code,
+                input_vcf = RawScores.renamed_vcf,
+                adjustment_model_manifest = model_manifests[i],
+                input_scores = MixScores.mix_score,
+                norename = true,
+                renaming_lookup = renaming_lookup
         }
     }
 
     call SummarizeScores {
         input:
             condition_codes = condition_code,
-            scores = GetScores.adjusted_score,
+            scores = AdjustScores.adjusted_scores,
             conditions_config = conditions_config,
             percentiles = percentiles,
             basename = subject_id + "_" + sample_id + "_" + prs_test_code + "_results",
@@ -128,9 +145,9 @@ workflow MixOrchestrationWorkflow {
         File?              glimpse_vcf        = RunGlimpse.imputed_afFiltered_vcf
         File?              glimpse_vcf_index  = RunGlimpse.imputed_afFiltered_vcf_index
         File?              glimpse_qc_metrics = RunGlimpse.qc_metrics
-        Array[Array[File]] raw_scores         = GetScores.raw_scores
-        Array[File?]       mix_scores         = GetScores.mix_score
-        Array[File]        adjusted_scores    = GetScores.adjusted_score
+        Array[Array[File]] raw_scores         = RawScores.raw_scores
+        Array[File?]       mix_scores         = MixScores.mix_score
+        Array[File]        adjusted_scores    = AdjustScores.adjusted_scores
         File               risk_summary       = SummarizeScores.risk_summary
     }
 }
