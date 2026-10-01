@@ -85,13 +85,10 @@ task CheckWeightsCoverSitesUsedInTraining {
     File      sites_used_in_training
     WeightSet weight_set
     String    docker_image = "python:3.9.10"
-    Int       addldisk     = 5
+    Int       disk_space   = ceil(size(sites_used_in_training, "GB")) + 5
     Int       mem_size     = 4
     Int       preemptible  = 1
   }
-
-  Int file_size = ceil(size(sites_used_in_training, "GB"))
-  Int final_disk_size = addldisk + file_size
 
   command <<<
     python3 << "EOF"
@@ -123,7 +120,7 @@ task CheckWeightsCoverSitesUsedInTraining {
 
   runtime {
     docker: "~{docker_image}"
-    disks: "local-disk ~{final_disk_size} SSD"
+    disks: "local-disk ~{disk_space} SSD"
     memory: "~{mem_size} GB"
     preemptible: preemptible
   }
