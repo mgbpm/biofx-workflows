@@ -10,7 +10,7 @@ Ingests a VCF file into the GDH (Genomic Data Hub) platform and runs a filter ag
 * String gdh_project - optional - the project name, defaults to "Clinical"
 * File vcf_file - required - the VCF file to ingest
 * String vcf_file_stage_name - optional - the stage name for the VCF file, defaults to "biofx_pipelines"
-* String vcf_file_stage_gspath - optional - the GCS path for the VCF file stage, defaults to "gs://gdh-external-stage/biofx_pipelines_nonprod"
+* String vcf_file_stage_gspath - optional - the GCS path for the VCF file stage, defaults to "gs://gdh-external-stage/biofx_pipelines_prod"
 * String reference_build - optional - the reference genome build, defaults to "GRCh38"
 * Array[String] vcf_transform_functions - optional - list of VCF transform functions to apply, defaults to ["sample_base.lmm_calculate_variant_call_attributes"]
 * String? vep_config_name - optional - the VEP configuration to run during the annotation phase

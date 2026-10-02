@@ -251,7 +251,7 @@ workflow BgwgsWorkflow {
         String gdh_institution = "MGBPM"
         String gdh_project = "Clinical"
         String vcf_file_stage_name = "biofx_pipelines"
-        String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
+        String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_prod"
         String? vep_config_name
         String filter_name_or_code
         String? pipeline_run_name

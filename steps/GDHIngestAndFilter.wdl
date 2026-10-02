@@ -8,7 +8,7 @@ task GDHIngestAndFilterTask {
         String gdh_project = "Clinical"
         File vcf_file
         String vcf_file_stage_name = "biofx_pipelines"
-        String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_nonprod"
+        String vcf_file_stage_gspath = "gs://gdh-external-stage/biofx_pipelines_prod"
         String reference_build = "GRCh38"
         Array[String] vcf_transform_functions = ["sample_base.lmm_calculate_variant_call_attributes"]
         String? vep_config_name

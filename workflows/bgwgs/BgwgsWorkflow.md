@@ -59,7 +59,7 @@ is ingested into GDH (Genomic Data Hub) for filtration and reporting.
 | String | gdh_institution | No | The institution identifier for GDH ingest | "MGBPM" |
 | String | gdh_project | No | The project identifier for GDH ingest | "Clinical" |
 | String | vcf_file_stage_name | No | The stage name for VCF file upload to GDH | "biofx_pipelines" |
-| String | vcf_file_stage_gspath | No | The GCS path for the VCF file staging area | "gs://gdh-external-stage/biofx_pipelines_nonprod" |
+| String | vcf_file_stage_gspath | No | The GCS path for the VCF file staging area | "gs://gdh-external-stage/biofx_pipelines_prod" |
 | String? | vep_config_name | No | The VEP configuration to run during the annotation phase | |
 | String | filter_name_or_code | Yes | The GDH filter name or code to apply during variant filtration | |
 | String? | pipeline_run_name | No | Optional pipeline run identifier for GDH ingest | |
