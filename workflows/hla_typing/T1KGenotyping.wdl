@@ -43,18 +43,19 @@ workflow T1kHlaGenotyping {
         
         call RunT1kTask {
             input:
-                input_format = select_first([new_format, format]),
-                input_file   = select_first([FilterBamToHLA.hla_bam, input_sample]),
-                input_index  = select_first([FilterBamToHLA.hla_bam_idx, input_sample_idx]),
-                ref_fasta    = ref_fasta,
-                ref_fai      = ref_fai,
-                docker_image = t1k_docker_image
+                input_format    = select_first([new_format, format]),
+                input_file      = select_first([FilterBamToHLA.hla_bam, input_sample]),
+                input_index     = select_first([FilterBamToHLA.hla_bam_idx, input_sample_idx]),
+                output_basename = sub(basename(input_file), "\\.(cram|CRAM|bam|BAM)$", "")
+                ref_fasta       = ref_fasta,
+                ref_fai         = ref_fai,
+                docker_image    = t1k_docker_image
         }
     }
 
     output {
-        File? hla_bam = FilterBamToHLA.hla_bam
-        File? hla_bai = FilterBamToHLA.hla_bam_idx
+        File? hla_bam      = FilterBamToHLA.hla_bam
+        File? hla_bai      = FilterBamToHLA.hla_bam_idx
         File  allele_tsv   = select_first([RunT1kTask.allele_tsv])
 		File? allele_vcf   = RunT1kTask.allele_vcf
         File  genotype_tsv = select_first([RunT1kTask.genotype_tsv])
