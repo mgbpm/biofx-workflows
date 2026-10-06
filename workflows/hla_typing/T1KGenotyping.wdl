@@ -57,7 +57,7 @@ workflow T1kHlaGenotyping {
         File? hla_bam      = FilterBamToHLA.hla_bam
         File? hla_bai      = FilterBamToHLA.hla_bam_idx
         File  allele_tsv   = select_first([RunT1kTask.allele_tsv])
-		File? allele_vcf   = RunT1kTask.allele_vcf
+		File  allele_vcf   = select_first([RunT1kTask.allele_vcf])
         File  genotype_tsv = select_first([RunT1kTask.genotype_tsv])
     }
 }
@@ -174,8 +174,8 @@ task RunT1kTask {
     }
 
     output {
-        File        allele_tsv   = "~{output_basename}_allele.tsv"
-        File        genotype_tsv = "~{output_basename}_genotype.tsv"
-        File?       allele_vcf   = "~{output_basename}_allele.vcf"
+        File allele_tsv   = "OUTPUT/~{output_basename}_allele.tsv"
+        File genotype_tsv = "OUTPUT/~{output_basename}_genotype.tsv"
+        File allele_vcf   = "OUTPUT/~{output_basename}_allele.vcf"
     }
 }
