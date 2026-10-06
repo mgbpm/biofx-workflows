@@ -511,3 +511,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - FASTOutputParser_*
+  - name: T1KGenotypingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/hla_typing/T1KGenotyping.wdl
+    readMePath: /workflows/hla_typing/T1KGenotyping.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - HLA_*
