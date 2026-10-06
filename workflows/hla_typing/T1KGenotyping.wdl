@@ -46,7 +46,7 @@ workflow T1kHlaGenotyping {
                 input_format    = select_first([new_format, format]),
                 input_file      = select_first([FilterBamToHLA.hla_bam, input_sample]),
                 input_index     = select_first([FilterBamToHLA.hla_bam_idx, input_sample_idx]),
-                output_basename = sub(basename(input_file), "\\.(cram|CRAM|bam|BAM)$", "")
+                output_basename = sub(basename(input_file), "\\.(cram|CRAM|bam|BAM)$", ""),
                 ref_fasta       = ref_fasta,
                 ref_fai         = ref_fai,
                 docker_image    = t1k_docker_image
