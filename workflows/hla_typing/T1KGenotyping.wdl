@@ -173,8 +173,6 @@ task RunT1kTask {
     }
 
     output {
-        Array[File] output_fa    = glob("~{output_basename}_aligned*.fa")
-        Array[File] output_fq    = glob("~{output_basename}_candidate*.fq")
         File        allele_tsv   = "~{output_basename}_allele.tsv"
         File        genotype_tsv = "~{output_basename}_genotype.tsv"
         File        allele_vcf   = "~{output_basename}_allele.vcf"
