@@ -136,7 +136,7 @@ task RunT1kTask {
 
     Int sample_size        = ceil(size(input_file, "GB") + size(input_index, "GB"))
     Int ref_size           = ceil(size(ref_fasta, "GB") + size(ref_fai, "GB"))
-    Int storage_multiplier = if input_format == "CRAM" then 4 else 2
+    Int storage_multiplier = if input_format == "cram" then 4 else 2
     Int final_disk_size    = (sample_size * storage_multiplier) + ref_size + addldisk
 
     command <<<
@@ -145,7 +145,7 @@ task RunT1kTask {
         mkdir --parents "OUTPUT"
         mkdir --parents "TEMP"
 
-        if [[ '~{input_format}' == 'CRAM' ]]
+        if [[ '~{input_format}' == 'cram' ]]
         then
             NTHREADS="$( nproc )"
 
