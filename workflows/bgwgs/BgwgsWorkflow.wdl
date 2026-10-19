@@ -239,7 +239,7 @@ workflow BgwgsWorkflow {
         File? vcf_filter_bed
         # qceval inputs
         String qceval_project_type = "BGE_DRAGEN_TP_BINNING"
-        String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20250923"
+        String qceval_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/qceval:20260521"
         File? thresholds = "gs://lmm-reference-data/annotation/pmeval/thresholds_20250912.tsv"
         File? difficult_to_map_regions = "gs://lmm-reference-data/annotation/pmeval/difficult_to_map_regions_20250912.tgz"
         # gnomad annotation inputs
