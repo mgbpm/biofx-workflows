@@ -531,14 +531,8 @@ task ConcatenateShards {
           concat                  \
           --file-list="${SHARDS}" \
           --no-version            \
-        > '~{REFERENCE}'
-
-      #bcftools                    \
-          #concat                  \
-          #--file-list="${SHARDS}" \
-          #--no-version            \
-          #--naive                 \
-        #> '~{REFERENCE}'
+          --output-type z         \
+          --output '~{REFERENCE}'
   
       rm --recursive --force "${LOCALBASEDIR}"
   
