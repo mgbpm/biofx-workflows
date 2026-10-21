@@ -7,7 +7,7 @@
 | File | input_vcf | Yes | Joint or single-sample VCF to score | |
 | File | adjustment_model_manifest | Yes | Adjustment model manifest file from MakeMixModelWorkflow | |
 | Boolean | norename | No | If `true`, do not run `HelperTasks.RenameChromosomesInVcf` on `input_vcf` | false |
-| File | renaming_lookup | No | Mapping file for renaming chromosomes | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
+| File | renaming_lookup | No | Mapping file for renaming chromosomes |  |
 
 ## Output Parameters
 

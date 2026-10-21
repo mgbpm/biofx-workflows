@@ -13,6 +13,7 @@ workflow MakeAdjustmentModel {
     File        query_file
     String      name
     Boolean     norename      = false
+    File?        rename
   }
 
 
@@ -22,6 +23,7 @@ workflow MakeAdjustmentModel {
         input:
             tsv        = tsv
           , skipheader = true
+          , lookup     = select_first([rename])
       }
     }
 
@@ -29,11 +31,13 @@ workflow MakeAdjustmentModel {
       input:
           tsv        = pca_variants
         , skipheader = false
+        , lookup     = select_first([rename])
     }
 
     call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
       input:
-          vcf = reference_vcf
+          vcf    = reference_vcf
+        , rename = select_first([rename])
     }
   }
 
@@ -66,7 +70,8 @@ workflow MakeAdjustmentModel {
     if (! norename) {
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
         input:
-            vcf = query_file
+            vcf    = query_file
+          , rename = select_first([rename])
       }
     }
 
@@ -86,6 +91,7 @@ workflow MakeAdjustmentModel {
         input:
             tsv        = query_file
           , skipheader = false
+          , lookup     = select_first([rename])
       }
     }
     File query_file_ = select_first([RenameChromosomesInQueryVariants.renamed,
@@ -147,7 +153,8 @@ workflow MakeAdjustmentModel {
     # all; it needs only their locations.
 
     input:
-        model_data = object {
+        condition_code = name
+      , model_data = object {
             condition_code        : name
           , parameters            : "" + TrainModel.fitted_params
 
@@ -445,12 +452,16 @@ task MaybeTrimPcaVariants {
 task BundleAdjustmentModel {
   input {
     Object model_data
+    String condition_code
   }
 
-  command {}
-
+  File tmp = write_json(model_data)
+  String filename = condition_code + "_model_manifest.json"
+  command <<<
+    cp ~{tmp} ~{filename}
+  >>>
   output {
-    File manifest = write_json(model_data)
+    File manifest = filename
   }
 
   runtime {

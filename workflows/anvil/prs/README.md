@@ -105,7 +105,7 @@ Below is a flowchart that outlines the workflow step-by-step:
 | Array[File] | model_manifests     | Yes      | Adjustment model manifest file from MakeAdjustmentModelWorkflow WDL | |
 | Boolean     | norename            | No       | If `true`, do not rename chromosomes to have chr prefix | false |
 | Boolean     | perform_adjustment  | No       | If `true`, use ancestry adjustment model to adjust scores | true |
-| File        | renaming_lookup     | No       | Mapping file for renaming chromosomes | "gs://lmm-reference-data/prsmix/reference/rename_chromosomes.tsv" |
+| File        | renaming_lookup     | No       | Mapping file for renaming chromosomes |  |
 | String      | ubuntu_docker_image | No       | Ubuntu Docker image | "ubuntu:latest" |
 
 ### PRS Scoring Output Parameters

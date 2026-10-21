@@ -14,6 +14,7 @@ workflow MakeMixModelWorkflow {
         File query_file
         File score_weights
         Boolean norename = false
+        File? rename
         String ubuntu_docker_image = "ubuntu:21.10"
     }
 
@@ -30,19 +31,22 @@ workflow MakeMixModelWorkflow {
           call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInWeights {
               input:
                   tsv = var_weights[i],
-                  skipheader = true
+                  skipheader = true,
+                  lookup = select_first([rename])
           }
       }
 
       call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInPcaVariants {
           input:
               tsv = pca_variants,
-              skipheader = false
+              skipheader = false,
+              lookup = select_first([rename])
       }
 
       call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInReferenceVcf {
           input:
-              vcf = reference_vcf
+              vcf = reference_vcf,
+              rename = select_first([rename])
       }
     }
 
@@ -76,7 +80,8 @@ workflow MakeMixModelWorkflow {
         if (! norename) {
             call HelperTasks.RenameChromosomesInVcf as RenameChromosomesInQueryVcf {
                 input:
-                    vcf = query_file
+                    vcf = query_file,
+                    rename = select_first([rename])
             }
         }
 
@@ -94,7 +99,8 @@ workflow MakeMixModelWorkflow {
             call HelperTasks.RenameChromosomesInTsv as RenameChromosomesInQueryVariants {
                 input:
                     tsv = query_file,
-                    skipheader = false
+                    skipheader = false,
+                    lookup = select_first([rename])
             }
         }
         File query_file_ = select_first([RenameChromosomesInQueryVariants.renamed,
@@ -151,7 +157,8 @@ workflow MakeMixModelWorkflow {
     call BundleAdjustmentModel {
         # Convert files to string types so a VM is not used
         input:
-            model_data = object {
+            condition_code = condition_code
+          , model_data = object {
                 condition_code        : condition_code
               , parameters            : "" + TrainModel.fitted_params
               , scoring_inputs        :      TrainModel.scoring_inputs
@@ -450,13 +457,18 @@ task TrimPCAVariants {
 task BundleAdjustmentModel {
     input {
         Object model_data
+        String condition_code
         String docker_image
     }
 
-    command {}
+    File tmp = write_json(model_data)
+    String filename = condition_code + "_model_manifest.json"
+    command <<<
+      cp ~{tmp} ~{filename}
+    >>>
 
     output {
-        File manifest = write_json(model_data)
+        File manifest = filename
     }
 
     runtime {
