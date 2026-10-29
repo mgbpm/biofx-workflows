@@ -14,3 +14,4 @@ This workflow will run phasing on the output of the T1K Genotyping WDL, specific
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
 | File | scored_haplotypes | Always | Text file with haplotype codes, weights, and final T1D_MAPS score for the sample |
+| File | phasing_log | Always | Log file for phasing executable |

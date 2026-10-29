@@ -3,7 +3,7 @@ version 1.0
 workflow HlaPhasingWorkflow {
     input {
         File   input_alleles
-        String prs_docker_image
+        String prs_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev-hla"
   }
 
     call PhasingTask {
@@ -154,7 +154,8 @@ task PhasingTask {
     }
 
     output {
-        File scored_haplotypes = "~{output_basename}.phasing.out_scored"
+        File scored_haplotypes = "OUTPUT/~{output_basename}.phasing.out_scored"
+        File phasing_log       = "OUTPUT/~{output_basename}.phasing.out
     }
 }
 
