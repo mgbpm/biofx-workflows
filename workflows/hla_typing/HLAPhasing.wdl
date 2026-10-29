@@ -155,7 +155,7 @@ task PhasingTask {
 
     output {
         File scored_haplotypes = "OUTPUT/~{output_basename}.phasing.out_scored"
-        File phasing_log       = "OUTPUT/~{output_basename}.phasing.out
+        File phasing_log       = "OUTPUT/~{output_basename}.phasing.out"
     }
 }
 
