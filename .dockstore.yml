@@ -520,3 +520,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - HLA_*
+  - name: HLAPhasingWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/hla_typing/HLAPhasing.wdl
+    readMePath: /workflows/hla_typing/HLAPhasing.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - HLA_*
