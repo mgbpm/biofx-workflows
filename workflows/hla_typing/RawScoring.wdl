@@ -40,21 +40,29 @@ task ScoreVcf {
     command <<<
         set -euxo pipefail
 
-        # Extract IDs
-        /plink2                           \
-            --vcf '~{vcf}'                \
-            --write-snplist allow-dups    \
-            --set-all-var-ids '@:#:$r:$a' \
-            --memory ~{plink_memory}      \
-            --new-id-max-allele-len 1000 missing
-            --out "~{basename}"
+        /plink2                                     \
+            --vcf                   '~{vcf}'        \
+            --memory                ~{plink_memory} \
+            --new-id-max-allele-len 1000 missing    \
+            --rm-dup exclude-all                    \
+            --set-all-var-ids       '@:#:$r:$a'     \
+            --write-snplist         allow-dups      \
+            --out "~{basename}"            
 
-        # Score VCF
         COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
-        /plink2                                      \
-            --vcf '~{vcf}'                           \
-            --score '~{weights}' cols="${COLUMNS}"   \
-            --memory ~{plink_memory}                 \
+        /plink2                                  \
+            --vcf "~{vcf}"                       \
+            --extract "~{basename}.snplist"      \
+            --score '~{weights}'                 \
+                header                           \
+                ignore-dup-ids                   \
+                list-variants                    \
+                no-mean-imputation               \
+                cols="${COLUMNS}"                \
+            --memory ~{plink_memory}             \
+            --new-id-max-allele-len 1000 missing \
+            --output-chr "MT"                    \
+            --set-all-var-ids '@:#:$r:$a'        \
             --out "~{basename}"
             
     >>>
