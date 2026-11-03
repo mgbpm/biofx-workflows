@@ -10,8 +10,9 @@ workflow T1dmPrsWorkflow {
     input {
         File    input_cram
         File    input_crai
+        File?   input_vcf
         File    t1dm_weights_file
-        String  vcf_generation
+        String  vcf_generation               = "glimpse"
         File?   gatk_roi
         File?   hla_intervals
         String? google_project_id
@@ -49,49 +50,51 @@ workflow T1dmPrsWorkflow {
             prs_docker_image = prs_docker_image
     }
 
-    if (vcf_generation == "gatk") {
-        call HaplotypeCallerTask as RunGATK {
-            input:
-                input_file      = input_cram,
-                input_file_idx  = input_crai,
-                ref_fasta       = ref_fasta,
-                ref_fai         = ref_fai,
-                ref_dict        = ref_dict,
-                roi_bed         = select_first([gatk_roi]),
-                docker_image    = gatk_docker_image,
-                gatk_path       = "/gatk/gatk",
-                output_filename = sample_basename + ".vcf.gz"
+    if (!defined(input_vcf)) {
+        if (vcf_generation == "gatk") {
+            call HaplotypeCallerTask as RunGATK {
+                input:
+                    input_file      = input_cram,
+                    input_file_idx  = input_crai,
+                    ref_fasta       = ref_fasta,
+                    ref_fai         = ref_fai,
+                    ref_dict        = ref_dict,
+                    roi_bed         = select_first([gatk_roi]),
+                    docker_image    = gatk_docker_image,
+                    gatk_path       = "/gatk/gatk",
+                    output_filename = sample_basename + ".vcf.gz"
+            }
+
+            call VCFUtils.SortVCFTask as SortGatkVcf {
+                input:
+                    input_vcf    = RunGATK.output_vcf,
+                    docker_image = bcftools_docker_image
+
+            }
         }
 
-        call VCFUtils.SortVCFTask as SortGatkVcf {
-            input:
-                input_vcf    = RunGATK.output_vcf,
-                docker_image = bcftools_docker_image
-
-        }
-    }
-
-    if (vcf_generation == "glimpse") {
-        call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
-            input:
-                reference_chunks                              = glimpse_reference_chunks,
-                crams                                         = [input_cram],
-                cram_indices                                  = [input_crai],
-                sample_ids                                    = [sample_basename],
-                fasta                                         = ref_fasta,
-                fasta_index                                   = ref_fai,
-                ref_dict                                      = ref_dict,
-                output_basename                               = sample_basename,
-                af_cutoff                                     = ">=0.0001",
-                gnomadAF_ref_vcf                              = glimpse_ref_vcf,
-                docker                                        = glimpse_docker_image,
-                docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image
+        if (vcf_generation == "glimpse") {
+            call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
+                input:
+                    reference_chunks                              = glimpse_reference_chunks,
+                    crams                                         = [input_cram],
+                    cram_indices                                  = [input_crai],
+                    sample_ids                                    = [sample_basename],
+                    fasta                                         = ref_fasta,
+                    fasta_index                                   = ref_fai,
+                    ref_dict                                      = ref_dict,
+                    output_basename                               = sample_basename,
+                    af_cutoff                                     = ">=0.0001",
+                    gnomadAF_ref_vcf                              = glimpse_ref_vcf,
+                    docker                                        = glimpse_docker_image,
+                    docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image
+            }
         }
     }
 
     call RawScoring.RawScoreWorkflow as ScorePrs {
         input:
-            input_vcf           = select_first([RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz]),
+            input_vcf           = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz]),
             weights             = t1dm_weights_file,
             plink2_docker_image = plink2_docker_image
     }
@@ -106,7 +109,7 @@ workflow T1dmPrsWorkflow {
     output {
         File hla_genotypes = ImputeHlaGenotype.allele_tsv
         File hla_score     = PhaseHlaHaplotypes.scored_haplotypes
-        File vcf           = select_first([RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz])
+        File vcf           = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz])
         File prs_score     = ScorePrs.prs_score
         File final_score   = MixHlaAndPrs.mixed_score
     }
