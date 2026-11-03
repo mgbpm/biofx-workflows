@@ -2,7 +2,7 @@ version 1.0
 
 import "https://raw.githubusercontent.com/mgbpm/biofx-workflows/refs/heads/main/steps/Utilities.wdl"
 
-workflow T1kHlaGenotyping {
+workflow T1kGenotypingWorkflow {
     input {
         File    input_sample
         File    input_sample_idx
@@ -94,6 +94,8 @@ task FilterBamToHLA {
     }
 
     command <<<
+        set -euxo pipefail
+
         gatk PrintReads -R ~{ref_fasta} -I ~{original_bam} -L ~{hla_intervals} -O hla-unsorted.bam \
             ~{if select_first([google_project, ""]) != "" then "--gcs-project-for-requester-pays " + select_first([google_project, ""]) else ""}
 
