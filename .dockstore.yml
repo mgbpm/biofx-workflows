@@ -529,3 +529,12 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - HLA_*
+  - name: T1DMPRSWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /workflows/hla_typing/T1DMPRSOrchestration.wdl
+    readMePath: /workflows/hla_typing/T1DMPRSOrchestration.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - HLA_*
