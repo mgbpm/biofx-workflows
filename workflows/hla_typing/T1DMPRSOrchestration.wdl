@@ -12,8 +12,6 @@ workflow T1dmPrsWorkflow {
         File    input_crai
         File?   input_vcf
         File    t1dm_weights_file
-        String  vcf_generation               = "glimpse"
-        File?   gatk_roi
         File?   hla_intervals
         String? google_project_id
         File    ref_fasta                    = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -27,7 +25,6 @@ workflow T1dmPrsWorkflow {
         String  plink2_docker_image          = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
         String  glimpse_docker_image         = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String  glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
-        String  gatk_docker_image             = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
     }
 
     String sample_basename = sub(basename(input_cram), "\\.(cram|CRAM|bam|BAM)$", "")
@@ -50,44 +47,20 @@ workflow T1dmPrsWorkflow {
     }
 
     if (!defined(input_vcf)) {
-        if (vcf_generation == "gatk") {
-            call HaplotypeCallerTask as RunGATK {
-                input:
-                    input_file      = input_cram,
-                    input_file_idx  = input_crai,
-                    ref_fasta       = ref_fasta,
-                    ref_fai         = ref_fai,
-                    ref_dict        = ref_dict,
-                    roi_bed         = select_first([gatk_roi]),
-                    docker_image    = gatk_docker_image,
-                    gatk_path       = "/gatk/gatk",
-                    output_filename = sample_basename + ".vcf.gz"
-            }
-
-            call VCFUtils.SortVCFTask as SortGatkVcf {
-                input:
-                    input_vcf    = RunGATK.output_vcf,
-                    docker_image = bcftools_docker_image
-
-            }
-        }
-
-        if (vcf_generation == "glimpse") {
-            call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
-                input:
-                    reference_chunks                              = glimpse_reference_chunks,
-                    crams                                         = [input_cram],
-                    cram_indices                                  = [input_crai],
-                    sample_ids                                    = [sample_basename],
-                    fasta                                         = ref_fasta,
-                    fasta_index                                   = ref_fai,
-                    ref_dict                                      = ref_dict,
-                    output_basename                               = sample_basename,
-                    af_cutoff                                     = ">=0.0001",
-                    gnomadAF_ref_vcf                              = glimpse_ref_vcf,
-                    docker                                        = glimpse_docker_image,
-                    docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image
-            }
+        call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
+            input:
+                reference_chunks                              = glimpse_reference_chunks,
+                crams                                         = [input_cram],
+                cram_indices                                  = [input_crai],
+                sample_ids                                    = [sample_basename],
+                fasta                                         = ref_fasta,
+                fasta_index                                   = ref_fai,
+                ref_dict                                      = ref_dict,
+                output_basename                               = sample_basename,
+                af_cutoff                                     = ">=0.0001",
+                gnomadAF_ref_vcf                              = glimpse_ref_vcf,
+                docker                                        = glimpse_docker_image,
+                docker_extract_num_sites_from_reference_chunk = glimpse_extract_docker_image
         }
     }
 
@@ -111,55 +84,6 @@ workflow T1dmPrsWorkflow {
         File vcf           = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz])
         File prs_score     = ScorePrs.prs_score
         File final_score   = MixHlaAndPrs.mixed_score
-    }
-}
-
-task HaplotypeCallerTask {
-    input {
-        File   input_file
-        File   input_file_idx
-        File?  roi_bed
-        String output_filename
-        File   ref_dict
-        File   ref_fasta
-        File   ref_fai
-        String gatk_path
-        String docker_image
-        Int    addldisk    = 30
-        Int    preemptible = 1
-        Int    mem         = 24
-        Int    bootdisk    = 15
-    }
-
-    Int ref_size        = ceil(size(ref_fasta, "GB") + size(ref_fai, "GB") + size(ref_dict, "GB"))
-    Int input_size      = ceil(size(input_file, "GB") + size(input_file_idx, "GB") + size(roi_bed, "GB"))
-    Int final_disk_size = ref_size + input_size + addldisk
-
-    command <<<
-        set -euxo pipefail
-
-        BED_FILE=""
-        [ ! -z "~{roi_bed}" ] && BED_FILE="--intervals ~{roi_bed}"
-
-        ~{gatk_path} --java-options "-Xmx~{mem-1}G"       \
-            HaplotypeCaller                               \
-            --reference ~{ref_fasta}                      \
-            --input ~{input_file}                         \
-            ${BED_FILE}                                   \
-            --output ~{output_filename}
-    >>>
-
-    runtime {
-        docker: "~{docker_image}"
-        memory: "~{mem} GB"
-        disks: "local-disk ~{final_disk_size} SSD"
-        preemptible: preemptible
-        bootDiskSizeGb: bootdisk
-    }
-
-    output {
-        File output_vcf     = "~{output_filename}"
-        File output_vcf_idx = "~{output_filename}.tbi"
     }
 }
 
