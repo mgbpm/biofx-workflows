@@ -244,17 +244,17 @@ task PhasingTask {
     }
 
     output {
-        File best_haplotype_pairs = "OUTPUT/~{output_basename}.phasing.out_bestpairs"
+        File haplotype_pairs = "OUTPUT/~{output_basename}.phasing.out_bestpairs"
         File phasing_log       = "OUTPUT/~{output_basename}.phasing.out"
     }
 }
 
-task ScoreHaplotypes {
+task ScoreHaplotypesTask {
     input {
-        File   best_haplotype_pairs
-        String output_basename = basename(best_haplotype_pairs, ".phasing.out_bestpairs")
+        File   haplotype_pairs
+        String output_basename = basename(haplotype_pairs, ".phasing.out_bestpairs")
         String docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev-hla"
-        Int    disk_size       = ceil(size(best_haplotype_pairs, "GB")) + 10
+        Int    disk_size       = ceil(size(haplotype_pairs, "GB")) + 10
         Int    mem_size        = 2
         Int    preemptible     = 1
     }
@@ -268,7 +268,7 @@ task ScoreHaplotypes {
 
         # Score haplotypes for T1DM
         Rscript ${DOCKERDIR}/bin/score_t1dm_maps.R \
-            "~{best_haplotype_pairs}"              \
+            "~{haplotype_pairs}"              \
             "~{output_basename}"                   \
             "OUTPUT"                               \
             ${DOCKERDIR}/etc/haplotype_weights.txt

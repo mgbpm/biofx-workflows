@@ -32,7 +32,7 @@ workflow T1dmPrsWorkflow {
 
     String sample_basename = sub(basename(input_cram), "\\.(cram|CRAM|bam|BAM)$", "")
 
-    call T1KGenotyping.T1kGenotypingWorkflow as ImputeHlaGenotype {
+    call T1KGenotyping.T1kGenotypingWorkflow as GetHlaHaplotypes {
         input:
             input_sample      = input_cram,
             input_sample_idx  = input_crai,
@@ -44,10 +44,9 @@ workflow T1dmPrsWorkflow {
             t1k_docker_image  = t1k_docker_image
     }
 
-    call HLAPhasing.HlaPhasingWorkflow as PhaseHlaHaplotypes {
+    call HLATasks.ScoreHaplotypesTask as ScoreHlaHaplotypes {
         input:
-            input_alleles    = ImputeHlaGenotype.allele_tsv,
-            prs_docker_image = prs_docker_image
+            haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
     }
 
     if (!defined(input_vcf)) {
@@ -101,7 +100,7 @@ workflow T1dmPrsWorkflow {
 
     call MixScoresTask as MixHlaAndPrs {
         input:
-            hla_score_file = PhaseHlaHaplotypes.scored_haplotypes,
+            hla_score_file = ScoreHlaHaplotypes.scored_haplotypes,
             prs_score_file = ScorePrs.prs_score,
             sample_id      = sample_basename
     }
