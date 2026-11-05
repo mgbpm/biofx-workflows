@@ -2,7 +2,7 @@ version 1.0
 
 task FilterBam {
     input {
-        File    input_file
+        File    input_file # can be CRAM or BAM
         File    input_file_idx
         File    ref_fasta       = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
         File    ref_fai         = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"

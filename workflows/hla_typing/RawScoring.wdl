@@ -4,19 +4,18 @@ workflow RawScoreWorkflow {
     input {
         File   input_vcf
         File   weights
-        String plink2_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     }
 
     call ScoreVcf {
         input:
             vcf          = input_vcf,
-            weights      = weights,
-            docker_image = plink2_docker_image
+            weights      = weights
     }
 
     output {
-        File prs_score    = ScoreVcf.score
-        File sites_scored = ScoreVcf.sites_scored
+        File prs_score        = ScoreVcf.score
+        File sites_scored     = ScoreVcf.sites_scored
+        File sites_not_scored = ScoreVcf.sites_not_scored
     }
 }
 
@@ -24,8 +23,8 @@ task ScoreVcf {
     input {
         File    vcf
         File    weights
-        String  basename = sub(basename(vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
-        String  docker_image
+        String  basename     = sub(basename(vcf), "\\.(vcf|VCF|vcf.gz|VCF.GZ|vcf.bgz|VCF.BGZ)$", "")
+        String  docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
         Int     addldisk     = 20
         Int     mem_size     = 8
         Int     preemptible  = 1
@@ -40,6 +39,7 @@ task ScoreVcf {
     command <<<
         set -euxo pipefail
 
+        # Extract variant IDs from input VCF
         /plink2                                     \
             --vcf                   '~{vcf}'        \
             --memory                ~{plink_memory} \
@@ -47,8 +47,9 @@ task ScoreVcf {
             --rm-dup exclude-all                    \
             --set-all-var-ids       '@:#:$r:$a'     \
             --write-snplist         allow-dups      \
-            --out "~{basename}"            
+            --out "~{basename}"
 
+        # Score VCF
         COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
         /plink2                                  \
             --vcf "~{vcf}"                       \
@@ -64,12 +65,41 @@ task ScoreVcf {
             --output-chr "MT"                    \
             --set-all-var-ids '@:#:$r:$a'        \
             --out "~{basename}"
-            
+        
+        # Sort list of scored variants
+        LC_ALL=C sort                 \
+            -t: -k1,1V -k2,2n         \
+            "~{basename}.sscore.vars" \
+            > "~{basename}.scored_vars.txt"
+        
+        # Sort list of extracted variants from VCF
+        LC_ALL=C sort             \
+            -t: -k1,1V -k2,2n     \
+            "~{basename}.snplist" \
+            > "~{basename}.all_snps.txt"
+
+        # Get list of variants that weren't scored
+        comm -23                                 \
+            <(sort -u "~{basename}.snplist")     \
+            <(sort -u "~{basename}.sscore.vars") \
+            > "~{basename}.not_scored"
+        
+        LC_ALL=C sort                \
+            -t: -k1,1V -k2,2n        \
+            "~{basename}.not_scored" \
+            > "~{basename}.not_scored_vars.txt"
+
+        # Get counts of variants
+        wc -l < "~{basename}.not_scored_vars.txt" > not_scored.count
+        wc -l < "~{basename}.scored_vars.txt" > scored.count
     >>>
 
     output {
-        File score        = "~{basename}.sscore"
-        File sites_scored = "~{basename}.sscore.vars"
+        File score                = "~{basename}.sscore"
+        File sites_scored         = "~{basename}.scored_vars.txt"
+        Int  num_sites_scored     = read_int("scored.count")
+        File sites_not_scored     = "~{basename}.not_scored_vars.txt"
+        Int  num_sites_not_scored = read_int("not_scored.count")
     }
 
     runtime {

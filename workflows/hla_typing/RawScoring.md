@@ -15,4 +15,7 @@ This workflow will generate PRS scores using PLINK2 and an input weights file.
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
 | File | prs_score | Always | Final .sscore file from PLINK2 that contains raw PRS |
-| File | sites_scored | Always | Final .sscore.vars file from PLINK2 that contains varaint IDs from scored variants in output .sscore file |
+| File | sites_scored | Always | A sorted list of variants scored to generate PLINK2 raw PRS |
+| Int | num_sites_scored | Always | Number of variants scored |
+| File | sites_not_scored | Always | A sorted list of variants that were not scored but existed in the input VCF |
+| Int | num_sites_not_scored | Always | Number of variants not scored |
