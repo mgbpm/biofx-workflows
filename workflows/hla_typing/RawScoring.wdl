@@ -47,6 +47,7 @@ task ScoreVcf {
             --rm-dup exclude-all                    \
             --set-all-var-ids       '@:#:$r:$a'     \
             --write-snplist         allow-dups      \
+            --allow-extra-chr                       \
             --out "~{basename}"
 
         # Score VCF
@@ -64,6 +65,7 @@ task ScoreVcf {
             --new-id-max-allele-len 1000 missing \
             --output-chr "MT"                    \
             --set-all-var-ids '@:#:$r:$a'        \
+            --allow-extra-chr                    \
             --out "~{basename}"
         
         # Sort list of scored variants
