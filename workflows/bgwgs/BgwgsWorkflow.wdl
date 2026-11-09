@@ -10,6 +10,7 @@ import "../../steps/GDHIngestAndFilter.wdl"
 import "../../steps/QCEval.wdl"
 import "../../steps/IgvReport.wdl"
 import "../../steps/Utilities.wdl"
+import "../../steps/GenotypingBGWGS.wdl"
 
 workflow BgwgsWorkflow {
     input {
@@ -227,14 +228,19 @@ workflow BgwgsWorkflow {
         String gatk3_docker_image = "broadinstitute/gatk3:3.7-0"
         # pgx inputs
         String pgx_test_code = "lmPGX-pnlD_L"
-        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20241008"
-        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20241004.tar"
+        String pgx_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/pgx:20251212"
+        File pgx_workflow_fileset = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_20251212.tar"
         File pgx_roi_bed = "gs://lmm-reference-data/pgx/lmPGX-pnlD_L_genotyping.bed"
         # risk alleles inputs
         String risk_alleles_test_code = "lmRISK-pnlB_L"
         String risk_alleles_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/risk:20240129"
         File risk_alleles_workflow_fileset = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_20230105.tar"
         File risk_alleles_roi_bed = "gs://lmm-reference-data/risk/lmRISK-pnlB_L_genotyping-chr_20230628.bed"
+        # genotyping bgwgs inputs
+        Boolean do_genotyping = false
+        File? genotyping_roi_bed
+        String genotyping_docker_image = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/genotyping-bgwgs:20260825"
+        String? genotyping_test_code
         # vcf filter inputs
         File? vcf_filter_bed
         # qceval inputs
@@ -313,7 +319,7 @@ workflow BgwgsWorkflow {
     if (!defined(FetchCram.cram) && defined(FetchBam.bam) && !defined(FetchBam.bai)) {
         call Utilities.FailTask as MissingBaiFailure {
             input:
-                error_message = "Index file for BAM " + basename(select_first([FetchCram.bam])) + " not found"
+                error_message = "Index file for BAM " + basename(select_first([FetchBam.bam])) + " not found"
         }
     }
 
@@ -432,6 +438,35 @@ workflow BgwgsWorkflow {
                 workspace_name = workspace_name,
                 mgbpmbiofx_docker_image = risk_alleles_docker_image
         }
+    }
+
+    # Run genotyping
+    if (do_genotyping) {
+        call GenotypingBGWGS.GenotypingBGWGSWorkflow as GenotypingWorkflowAlias {
+            input:
+                input_cram = sample_bam,
+                input_crai = sample_bai,
+                sample_id = sample_id,
+                accession_id = subject_id,
+                test_code = select_first([genotyping_test_code]),
+                reference_fasta = ref_fasta,
+                reference_fasta_fai = ref_fasta_index,
+                reference_dict = ref_dict,
+                roi_bed = select_first([genotyping_roi_bed]),
+                dbsnp = select_first([dbsnp_vcf]),
+                dbsnp_vcf_index = select_first([dbsnp_vcf_index]),
+                genotyping_docker_image = genotyping_docker_image,
+                workspace_name = workspace_name
+        }
+    }
+
+    # Filter called VCF to target region
+    call VCFUtils.FilterVCFWithBEDTask {
+        input:
+            input_vcf = sample_vcf,
+            input_bed = target_roi_bed,
+            output_basename = subject_id + "_" + sample_id + ".target",
+            docker_image = "~{bcftools_docker_image}"
     }
 
 

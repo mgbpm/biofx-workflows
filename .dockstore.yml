@@ -396,6 +396,15 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - PRSMix_*
+  - name: GenotypingBGWGSWorkflow
+    subclass: WDL
+    primaryDescriptorPath: /steps/GenotypingBGWGS.wdl
+    readMePath: /steps/GenotypingBGWGS.md
+    filters:
+      branches:
+        - /.*[a-zA-Z0-9].*/
+      tags:
+        - ignore-all-tags
   - name: KingOrchestrationWorkflow
     subclass: WDL
     primaryDescriptorPath: /workflows/ibd/KingOrchestration.wdl
