@@ -460,15 +460,6 @@ workflow BgwgsWorkflow {
         }
     }
 
-    # Filter called VCF to target region
-    call VCFUtils.FilterVCFWithBEDTask {
-        input:
-            input_vcf = sample_vcf,
-            input_bed = target_roi_bed,
-            output_basename = subject_id + "_" + sample_id + ".target",
-            docker_image = "~{bcftools_docker_image}"
-    }
-
 
     # The assignments at the end of the conditional block below ensure
     # that `ref_fasta` and `ref_fasta_index` are passed to
