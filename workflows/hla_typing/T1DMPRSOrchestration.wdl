@@ -107,7 +107,7 @@ task MixScoresTask {
         weighted_hla_score=$(awk -v x=0.79003 -v y=${hla_score} 'BEGIN {print x*y}')
 
         prs_score=$(grep "~{sample_id}" "~{prs_score_file}" | cut -f4)
-        weighted_prs_score=$(awk -v x=08.86562 -v y=${hla_score} 'BEGIN {print x*y}')
+        weighted_prs_score=$(awk -v x=8.86562 -v y=${prs_score} 'BEGIN {print x*y}')
 
         merged_score=$(awk -v x=${weighted_hla_score} -v y=${weighted_prs_score} 'BEGIN {print x+y}')
         final_score=$(awk -v x=20 -v y=${merged_score} 'BEGIN {print x+y}')
