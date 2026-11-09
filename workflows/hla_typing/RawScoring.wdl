@@ -53,7 +53,7 @@ task ScoreVcf {
         # Score VCF
         COLUMNS='maybefid,maybesid,phenos,dosagesum,scoreavgs,scoresums'
         /plink2                                  \
-            --vcf "~{vcf}"                       \
+            --vcf "~{vcf}" dosage=DS             \
             --extract "~{basename}.snplist"      \
             --score '~{weights}'                 \
                 header                           \
