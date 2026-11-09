@@ -89,6 +89,8 @@ EOF
 task GDHOutputParserTask {
     input {
         File gdh_output_file
+        File? genotyping_vcf
+        File? genotyping_bed_file
         String reference_build
         String oms_query = "Y"
         File portable_db_file
@@ -114,6 +116,8 @@ task GDHOutputParserTask {
         # Run the parser
         gdh-output-parser $OMS_PARAM \
             --input-file "~{gdh_output_file}" \
+            --genotyping_vcf "~{genotyping_vcf}" \
+            --genotyping_bed "~{genotyping_bed_file}" \
             --output "~{report_basename}.parsed.txt" \
             --excel-output "~{report_basename}.xlsm" \
             --empty-excel-output "~{report_basename}.xlsx" \

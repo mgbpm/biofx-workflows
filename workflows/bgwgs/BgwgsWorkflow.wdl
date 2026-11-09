@@ -556,6 +556,8 @@ workflow BgwgsWorkflow {
     call GDHIngestAndFilter.GDHOutputParserTask {
         input:
             gdh_output_file = GDHIngestAndFilterTask.matching_variants,
+            genotyping_vcf = GenotypingWorkflowAlias.annotated_vcf_file,
+            genotyping_bed_file = genotyping_roi_bed,
             reference_build = reference_build,
             oms_query = "Y",
             portable_db_file = portable_db_file,
