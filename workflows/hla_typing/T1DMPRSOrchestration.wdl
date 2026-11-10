@@ -75,8 +75,7 @@ workflow T1dmPrsWorkflow {
     call ScoringTasks.MixHlaPrsScoresTask as MixHlaAndPrs {
         input:
             hla_score_file = ScoreHlaHaplotypes.scored_haplotypes,
-            prs_score_file = ScorePrs.prs_score,
-            sample_id      = sample_basename
+            prs_score_file = ScorePrs.prs_score
     }
 
     output {
@@ -84,6 +83,6 @@ workflow T1dmPrsWorkflow {
         File hla_score           = ScoreHlaHaplotypes.scored_haplotypes
         File vcf                 = scoring_vcf
         File prs_score           = ScorePrs.prs_score
-        File final_score         = MixHlaAndPrs.mixed_score
+        File final_score         = MixHlaAndPrs.t1dm_scores
     }
 }

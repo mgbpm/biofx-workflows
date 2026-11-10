@@ -287,3 +287,30 @@ task ScoreHaplotypesTask {
         File scored_haplotypes = "OUTPUT/~{output_basename}.phasing.out_scored"
     }
 }
+
+task CombineHaplotypeScoresTask {
+    input {
+        Array[File] scored_haplotype_files
+        String      docker_image = "ubuntu:latest"
+        Int         addldisk = 10
+        Int         mem_size = 2
+    }
+
+    Int disk_size = ceil(size(scored_haplotype_files)) + addldisk
+
+    command <<<
+        set -euxo
+
+        cat ~{sep=" " scored_haplotype_files} | sort -u > haplotype_scores.txt
+    >>>
+
+    runtime {
+        docker: "~{docker_image}"
+        disks: "local-disk ~{disk_size} SSD"
+        memory: "~{mem_size} GB"
+    }
+
+    output {
+        File all_haplotype_scores = "haplotype_scores.txt"
+    }
+}

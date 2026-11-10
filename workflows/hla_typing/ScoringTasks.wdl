@@ -122,7 +122,6 @@ task MixHlaPrsScoresTask {
     input {
         File   hla_score_file
         File   prs_score_file
-        String sample_id
         String docker_image = "ubuntu:latest"
         Int    addldisk = 10
         Int    mem_size = 2
@@ -134,16 +133,32 @@ task MixHlaPrsScoresTask {
     command <<<
         set -euxo pipefail
 
-        hla_score=$(grep "~{sample_id}" "~{hla_score_file}" | cut -f14)
-        weighted_hla_score=$(awk -v x=0.79003 -v y=${hla_score} 'BEGIN {print x*y}')
+        # Check that the sample sample IDs exist each input
+        tail -n+2 "~{hla_score_file}" | cut -f1 | sort > "hla_sample_ids"
+        tail -n+2 "~{prs_score_file}" | cut -f1 | sort > "prs_sample_ids"
 
-        prs_score=$(grep "~{sample_id}" "~{prs_score_file}" | cut -f4)
-        weighted_prs_score=$(awk -v x=8.86562 -v y=${prs_score} 'BEGIN {print x*y}')
+        if ! cmp -s "hla_sample_ids" "prs_sample_ids"; then
+            echo "Sample IDs in input HLA score file and PRS score file do not match." >&2
+            exit 1
+        fi
 
-        merged_score=$(awk -v x=${weighted_hla_score} -v y=${weighted_prs_score} 'BEGIN {print x+y}')
-        final_score=$(awk -v x=20 -v y=${merged_score} 'BEGIN {print x+y}')
+        printf -- "sample_id\thla_score\tprs_score\tfinal_score\n" > "t1dm_scores.tsv"
 
-        printf -- "${final_score}" > "~{sample_id}.score.tsv"
+        while read line; do
+            sample_id =$(echo "${line}" | cut -f1)
+
+            hla_score=$(grep "${sample_id}" "~{hla_score_file}" | cut -f14)
+            weighted_hla_score=$(awk -v x=0.79003 -v y=${hla_score} 'BEGIN {print x*y}')
+
+            prs_score=$(grep "${sample_id}" "~{prs_score_file}" | cut -f4)
+            weighted_prs_score=$(awk -v x=8.86562 -v y=${prs_score} 'BEGIN {print x*y}')
+
+            merged_score=$(awk -v x=${weighted_hla_score} -v y=${weighted_prs_score} 'BEGIN {print x+y}')
+            final_score=$(awk -v x=20 -v y=${merged_score} 'BEGIN {print x+y}')
+
+            printf -- "${sample_id}\t${hla_score}\t${prs_score}\t${final_score}\n" \
+                > "t1dm_scores.tsv"
+        done < hla_sample_ids
     >>>
 
     runtime {
@@ -153,6 +168,6 @@ task MixHlaPrsScoresTask {
     }
 
     output {
-        File mixed_score = "~{sample_id}.score.tsv"
+        File t1dm_scores = "t1dm_scores.tsv"
     }
 }
