@@ -511,15 +511,6 @@ workflows:
         - /.*[a-zA-Z0-9].*/
       tags:
         - FASTOutputParser_*
-  - name: ReblockGVCFandPush
-    subclass: WDL
-    primaryDescriptorPath: /workflows/joint_calling/ReblockGVCFandPush.wdl
-    readMePath: /workflows/joint_calling/ReblockGVCFandPush.md
-    filters:
-      branches:
-        - /.*[a-zA-Z0-9].*/
-      tags:
-        - ReblockGVCFandPush_*
   - name: QCEvalSubComponent
     subclass: WDL
     primaryDescriptorPath: /workflows/qceval_subcomponent/QCEvalSubComponent.wdl
