@@ -108,35 +108,23 @@ task ScoreVcf {
             --allow-extra-chr                    \
             --out "~{basename}"
         
-        # Sort list of scored variants
-        LC_ALL=C sort                 \
-            -t: -k1,1V -k2,2n         \
-            "~{basename}.sscore.vars" \
-            > "~{basename}.scored_vars.txt"
-        
-        # Sort list of extracted variants from VCF
-        LC_ALL=C sort             \
-            -t: -k1,1V -k2,2n     \
-            "~{basename}.snplist" \
-            > "~{basename}.all_snps.txt"
-
-        # Get list of variants that weren't scored
+        # Get a list of variants that were not scored
         comm -23                                 \
             <(sort -u "~{basename}.snplist")     \
             <(sort -u "~{basename}.sscore.vars") \
-            > "~{basename}.not_scored"
-        
-        LC_ALL=C sort                \
-            -t: -k1,1V -k2,2n        \
-            "~{basename}.not_scored" \
-            > "~{basename}.not_scored_vars.txt"
+            > variants_unscored.txt
 
+        # Keep the existing chromosome/position order for variant lists
+        LC_ALL=C sort -t: -k1,1V -k2,2n \
+            "~{basename}.sscore.vars" > "~{basename}.scored_vars.txt"
+        LC_ALL=C sort -t: -k1,1V -k2,2n \
+            variants_unscored.txt > "~{basename}.unscored_vars.txt"
     >>>
 
     output {
         File score                = "~{basename}.sscore"
         File sites_scored         = "~{basename}.scored_vars.txt"
-        File sites_not_scored     = "~{basename}.not_scored_vars.txt"
+        File sites_not_scored     = "~{basename}.unscored_vars.txt"
     }
 
     runtime {
