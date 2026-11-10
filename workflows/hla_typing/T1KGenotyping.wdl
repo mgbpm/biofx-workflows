@@ -50,9 +50,9 @@ workflow T1kGenotypingWorkflow {
     }
 
     output {
-        File hla_bam      = select_first([FilterBamToHla.output_bam])
-        File hla_bai      = select_first([FilterBamToHla.output_bai])
-        File haplotypes   = select_first([ImputeHlaAlleles.allele_tsv])
+        File hla_bam         = select_first([FilterBamToHla.output_bam])
+        File hla_bai         = select_first([FilterBamToHla.output_bai])
+        File haplotypes      = select_first([ImputeHlaAlleles.allele_tsv])
         File haplotype_pairs = select_first([PhaseHaplotypes.haplotype_pairs])
     }
 }

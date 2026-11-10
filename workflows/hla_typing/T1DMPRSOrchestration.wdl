@@ -1,9 +1,8 @@
 version 1.0
 
 import "./T1KGenotyping.wdl"
-import "./HLAPhasing.wdl"
+import "./HLATasks.wdl"
 import "./RawScoring.wdl"
-import "../../steps/VCFUtils.wdl"
 import "../lowpassimputation/Glimpse2Imputation.wdl"
 
 workflow T1dmPrsWorkflow {
@@ -11,6 +10,9 @@ workflow T1dmPrsWorkflow {
         File    input_cram
         File    input_crai
         File?   input_vcf
+        File?   input_pgen
+        File?   input_pvar
+        File?   input_psam
         File    t1dm_weights_file
         File?   hla_intervals
         String? google_project_id
@@ -19,34 +21,15 @@ workflow T1dmPrsWorkflow {
         File    ref_dict                     = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
         File    glimpse_reference_chunks     = "gs://lmm-reference-data/prsmix/glimpse_reference_chunks/hgdp_1kg_ref_chunks_withChrX/list/hgdp_1kg_ref_chunks_withChrX"
         File    glimpse_ref_vcf              = "gs://lmm-reference-data/prsmix/reference/NA12878_437224286_v1.1.imputed_VEP_split_af_sorted.vcf.gz"
-        String  t1k_docker_image             = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/t1k:0.0.1"
-        String  prs_docker_image             = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev-hla"
-        String  bcftools_docker_image        = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/bcftools:1.17"
-        String  plink2_docker_image          = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
         String  glimpse_docker_image         = "us.gcr.io/broad-dsde-methods/glimpse:odelaneau_e0b9b56"
         String  glimpse_extract_docker_image = "us.gcr.io/broad-dsde-methods/glimpse_extract_num_sites_from_reference_chunks:michaelgatzen_edc7f3a"
     }
 
-    String sample_basename = sub(basename(input_cram), "\\.(cram|CRAM|bam|BAM)$", "")
+    String  sample_basename = sub(basename(input_cram), "\\.(cram|CRAM|bam|BAM)$", "")
+    Boolean has_pgen_input  = defined(input_pgen) || defined(input_pvar) || defined(input_psam)
+    Boolean has_vcf_input   = defined(input_vcf)
 
-    call T1KGenotyping.T1kGenotypingWorkflow as GetHlaHaplotypes {
-        input:
-            input_sample      = input_cram,
-            input_sample_idx  = input_crai,
-            hla_intervals     = select_first([hla_intervals]),
-            google_project_id = select_first([google_project_id]),
-            ref_fasta         = ref_fasta,
-            ref_fai           = ref_fai,
-            ref_dict          = ref_dict,
-            t1k_docker_image  = t1k_docker_image
-    }
-
-    call HLATasks.ScoreHaplotypesTask as ScoreHlaHaplotypes {
-        input:
-            haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
-    }
-
-    if (!defined(input_vcf)) {
+    if (!has_vcf_input || !has_pgen_input) {
         call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
             input:
                 reference_chunks                              = glimpse_reference_chunks,
@@ -64,11 +47,28 @@ workflow T1dmPrsWorkflow {
         }
     }
 
+    File scoring_vcf = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf])
+
+    call T1KGenotyping.T1kGenotypingWorkflow as GetHlaHaplotypes {
+        input:
+            input_sample      = input_cram,
+            input_sample_idx  = input_crai,
+            hla_intervals     = select_first([hla_intervals]),
+            google_project_id = select_first([google_project_id])
+    }
+
+    call HLATasks.ScoreHaplotypesTask as ScoreHlaHaplotypes {
+        input:
+            haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
+    }
+
     call RawScoring.RawScoreWorkflow as ScorePrs {
         input:
-            input_vcf           = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz]),
-            weights             = t1dm_weights_file,
-            plink2_docker_image = plink2_docker_image
+            input_vcf           = scoring_vcf,
+            input_pgen          = input_pgen,
+            input_pvar          = input_pvar,
+            input_psam          = input_psam,
+            weights             = t1dm_weights_file
     }
 
     call MixScoresTask as MixHlaAndPrs {
@@ -79,11 +79,11 @@ workflow T1dmPrsWorkflow {
     }
 
     output {
-        File hla_genotypes = ImputeHlaGenotype.allele_tsv
-        File hla_score     = PhaseHlaHaplotypes.scored_haplotypes
-        File vcf           = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf, SortGatkVcf.output_vcf_gz])
-        File prs_score     = ScorePrs.prs_score
-        File final_score   = MixHlaAndPrs.mixed_score
+        File hla_haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
+        File hla_score           = ScoreHlaHaplotypes.scored_haplotypes
+        File vcf                 = scoring_vcf
+        File prs_score           = ScorePrs.prs_score
+        File final_score         = MixHlaAndPrs.mixed_score
     }
 }
 
