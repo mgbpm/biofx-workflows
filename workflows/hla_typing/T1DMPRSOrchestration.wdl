@@ -2,6 +2,7 @@ version 1.0
 
 import "./T1KGenotyping.wdl"
 import "./HLATasks.wdl"
+import "./ScoringTasks.wdl"
 import "./RawScoring.wdl"
 import "../lowpassimputation/Glimpse2Imputation.wdl"
 
@@ -71,7 +72,7 @@ workflow T1dmPrsWorkflow {
             haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
     }
 
-    call MixScoresTask as MixHlaAndPrs {
+    call ScoringTasks.MixHlaPrsScoresTask as MixHlaAndPrs {
         input:
             hla_score_file = ScoreHlaHaplotypes.scored_haplotypes,
             prs_score_file = ScorePrs.prs_score,
@@ -84,44 +85,5 @@ workflow T1dmPrsWorkflow {
         File vcf                 = scoring_vcf
         File prs_score           = ScorePrs.prs_score
         File final_score         = MixHlaAndPrs.mixed_score
-    }
-}
-
-task MixScoresTask {
-    input {
-        File   hla_score_file
-        File   prs_score_file
-        String sample_id
-        String docker_image = "ubuntu:latest"
-        Int    addldisk = 10
-        Int    mem_size = 2
-    }
-
-    Int input_size = ceil(size(hla_score_file, "GB") + size(prs_score_file, "GB"))
-    Int disk_size  = input_size + addldisk
-
-    command <<<
-        set -euxo pipefail
-
-        hla_score=$(grep "~{sample_id}" "~{hla_score_file}" | cut -f14)
-        weighted_hla_score=$(awk -v x=0.79003 -v y=${hla_score} 'BEGIN {print x*y}')
-
-        prs_score=$(grep "~{sample_id}" "~{prs_score_file}" | cut -f4)
-        weighted_prs_score=$(awk -v x=8.86562 -v y=${prs_score} 'BEGIN {print x*y}')
-
-        merged_score=$(awk -v x=${weighted_hla_score} -v y=${weighted_prs_score} 'BEGIN {print x+y}')
-        final_score=$(awk -v x=20 -v y=${merged_score} 'BEGIN {print x+y}')
-
-        printf -- "${final_score}" > "~{sample_id}.score.tsv"
-    >>>
-
-    runtime {
-        docker: "~{docker_image}"
-        disks: "local-disk ~{disk_size} SSD"
-        memory: "~{mem_size} GB"
-    }
-
-    output {
-        File mixed_score = "~{sample_id}.score.tsv"
     }
 }
