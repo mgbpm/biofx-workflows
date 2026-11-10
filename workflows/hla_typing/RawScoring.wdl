@@ -10,7 +10,7 @@ workflow RawScoreWorkflow {
         String plink2_docker_image = "us.gcr.io/broad-dsde-methods/plink2_docker@sha256:4455bf22ada6769ef00ed0509b278130ed98b6172c91de69b5bc2045a60de124"
     }
 
-    call ScoreVcf {
+    call ScoreTask {
         input:
             vcf     = input_vcf,
             pgen    = input_pgen,
@@ -21,13 +21,13 @@ workflow RawScoreWorkflow {
     }
 
     output {
-        File prs_score        = ScoreVcf.score
-        File sites_scored     = ScoreVcf.sites_scored
-        File sites_not_scored = ScoreVcf.sites_not_scored
+        File prs_score        = ScoreTask.score
+        File sites_scored     = ScoreTask.sites_scored
+        File sites_not_scored = ScoreTask.sites_not_scored
     }
 }
 
-task ScoreVcf {
+task ScoreTask {
     input {
         File?   vcf
         File?   pgen
@@ -71,7 +71,17 @@ task ScoreVcf {
                 echo "Provide either a VCF or a PGEN/PVAR/PSAM dataset, not both." >&2
                 exit 1
             fi
-            INPUT_FILES=(--vcf "${VCF}" dosage=DS)
+            # Check for dosage sum in both compressed and uncompressed VCFs
+            if [[ "${VCF}" == *.gz || "${VCF}" == *.GZ || "${VCF}" == *.bgz || "${VCF}" == *.BGZ ]]; then
+                VCF_GREP=zgrep
+            else
+                VCF_GREP=grep
+            fi
+            if "${VCF_GREP}" -q '^##FORMAT=<ID=DS[>,]' "${VCF}"; then
+                INPUT_FILES=(--vcf "${VCF}" dosage=DS)
+            else
+                INPUT_FILES=(--vcf "${VCF}")
+            fi
         elif [[ -n "${PGEN}" && -n "${PVAR}" && -n "${PSAM}" ]]; then
             INPUT_FILES=(--pgen "${PGEN}" --pvar "${PVAR}" --psam "${PSAM}")
         else
