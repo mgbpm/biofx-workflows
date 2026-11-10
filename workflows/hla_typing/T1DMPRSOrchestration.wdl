@@ -29,7 +29,7 @@ workflow T1dmPrsWorkflow {
     Boolean has_pgen_input  = defined(input_pgen) || defined(input_pvar) || defined(input_psam)
     Boolean has_vcf_input   = defined(input_vcf)
 
-    if (!has_vcf_input || !has_pgen_input) {
+    if (!has_vcf_input && !has_pgen_input) {
         call Glimpse2Imputation.Glimpse2Imputation as RunGlimpse {
             input:
                 reference_chunks                              = glimpse_reference_chunks,
@@ -49,6 +49,15 @@ workflow T1dmPrsWorkflow {
 
     File scoring_vcf = select_first([input_vcf, RunGlimpse.imputed_afFiltered_vcf])
 
+    call RawScoring.RawScoreWorkflow as ScorePrs {
+        input:
+            input_vcf           = scoring_vcf,
+            input_pgen          = input_pgen,
+            input_pvar          = input_pvar,
+            input_psam          = input_psam,
+            weights             = t1dm_weights_file
+    }
+
     call T1KGenotyping.T1kGenotypingWorkflow as GetHlaHaplotypes {
         input:
             input_sample      = input_cram,
@@ -60,15 +69,6 @@ workflow T1dmPrsWorkflow {
     call HLATasks.ScoreHaplotypesTask as ScoreHlaHaplotypes {
         input:
             haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
-    }
-
-    call RawScoring.RawScoreWorkflow as ScorePrs {
-        input:
-            input_vcf           = scoring_vcf,
-            input_pgen          = input_pgen,
-            input_pvar          = input_pvar,
-            input_psam          = input_psam,
-            weights             = t1dm_weights_file
     }
 
     call MixScoresTask as MixHlaAndPrs {
