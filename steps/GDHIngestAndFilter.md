@@ -33,6 +33,8 @@ Parses GDH filter output into human-readable report formats (text and Excel).
 
 ## Input Parameters
 * File gdh_output_file - required - the GDH output file to parse (JSON or text format)
+* File? genotyping_vcf - optional - the output from the genotyping workflow (if applicable)
+* File? genotyping_bed_file - optional - the ROI file used for the genotyping workflow (if applicable)
 * String reference_build - required - the reference genome build
 * String oms_query - optional - whether to query OMS for additional information, defaults to "Y"
 * File portable_db_file - required - the portable database file containing gene information
