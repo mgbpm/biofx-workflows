@@ -124,7 +124,7 @@ task RunT1kTask {
 task PhasingTask {
     input {
         File   input_alleles
-        String output_basename = basename(input_alleles, ".tsv")
+        String output_basename = basename(input_alleles, "_allele.tsv")
         String docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev-hla"
         Int    disk_size       = ceil(size(input_alleles, "GB")) + 10
         Int    mem_size        = 2
