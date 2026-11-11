@@ -133,19 +133,12 @@ task MixHlaPrsScoresTask {
     command <<<
         set -euxo pipefail
 
-        # Check that the sample sample IDs exist each input
-        tail -n+2 "~{hla_score_file}" | cut -f1 | sort > "hla_sample_ids"
-        tail -n+2 "~{prs_score_file}" | cut -f1 | sort > "prs_sample_ids"
+        hla_header=$(head -n1 "~{hla_score_file}" | sed 's/\n//g' | cut -f1,8,9,11,13,14)
+        printf -- "${hla_header}\traw_prs\tfinal_prs_score\n" > "t1dm_scores.tsv"
 
-        if ! cmp -s "hla_sample_ids" "prs_sample_ids"; then
-            echo "Sample IDs in input HLA score file and PRS score file do not match." >&2
-            exit 1
-        fi
-
-        printf -- "sample_id\thla_score\tprs_score\tfinal_score\n" > "t1dm_scores.tsv"
-
+        # Weight the PRS and HLA scores, then mix them
         while read line; do
-            sample_id =$(echo "${line}" | cut -f1)
+            sample_id=$(echo "${line}" | cut -f1)
 
             hla_score=$(grep "${sample_id}" "~{hla_score_file}" | cut -f14)
             weighted_hla_score=$(awk -v x=0.79003 -v y=${hla_score} 'BEGIN {print x*y}')
@@ -156,9 +149,10 @@ task MixHlaPrsScoresTask {
             merged_score=$(awk -v x=${weighted_hla_score} -v y=${weighted_prs_score} 'BEGIN {print x+y}')
             final_score=$(awk -v x=20 -v y=${merged_score} 'BEGIN {print x+y}')
 
-            printf -- "${sample_id}\t${hla_score}\t${prs_score}\t${final_score}\n" \
-                > "t1dm_scores.tsv"
-        done < hla_sample_ids
+            hla_score_line=$(grep "${sample_id}" "~{hla_score_file}" | sed 's/\n//g' | cut -f1,8,9,11,13,14)
+            printf -- "${hla_score_line}\t${prs_score}\t${final_score}\n" \
+                >> "t1dm_scores.tsv"
+        done < <(tail -n+2 "~{prs_score_file}")
     >>>
 
     runtime {

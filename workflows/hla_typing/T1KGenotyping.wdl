@@ -1,7 +1,7 @@
 version 1.0
 
 import "../../steps/Utilities.wdl"
-import "HLATasks.wdl"
+import "./HLATasks.wdl"
 
 workflow T1kGenotypingWorkflow {
     input {
