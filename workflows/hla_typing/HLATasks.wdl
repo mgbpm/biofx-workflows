@@ -123,10 +123,10 @@ task RunT1kTask {
 
 task PhasingTask {
     input {
-        File   input_alleles
-        String output_basename = basename(input_alleles, "_allele.tsv")
+        File   input_genotype
+        String output_basename = basename(input_genotype, "_genotype.tsv")
         String docker_image    = "us-central1-docker.pkg.dev/mgb-lmm-gcp-infrast-1651079146/mgbpmbiofx/prs:dev-hla"
-        Int    disk_size       = ceil(size(input_alleles, "GB")) + 10
+        Int    disk_size       = ceil(size(input_genotype, "GB")) + 10
         Int    mem_size        = 2
         Int    preemptible     = 1
     }
@@ -144,7 +144,7 @@ task PhasingTask {
         sites=(DRB1 DQA1 DQB1)
 
         # ----------------------------------------------------------------
-        # Step 1: Extract allele codes
+        # Step 1: Extract allele codes from T1K genotype calls
         # ----------------------------------------------------------------
 
         join_tab() { local IFS=$'\t'; printf '%s\n' "$*"; }
@@ -158,37 +158,74 @@ task PhasingTask {
             ' "${DOCKERDIR}/etc/allele_codes.tsv"
         }
 
+        add_allele_code() {
+            local allele="$1"
+            local quality="$2"
+            local code_key code
+
+            if [[ ! "$quality" =~ ^-?[0-9]+$ ]]; then
+                echo "Error: invalid T1K allele quality '$quality' for $allele at $site" >&2
+                exit 1
+            fi
+
+            if [[ "$allele" == "." ]] || (( quality <= 0 )); then
+                codes+=("-1")
+                return
+            fi
+
+            code_key=$(printf '%s\n' "$allele" | cut -d: -f1,2 | tr '-' '_')
+            if code=$(lookup_code "$code_key"); then
+                codes+=("$code")
+            else
+                echo "Warning: $allele not found in allele code table; writing -1 as allele" >&2
+                codes+=("-1")
+            fi
+        }
+
         header=(ID)
         row=("~{output_basename}")
 
         for site in "${sites[@]}"; do
-            alleles=()
-            while IFS= read -r line; do
-                alleles+=("$line")
-            done < <(awk -v p="HLA-${site}*" 'index($1, p) == 1 { print $1 }' "~{input_alleles}" \
-                     | cut -d: -f1,2 | tr '-' '_')
+            genotype=$(awk -F'\t' -v site="$site" '
+                {
+                    gene = $1
+                    sub(/^HLA[-_]/, "", gene)
+                    if (gene == site) {
+                        print $2 "\t" $3 "\t" $5 "\t" $6 "\t" $8
+                        found++
+                    }
+                }
+                END {
+                    if (found != 1) {
+                        printf "Error: expected one T1K genotype row for %s; found %d\n", site, found > "/dev/stderr"
+                        exit 1
+                    }
+                }
+            ' "~{input_genotype}") || exit 1
+            read -r allele_count allele1 quality1 allele2 quality2 <<< "$genotype"
 
-            if (( ${#alleles[@]} > 2 )); then
-                echo "Warning: ${#alleles[@]} alleles for $site in ~{input_alleles}; using first two" >&2
-            fi
-
-            # Translate alleles to codes (unknown alleles get -1)
             codes=()
-            if (( ${#alleles[@]} > 0 )); then
-                for allele in "${alleles[@]:0:2}"; do
-                    if code=$(lookup_code "$allele"); then
-                        codes+=("$code")
-                    else
-                        echo "Warning: $allele not found in allele code table; writing -1 as allele" >&2
+            case "$allele_count" in
+                0)
+                    codes=("-1" "-1")
+                    ;;
+                1)
+                    add_allele_code "$allele1" "$quality1"
+                    if [[ "${codes[0]}" == "-1" ]]; then
                         codes+=("-1")
+                    else
+                        codes+=("${codes[0]}")
                     fi
-                done
-            fi
-
-            # Pad missing / single-allele sites with the dummy code
-            while (( ${#codes[@]} < 2 )); do
-                codes+=("-1")
-            done
+                    ;;
+                2)
+                    add_allele_code "$allele1" "$quality1"
+                    add_allele_code "$allele2" "$quality2"
+                    ;;
+                *)
+                    echo "Error: unexpected T1K allele count '$allele_count' for $site" >&2
+                    exit 1
+                    ;;
+            esac
 
             header+=("${site}_1" "${site}_2")
             row+=("${codes[0]}" "${codes[1]}")

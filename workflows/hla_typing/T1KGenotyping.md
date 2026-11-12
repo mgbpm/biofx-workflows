@@ -19,6 +19,7 @@ This workflow will take either a sample BAM or CRAM and run T1K HLA genotyping. 
 
 | Type | Name | When | Description |
 | :--- | :--- | :--- | :--- |
-| File | allele_tsv | Always | Representative alleles with all fields and respective quality scores; To be used in conjunction with the allele_vcf output |
-| File | allele_vcf | Always | Novel SNPs |
-| File | genotype_tsv | Always | Additional metrics for alleles found in allele_tsv |
+| File | hla_bam | Always | BAM filtered to only HLA regions |
+| File | hla_bai | Always | Index for corresponding filtered BAM |
+| File | hla_genotypes | Always | Genotype results from T1K |
+| File | haplotype_pairs | Always | Best pair output from phasing haplotypes |

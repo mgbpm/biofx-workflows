@@ -79,10 +79,7 @@ workflow T1dmPrsWorkflow {
     }
 
     output {
-        File hla_haplotype_pairs = GetHlaHaplotypes.haplotype_pairs
-        File hla_score           = ScoreHlaHaplotypes.scored_haplotypes
-        File vcf                 = scoring_vcf
-        File prs_score           = ScorePrs.prs_score
-        File final_score         = MixHlaAndPrs.t1dm_scores
+        File vcf           = scoring_vcf
+        File score_summary = MixHlaAndPrs.t1dm_scores
     }
 }

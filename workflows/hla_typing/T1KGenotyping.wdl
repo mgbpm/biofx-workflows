@@ -45,14 +45,14 @@ workflow T1kGenotypingWorkflow {
 
         call HLATasks.PhasingTask as PhaseHaplotypes {
             input:
-                input_alleles = ImputeHlaAlleles.allele_tsv
+                input_genotype = ImputeHlaAlleles.genotype_tsv
         }
     }
 
     output {
         File hla_bam         = select_first([FilterBamToHla.output_bam])
         File hla_bai         = select_first([FilterBamToHla.output_bai])
-        File haplotypes      = select_first([ImputeHlaAlleles.allele_tsv])
+        File hla_haplotypes      = select_first([ImputeHlaAlleles.genotype_tsv])
         File haplotype_pairs = select_first([PhaseHaplotypes.haplotype_pairs])
     }
 }
