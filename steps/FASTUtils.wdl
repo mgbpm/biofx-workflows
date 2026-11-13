@@ -280,10 +280,10 @@ task FASTRemoveAlreadyAnnotatedFromVCFTask {
         [ ! -z "~{annotation_source_id}" ] && ANNOTATION_SRC_PARAM="--annotation-src-id ~{annotation_source_id}"
 
         ANNOTATION_FIELD_PARAM=""
-        [ ! -z "~{annotation_field_id}" ] && ANNOTATION_SRC_PARAM="--annotation-field-id ~{annotation_field_id}"
+        [ ! -z "~{annotation_field_id}" ] && ANNOTATION_FIELD_PARAM="--annotation-field-id ~{annotation_field_id}"
 
         ANNOTATION_MIN_AGE_PARAM=""
-        [ ! -z "~{annotation_min_age}" ] && ANNOTATION_SRC_PARAM="--annotation-min-age ~{annotation_min_age}"
+        [ ! -z "~{annotation_min_age}" ] && ANNOTATION_MIN_AGE_PARAM="--annotation-min-age ~{annotation_min_age}"
 
         $MGBPMBIOFXPATH/biofx-pyfast/bin/filter_already_annotated.py \
             --client-config fast-client-config.json \
